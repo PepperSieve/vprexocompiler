@@ -11,7 +11,8 @@ A dockerfile is provided to build a base docker image to use with projects. Just
 ## Running ##
 After compiling the dockerfile one can run using command:
 
-```docker run -it pequin bash -c 'cd $PEQUIN/pepper && python3 exec.py benchmark timeout'
+```bash
+docker run -it pequin bash -c 'cd $PEQUIN/pepper && python3 exec.py benchmark timeout'
 ```
 Where `benchmark` can be:
 * `--all`: Test all benchmarks
@@ -23,4 +24,5 @@ Where `benchmark` can be:
 * `5`: Sum of Powers
 * `6`: 2D Convex Hull
 * `7`: MSC
+
 And `timeout` is a positive number for number of seconds, or defaulted to 600 seconds.
