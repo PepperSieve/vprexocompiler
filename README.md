@@ -9,7 +9,7 @@ A dockerfile is provided to build a base docker image to use with projects. Just
 ```
 
 ## Running ##
-After compiling the dockerfile one can run using command:
+After compiling the dockerfile, one can run the tests using command:
 
 ```bash
 docker run -it pequin bash -c 'cd $PEQUIN/pepper && python3 exec.py benchmark timeout'
