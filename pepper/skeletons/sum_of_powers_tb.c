@@ -1,7 +1,5 @@
 #include <stdint.h>
 
-#define MAX_R 100
-#define MAX_K 6
 #define MAX_OUT 2
 
 struct In {

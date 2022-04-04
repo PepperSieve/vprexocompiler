@@ -5,4 +5,4 @@ set -e
 docker build -t pequin -f docker/Dockerfile .
 
 # Test created image
-docker run -it pequin bash -c 'cd $PEQUIN/pepper && bash exec.sh'
+docker run -it pequin bash -c 'cd $PEQUIN/pepper && python3 exec.py --all 10'
