@@ -3,8 +3,8 @@ DEFAULT_TIMEOUT = 100
 
 def help_message():
     print("Format:")
-    print("      python3 exec.py param timeout")
-    print("Valid param:")
+    print("      python3 exec.py benchmark timeout")
+    print("Valid benchmark:")
     print("  --all: test all benchmarks")
     print("      0: Merging")
     print("      1: Binary Search")
