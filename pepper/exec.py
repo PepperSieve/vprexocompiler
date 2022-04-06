@@ -3,18 +3,19 @@ DEFAULT_TIMEOUT = 100
 
 def help_message():
     print("Format:")
-    print("      python3 exec.py benchmark timeout")
-    print("Valid benchmark:")
+    print("      python3 exec.py <benchmark> <timeout>")
+    print("Valid <benchmark>:")
     print("  --all: test all benchmarks")
     print("      0: Merging")
     print("      1: Binary Search")
-    print("      2: Next Permutation")
-    print("      3: Dutch Flag")
-    print("      4: Recurrence Relations Sequence")
-    print("      5: Sum of Powers")
-    print("      6: 2D Convex Hull")
-    print("      7: MSC")
-    print("Valid timeout: a positive number (default = " + str(DEFAULT_TIMEOUT) + " seconds)")
+    print("      2: KMP Search")
+    print("      3: Next Permutation")
+    print("      4: Dutch Flag")
+    print("      5: Recurrence Relations Sequence")
+    print("      6: Sum of Powers")
+    print("      7: 2D Convex Hull")
+    print("      8: MSC")
+    print("Valid <timeout>: a positive number (default = " + str(DEFAULT_TIMEOUT) + " seconds)")
 
 def pequin_test(name, new_code, prefix, to):
     new_file = open("apps/" + name + ".c", "w")
@@ -39,7 +40,7 @@ if not len(sys.argv) in [2, 3]:
     help_message()
     quit()
 param = sys.argv[1]
-if not param in ["--all", "0", "1", "2", "3", "4", "5", "6", "7"]:
+if not param in ["--all", "0", "1", "2", "3", "4", "5", "6", "7", "8"]:
     help_message()
     quit()
 
@@ -122,7 +123,7 @@ if param in ["--all", "1"]:
     to_switch = False
     n = 10
     while not to_switch:
-        l = math.ceil(math.log(n, 2))
+        l = int(math.ceil(math.log(n, 2)))
         new_code = "#define MAX_N " + str(n) + "\n#define MAX_LOG " + str(l) + "\n" + sk_code
         to_switch = pequin_test("binary_search_ti", new_code, "N = " + str(n) + ", LOG_N = " + str(l) + ": ", to)
         n *= 2
@@ -139,9 +140,48 @@ if param in ["--all", "1"]:
         n *= 2
 
 # --
-# 2 - Next Permutation
+# 2 - KMP Search
 if param in ["--all", "2"]:
-    print("\n--\nTesting Benchmark 2: Next Permutation")
+    print("\n--\nTesting Benchmark 2: KMP Search")
+
+    print("\nT_I: (N = length of text, M = length of pattern)")
+    sk_file = open(r"skeletons/kmp_search_ti.c", "r")
+    sk_code = sk_file.read()
+    sk_file.close()
+    n = 10
+    to_success = -1
+    while to_success != 1:
+        to_success = 0
+        to_switch = False
+        m = 2
+        while (not to_switch) and n > m * 2:
+            to_success += 1
+            new_code = "#define MAX_N " + str(n) + "\n" + "#define MAX_M " + str(m) + "\n" + sk_code
+            to_switch = pequin_test("kmp_search_ti", new_code, "N = " + str(n) + ", M = " + str(m) + ": ", to)
+            m *= 2
+        n *= 2
+
+    print("\nT_B: (N = length of text, M = length of pattern)")
+    sk_file = open(r"skeletons/kmp_search_tb.c", "r")
+    sk_code = sk_file.read()
+    sk_file.close()
+    n = 10
+    to_success = -1
+    while to_success != 1:
+        to_success = 0
+        to_switch = False
+        m = 2
+        while (not to_switch) and n > m * 2:
+            to_success += 1
+            new_code = "#define MAX_N " + str(n) + "\n" + "#define MAX_M " + str(m) + "\n" + sk_code
+            to_switch = pequin_test("kmp_search_tb", new_code, "N = " + str(n) + ", M = " + str(m) + ": ", to)
+            m *= 2
+        n *= 2
+
+# --
+# 3 - Next Permutation
+if param in ["--all", "3"]:
+    print("\n--\nTesting Benchmark 3: Next Permutation")
 
     print("\nT_I: (N = length of array)")
     sk_file = open(r"skeletons/next_permutation_ti.c", "r")
@@ -166,9 +206,9 @@ if param in ["--all", "2"]:
         n *= 2
 
 # --
-# 3 - Dutch Flag
-if param in ["--all", "3"]:
-    print("\n--\nTesting Benchmark 3: Dutch Flag")
+# 4 - Dutch Flag
+if param in ["--all", "4"]:
+    print("\n--\nTesting Benchmark 4: Dutch Flag")
 
     print("\nT_I: (N = length of array)")
     sk_file = open(r"skeletons/dutch_flag_ti.c", "r")
@@ -193,9 +233,9 @@ if param in ["--all", "3"]:
         n *= 2
 
 # --
-# 4 - Recurrence Relations Sequence
-if param in ["--all", "4"]:
-    print("\n--\nTesting Benchmark 4: Recurrence Relations Sequence")
+# 5 - Recurrence Relations Sequence
+if param in ["--all", "5"]:
+    print("\n--\nTesting Benchmark 5: Recurrence Relations Sequence")
 
     print("\nT_I: (N = length of the sequence, M = number of recurrence relations)")
     sk_file = open(r"skeletons/rr_sequence_find_ti.c", "r")
@@ -234,9 +274,9 @@ if param in ["--all", "4"]:
         n *= 2
 
 # --
-# 5 - Sum of Powers
-if param in ["--all", "5"]:
-    print("\n--\nTesting Benchmark 5: Sum of Powers")
+# 6 - Sum of Powers
+if param in ["--all", "6"]:
+    print("\n--\nTesting Benchmark 6: Sum of Powers")
 
     print("\nT_I: (Want X^K + Y^K = R, X > Y)")
     sk_file = open(r"skeletons/sum_of_powers_ti.c", "r")
@@ -244,40 +284,38 @@ if param in ["--all", "5"]:
     sk_file.close()
     r = 10
     to_success = -1
-    while to_success != 0:
+    while to_success != 1:
         to_success = 0
         to_switch = False
         k = 1
         while (not to_switch) and 2 ** k < r:
+            to_success += 1
             new_code = "#define MAX_R " + str(r) + "\n" + "#define MAX_K " + str(k) + "\n" + sk_code
             to_switch = pequin_test("sum_of_powers_ti", new_code, "R = " + str(r) + ", K = " + str(k) + ": ", to)
             k *= 2
-            if not to_switch:
-                to_success += 1
         r *= 2
 
     print("\nT_B: (Want X^K + Y^K = R, X > Y)")
-    sk_file = open(r"skeletons/sum_of_powers_sp_tb.c", "r")
+    sk_file = open(r"skeletons/sum_of_powers_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     r = 10
     to_success = -1
-    while to_success != 0:
+    while to_success != 1:
         to_success = 0
         to_switch = False
         k = 1
-        while (not to_switch) and k ** 2 <= r:
+        while (not to_switch) and 2 ** k < r:
+            to_success += 1
             new_code = "#define MAX_R " + str(r) + "\n" + "#define MAX_K " + str(k) + "\n" + sk_code
             to_switch = pequin_test("sum_of_powers_tb", new_code, "R = " + str(r) + ", K = " + str(k) + ": ", to)
             k *= 2
-            if not to_switch:
-                to_success += 1
         r *= 2
 
 # --
-# 6 - 2D Convex Hull
-if param in ["--all", "6"]:
-    print("\n--\nTesting Benchmark 6: 2D Convex Hull")
+# 7 - 2D Convex Hull
+if param in ["--all", "7"]:
+    print("\n--\nTesting Benchmark 7: 2D Convex Hull")
 
     print("\nT_I: (N = length of array)")
     sk_file = open(r"skeletons/2d_convex_hull_ti.c", "r")
@@ -313,9 +351,9 @@ if param in ["--all", "6"]:
         n *= 2
 
 # --
-# 7 - MSC
-if param in ["--all", "7"]:
-    print("\n--\nTesting Benchmark 7: MSC")
+# 8 - MSC
+if param in ["--all", "8"]:
+    print("\n--\nTesting Benchmark 8: MSC")
 
     print("\nT_I: (V = number of nodes, E = number of edges)")
     sk_file = open(r"skeletons/msc_ti.c", "r")
@@ -323,11 +361,12 @@ if param in ["--all", "7"]:
     sk_file.close()
     v = 5
     to_success = -1
-    while to_success != 0:
+    while to_success != 1:
         to_success = 0
         to_switch = False
         e = 10
         while (not to_switch) and e <= v ** 2:
+            to_success += 1
             new_code = "#define MAX_V " + str(v) + "\n" + "#define MAX_E " + str(e) + "\n" + sk_code
             to_switch = pequin_test("msc_ti", new_code, "V = " + str(v) + ", E = " + str(e) + ": ", to)
             if e == v ** 2:
@@ -335,8 +374,6 @@ if param in ["--all", "7"]:
             e *= 2
             if e > v ** 2:
                 e = v ** 2
-            if not to_switch:
-                to_success += 1
         v *= 2
 
     print("\nT_B: (V = number of nodes, E = number of edges)")
@@ -345,11 +382,12 @@ if param in ["--all", "7"]:
     sk_file.close()
     v = 5
     to_success = -1
-    while to_success != 0:
+    while to_success != 1:
         to_success = 0
         to_switch = False
         e = 10
         while (not to_switch) and e <= v ** 2:
+            to_success += 1
             new_code = "#define MAX_V " + str(v) + "\n" + "#define MAX_E " + str(e) + "\n" + sk_code
             to_switch = pequin_test("msc_tb", new_code, "V = " + str(v) + ", E = " + str(e) + ": ", to)
             if e == v ** 2:
@@ -357,9 +395,6 @@ if param in ["--all", "7"]:
             e *= 2
             if e > v ** 2:
                 e = v ** 2
-            if not to_switch:
-                to_success += 1
         v *= 2
 
 print("\nPlease refer to $PEQUIN/pepper/log for any stderr outputs.")
-    
