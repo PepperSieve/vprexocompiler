@@ -12,7 +12,7 @@ A dockerfile is provided to build a base docker image to use with projects. Just
 After compiling the dockerfile, one can run the tests using command:
 
 ```bash
-docker run -it pequin bash -c 'cd $PEQUIN/pepper && python3 exec.py benchmark timeout'
+docker run -it pequin bash -c 'cd $PEQUIN/pepper && python2 exec.py benchmark timeout'
 ```
 Where `benchmark` can be:
 * `--all`: Test all benchmarks

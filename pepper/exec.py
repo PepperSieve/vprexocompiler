@@ -14,7 +14,7 @@ def help_message():
     print("      5: Sum of Powers")
     print("      6: 2D Convex Hull")
     print("      7: MSC")
-    print("Valid timeout: a positive number (default = " + DEFAULT_TIMEOUT + " seconds)")
+    print("Valid timeout: a positive number (default = " + str(DEFAULT_TIMEOUT) + " seconds)")
 
 def pequin_test(name, new_code, prefix, to):
     new_file = open("apps/" + name + ".c", "w")
@@ -22,7 +22,7 @@ def pequin_test(name, new_code, prefix, to):
     new_file.close()
     output = os.popen("timeout " + str(to) + " bash test.sh " + name + " 2> log | grep --color=never 'NUMBER' | sed 's/\:/\ =/g'") 
     outr = output.read()
-    print(prefix + outr, end = "")
+    print(prefix + outr),
     if outr == "":
         print("Timeout after " + str(to) + " seconds.")
         return True
@@ -361,5 +361,5 @@ if param in ["--all", "7"]:
                 to_success += 1
         v *= 2
 
-print("\nPlease refer to ./log for any stderr outputs.")
+print("\nPlease refer to $PEQUIN/pepper/log for any stderr outputs.")
     
