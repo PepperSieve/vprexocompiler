@@ -4,11 +4,10 @@
 // Assume that the points are already sorted counter-clockwise from the
 // bottom-right point
 
-// For every point in the convex hull, provide the coordinate of the next
-// convex hull
-// If we reach the next point, verify the next of the last point is correct
+// For every point, find its previous and next point in hull
 // If a point is not in convex hull, verify that it together with two adjacent
-// points in convex hull forms an inward angle
+// points in convex hull forms an inward angle,
+// otherwise it should form an outward angle.
 
 #include <stdint.h>
 
@@ -51,12 +50,12 @@ void compute(struct In *input, struct Out *output) {
 	assert_zero(ss < 3);
 
 	// The first point must be in the convex hull	
-	// assert_zero(x0 - input->stack_x[0]);
-	// assert_zero(y0 - input->stack_y[0]);
+	assert_zero(x0 - input->stack_x[0]);
+	assert_zero(y0 - input->stack_y[0]);
 
 	int i, xi, yi, prod;
 	// count: which point in stack are we dealing with?
-	// int count = 0;
+	int count = 0;
 	
 	for (i = 1; i < MAX_N; i++) {
 		if (i < n) {
@@ -65,9 +64,9 @@ void compute(struct In *input, struct Out *output) {
 			// If in convex hull
 			if (input->in_c[i] == 1) {
 				// Verify that the point in stack is correct
-				// count++;
-				// assert_zero(input->stack_x[count] - xi);
-				// assert_zero(input->stack_y[count] - yi);
+				count++;
+				assert_zero(input->stack_x[count] - xi);
+				assert_zero(input->stack_y[count] - yi);
 
 				// Verify that next is correct
 				assert_zero(xi - next_x);

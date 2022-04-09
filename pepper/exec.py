@@ -232,6 +232,17 @@ if param in ["--all", "4"]:
         to_switch = pequin_test("dutch_flag_ti", new_code, "N = " + str(n) + ": ", to)
         n *= 2
 
+    print("\nT_S: (N = length of array)")
+    sk_file = open(r"skeletons/dutch_flag_ts.c", "r")
+    sk_code = sk_file.read()
+    sk_file.close()
+    to_switch = False
+    n = 10
+    while not to_switch:
+        new_code = "#define MAX_N " + str(n) + "\n" + sk_code
+        to_switch = pequin_test("dutch_flag_ts", new_code, "N = " + str(n) + ": ", to)
+        n *= 2
+
     print("\nT_B: (N = length of array)")
     sk_file = open(r"skeletons/dutch_flag_tb.c", "r")
     sk_code = sk_file.read()
@@ -266,7 +277,7 @@ if param in ["--all", "5"]:
                 to_success += 1
         n *= 2
 
-    print("\nT_B: (N = number of elements in the sequence, M = number of recurrence relations)")
+    print("\nT_S & T_B: (N = number of elements in the sequence, M = number of recurrence relations)")
     sk_file = open(r"skeletons/rr_sequence_find_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -306,7 +317,7 @@ if param in ["--all", "6"]:
             k *= 2
         r *= 2
 
-    print("\nT_B: (Want X^K + Y^K = R, X > Y)")
+    print("\nT_S & T_B: (Want X^K + Y^K = R, X > Y)")
     sk_file = open(r"skeletons/sum_of_powers_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()

@@ -39,8 +39,7 @@ void compute(struct In *input, struct Out *output) {
 	assert_zero(seq - seq_0);
 	for (j = 0; j < M; j++) {
 		assert_zero(fLOAD(j, 0) < 0);
-		assert_zero(fLOAD(j, 0) > n);
-		if (fLOAD(j, 0) == n)
+		if (fLOAD(j, 0) >= n)
 			assert_zero(f(j, seq) <= seq_last);
 		else
 			assert_zero(input->seq[fLOAD(j, 0)] - f(j, seq));
@@ -63,8 +62,7 @@ void compute(struct In *input, struct Out *output) {
 			for (j = 0; j < M; j++) {
 				if (f(j, prev) == seq) prev_count++;
 				assert_zero(fLOAD(j, i) <= i);
-				assert_zero(fLOAD(j, i) > n);
-				if (fLOAD(j, i) == n)
+				if (fLOAD(j, i) >= n)
 					assert_zero(f(j, seq) <= seq_last);
 				else
 					assert_zero(input->seq[fLOAD(j, i)] - f(j, seq));
