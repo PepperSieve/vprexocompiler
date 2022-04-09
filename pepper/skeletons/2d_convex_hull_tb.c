@@ -24,7 +24,6 @@ struct In {
 	// not in use if the point is not on convex hull
 	uint32_t next_x[MAX_N];
 	uint32_t next_y[MAX_N];
-	uint32_t ss;
 	// stack_x and stack_y provided by the prover
 	uint32_t stack_x[MAX_N];
 	uint32_t stack_y[MAX_N];
@@ -39,16 +38,12 @@ struct Out {
 
 void compute(struct In *input, struct Out *output) {
 	int n = input->n;
-	int ss = input->ss;
 	uint32_t stack_x[MAX_N];
 	uint32_t stack_y[MAX_N];
 	// Record down the first point so we can verify after reaching the last point
 	int x0 = input->x[0]; int y0 = input->y[0];
 	int next_x = input->next_x[0]; int next_y = input->next_y[0];
 	int last_x = x0; int last_y = y0;
-
-	// There must be at least three points in the hull
-	assert_zero(ss < 3);
 
 	// The first point must be in the convex hull	
 	assert_zero(x0 - input->stack_x[0]);
@@ -94,8 +89,5 @@ void compute(struct In *input, struct Out *output) {
 	assert_zero(x0 - next_x);
 	assert_zero(y0 - next_y);
 
-	// make sure that ss is actually correct
-	assert_zero(ss - count - 1);
-
-	output->ss = ss;
+	output->ss = count + 1;
 }

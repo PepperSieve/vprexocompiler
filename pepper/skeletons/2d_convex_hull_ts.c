@@ -19,11 +19,6 @@ struct In {
 	uint32_t y[MAX_N];
 	// in_c: 0 if point is not in convex hull, 1 otherwise
 	uint32_t in_c[MAX_N];
-	// use next_xy to record the coordinate of the next point in hull
-	// not in use if the point is not on convex hull
-	uint32_t next_x[MAX_N];
-	uint32_t next_y[MAX_N];
-	uint32_t ss;
 	// stack_x and stack_y provided by the prover
 	uint32_t stack_x[MAX_N];
 	uint32_t stack_y[MAX_N];
@@ -38,22 +33,17 @@ struct Out {
 
 void compute(struct In *input, struct Out *output) {
 	int n = input->n;
-	int ss = input->ss;
 	uint32_t stack_x[MAX_N];
 	uint32_t stack_y[MAX_N];
 	// Record down the first point so we can verify after reaching the last point
 	int x0 = input->x[0]; int y0 = input->y[0];
-	int next_x = input->next_x[0]; int next_y = input->next_y[0];
-	int last_x = x0; int last_y = y0;
-
-	// There must be at least three points in the hull
-	assert_zero(ss < 3);
 
 	// The first point must be in the convex hull	
 	assert_zero(x0 - input->stack_x[0]);
 	assert_zero(y0 - input->stack_y[0]);
 
-	int i, xi, yi, prod;
+	int i, j, xi, yi, prod;
+	int last, next, last_x, last_y, next_x, next_y;
 	// count: which point in stack are we dealing with?
 	int count = 0;
 	
@@ -61,40 +51,33 @@ void compute(struct In *input, struct Out *output) {
 		if (i < n) {
 			xi = input->x[i];
 			yi = input->y[i];
-			// If in convex hull
+			last = i - 1;
+			next = i + 1;
+			// We shouldn't need this if statement but pequin won't
+			// let me pass without it, as in_c might be out of bounds 
+			if (next == MAX_N) next = 0;
+			// find last and next
+			for (j = 0; j < MAX_N; j++) {
+				if (input->in_c[last] != 1) last--;
+				if (next < n && input->in_c[next] != 1) next++;
+			}
+			if (next == n) next = 0;
+			// Verify angle: > 0 if in hull, < 0 if not in hull
+			last_x = input->x[last];
+			last_y = input->y[last];
+			next_x = input->x[next];
+			next_y = input->y[next];
+			prod = X_PROD(last_x, last_y, xi, yi, next_x, next_y); 
 			if (input->in_c[i] == 1) {
-				// Verify that the point in stack is correct
 				count++;
 				assert_zero(input->stack_x[count] - xi);
 				assert_zero(input->stack_y[count] - yi);
-
-				// Verify that next is correct
-				assert_zero(xi - next_x);
-				assert_zero(yi - next_y);
 				
-				// Verify that an outward angle is formed
-				next_x = input->next_x[i];
-				next_y = input->next_y[i];
-				prod = X_PROD(last_x, last_y, xi, yi, next_x, next_y); 
 				assert_zero(prod <= 0);
-
-				// Update last
-				last_x = xi;
-				last_y = yi;
-			} 
-			else {
-				prod = X_PROD(last_x, last_y, xi, yi, next_x, next_y); 
+			} else
 				assert_zero(prod >= 0);
-			}
 		}
 	}
 
-	// Assert that next of last is the first
-	assert_zero(x0 - next_x);
-	assert_zero(y0 - next_y);
-
-	// make sure that ss is actually correct
-	assert_zero(ss - count - 1);
-
-	output->ss = ss;
+	output->ss = count + 1;
 }

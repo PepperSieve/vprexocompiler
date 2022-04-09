@@ -350,6 +350,17 @@ if param in ["--all", "7"]:
         to_switch = pequin_test("td_convex_hull_ti", new_code, "N = " + str(n) + ": ", to)
         n *= 2
 
+    print("\nT_S: (N = length of array)")
+    sk_file = open(r"skeletons/2d_convex_hull_ts.c", "r")
+    sk_code = sk_file.read()
+    sk_file.close()
+    to_switch = False
+    n = 10
+    while not to_switch:
+        new_code = "#define MAX_N " + str(n) + "\n" + sk_code
+        to_switch = pequin_test("td_convex_hull_ts", new_code, "N = " + str(n) + ": ", to)
+        n *= 2
+
     print("\nT_B: (N = length of array)")
     sk_file = open(r"skeletons/2d_convex_hull_tb.c", "r")
     sk_code = sk_file.read()

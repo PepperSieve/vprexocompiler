@@ -56,7 +56,7 @@ void compute(struct In *input, struct Out *output) {
 
 	int i, xi, yi, prod;
 	// count: which point in stack are we dealing with?
-	// int count = 0;
+	int count = 0;
 	
 	for (i = 1; i < MAX_N; i++) {
 		if (i < n) {
@@ -65,7 +65,7 @@ void compute(struct In *input, struct Out *output) {
 			// If in convex hull
 			if (input->in_c[i] == 1) {
 				// Verify that the point in stack is correct
-				// count++;
+				count++;
 				// assert_zero(input->stack_x[count] - xi);
 				// assert_zero(input->stack_y[count] - yi);
 
