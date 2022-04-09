@@ -3,7 +3,7 @@
 struct In {
 	uint32_t n;
 	uint32_t c[MAX_N];
-	// d list, i and j provided by the prover
+	// D list, i and j provided by the prover
 	uint32_t d[MAX_N];
 	uint32_t i;
 	uint32_t j;
@@ -24,10 +24,11 @@ void compute(struct In *input, struct Out *output) {
 	}
 
 	// Verify that i is correct
-	// 0 <= i < j < n ==> i < n - 1
-	assert_zero(i < 0);
-	assert_zero(j <= i);
+	// 0 <= i < j < n
+	assert_zero(0 > i);
+	assert_zero(i >= j);
 	assert_zero(j >= n);
+	// C_i < C_i+1 && forall k > i, C_k > C_k+1
 	for (k = 0; k < MAX_N - 1; k++) {
 		if (k < n - 1) {
 			if (k == i) {
@@ -40,17 +41,22 @@ void compute(struct In *input, struct Out *output) {
 	}
 
 	// Verify that j is correct
+	// C_j > C_i && C_j+1 < C_i
 	int cj = c[j];
 	assert_zero(cj <= ci);
 	if (j + 1 < n) assert_zero(c[j + 1] >= ci);
+
+	// Swap C_i and C_j
 	c[i] = cj;
 	c[j] = ci;
 
-	// Verify reverse
+	// After swapping C_i and C_j,
+	// verify D[0..i+1] = C[0..i+1]
+	// and D[i+1..n] is the reverse of C[i+1..n]
 	for (k = 0; k < MAX_N; k++) {
 		if (k < n) {
-			if (k > i) assert_zero(input->d[k] != c[n - k + i]);
-			else assert_zero(input->d[k] != c[k]);
+			if (k <= i) assert_zero(input->d[k] != c[k]);
+			else assert_zero(input->d[k] != c[n - k + i]);
 		}
 	}
 }

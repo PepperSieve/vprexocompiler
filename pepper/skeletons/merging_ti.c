@@ -13,20 +13,22 @@ struct In {
 };
 
 struct Out {
-	uint32_t c[MAX_L * MAX_N];
+	uint32_t B[MAX_L * MAX_N];
 };
 
 void compute(struct In *input, struct Out *output) {
 	int i[MAX_L];
 	int L = input->L;
 	int k, j, min, min_j, aji;
-	int c_len = 0;
+	// Compute the length of B
+	int B_len = 0;
 	for (k = 0; k < MAX_L; k++) {
 		i[k] = 0;
-		if (k < L) c_len += input->N[k];
+		if (k < L) B_len += input->N[k];
 	}
+	// Use find min to compute each B[k]
 	for (k = 0; k < MAX_L * MAX_N; k++) {
-		if (k < c_len) {
+		if (k < B_len) {
 			min = 2147483647;
 			min_j = -1;
 			for (j = 0; j < MAX_L; j++) {
@@ -36,7 +38,7 @@ void compute(struct In *input, struct Out *output) {
 					min_j = j;
 				}
 			}
-			output->c[k] = min;
+			output->B[k] = min;
 			i[min_j]++;
 		}
 	}

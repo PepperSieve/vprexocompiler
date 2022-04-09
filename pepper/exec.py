@@ -128,7 +128,7 @@ if param in ["--all", "1"]:
         to_switch = pequin_test("binary_search_ti", new_code, "N = " + str(n) + ", LOG_N = " + str(l) + ": ", to)
         n *= 2
 
-    print("\nT_B: (N = length of array)")
+    print("\nT_S & T_B: (N = length of array)")
     sk_file = open(r"skeletons/binary_search_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -161,7 +161,7 @@ if param in ["--all", "2"]:
             m *= 2
         n *= 2
 
-    print("\nT_B: (N = length of text, M = length of pattern)")
+    print("\nT_S & T_B: (N = length of text, M = length of pattern)")
     sk_file = open(r"skeletons/kmp_search_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -192,6 +192,17 @@ if param in ["--all", "3"]:
     while not to_switch:
         new_code = "#define MAX_N " + str(n) + "\n" + sk_code
         to_switch = pequin_test("next_permutation_ti", new_code, "N = " + str(n) + ": ", to)
+        n *= 2
+
+    print("\nT_S: (N = length of array)")
+    sk_file = open(r"skeletons/next_permutation_ts.c", "r")
+    sk_code = sk_file.read()
+    sk_file.close()
+    to_switch = False
+    n = 10
+    while not to_switch:
+        new_code = "#define MAX_N " + str(n) + "\n" + sk_code
+        to_switch = pequin_test("next_permutation_ts", new_code, "N = " + str(n) + ": ", to)
         n *= 2
 
     print("\nT_B: (N = length of array)")
