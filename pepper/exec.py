@@ -409,6 +409,29 @@ if param in ["--all", "8"]:
                 e = v ** 2
         v *= 2
 
+    print("\nT_S: (V = number of nodes, E = number of edges)")
+    sk_file = open(r"skeletons/msc_ts.c", "r")
+    sk_code = sk_file.read()
+    sk_file.close()
+    v = 5
+    exp = 2 ** v
+    to_success = -1
+    while to_success != 1:
+        to_success = 0
+        to_switch = False
+        e = 10
+        while (not to_switch) and e <= v ** 2:
+            to_success += 1
+            new_code = "#define MAX_V " + str(v) + "\n" + "#define MAX_E " + str(e) + "\n" + "#define MAX_EXP " + str(exp) + "\n" + sk_code
+            to_switch = pequin_test("msc_ts", new_code, "V = " + str(v) + ", E = " + str(e) + ", EXP_V = " + str(exp) + ": ", to)
+            if e == v ** 2:
+                to_switch = True
+            e *= 2
+            if e > v ** 2:
+                e = v ** 2
+        v *= 2
+        exp = 2 ** v
+
     print("\nT_B: (V = number of nodes, E = number of edges)")
     sk_file = open(r"skeletons/msc_tb.c", "r")
     sk_code = sk_file.read()

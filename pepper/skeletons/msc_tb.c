@@ -16,13 +16,13 @@ struct In {
 	// Array representing the tree structure, bounded by V * log(V)
 	// Fill unused slots with values >= NV. The prover can and may do so in the middle of the array
 	// and it won't affect the outcome as long as the valid slots are correct.
-	int T[2 * MAX_V - 1];
+	uint32_t T[2 * MAX_V - 1];
 	// The next three arrays are only used when we encounter a pcomp.
 	// They record respectively # of remaining slots,
 	// index of the receiving vertex, and index of the outgoing vertex
-	int P_remn[2 * MAX_V - 1];
-	int P_recv[2 * MAX_V - 1];
-	int P_outg[2 * MAX_V - 1];
+	uint32_t P_remn[2 * MAX_V - 1];
+	uint32_t P_recv[2 * MAX_V - 1];
+	uint32_t P_outg[2 * MAX_V - 1];
 	// Like msc_sp_level, a list of what the next vertex in the level would be
 	// next_T = NV if the current vertex is the last vertex in the level
 	uint32_t next_T[2 * MAX_V - 1];

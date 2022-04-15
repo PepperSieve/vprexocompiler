@@ -44,18 +44,23 @@ void compute(struct In *input, struct Out *output) {
 	int found = 0;
 	for (k = 0; k < MAX_N * 2; k++) {
 		if (i < N) {
-			if ((input->pat)[j] == (input->txt)[i]) {
-				j++;
-				i++;
-			}
+			// We find a solution
 			if (j == M) {
 				output->ind = i - M;
 				found = 1;
 				i = N + 1;
-			} else if (i < N && (input->pat)[j] != (input->txt)[i]) {
+			} 
+			// Case of a mismatch
+			else if ((input->pat)[j] != (input->txt)[i]) {
 				if (j != 0) {
 					j = lps[j];
-				} else i++;
+				}
+				else i++;
+			}
+			// Case of a match
+			else {
+				j++;
+				i++;
 			}
 		}
 	}
