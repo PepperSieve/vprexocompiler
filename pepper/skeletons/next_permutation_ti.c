@@ -10,52 +10,52 @@ struct Out {
 };
 
 void compute(struct In *input, struct Out *output) {
-	int i = input->n - 2;
-	int j = input->n - 1;
 	int n = input->n;
-	int k, lc;
-	uint32_t tmp;
+	int k, tmp;
+	uint32_t cc[MAX_N];
 
-	// Copy C to D and modify D
+	// Copy C to CC and modify CC
 	for (k = 0; k < MAX_N; k++) {
-		if (k < n) output->d[k] = input->c[k];
+		if (k < n) cc[k] = input->c[k];
 	}
-	
+
 	// Find i
-	int d_i = output->d[i + 1];
-	int d_j;
-	for (k = 0; k < MAX_N - 1; k++) {
-		// Assume that d has a next permutation
+	int i = -1;
+	int d_i, d_j;
+	for (k = 2; k < MAX_N; k++) {
+		// Assume that cc has a next permutation
 		// This means that the while loop must terminate before i = 0
-		d_j = output->d[i];
-		if (d_j >= d_i) {
-			i--;
-			d_i = d_j;
+		tmp = MAX_N - k;
+		if (i == -1 && tmp < n - 1) {
+			if (cc[tmp] < cc[tmp + 1]) {
+				i = tmp;
+				d_i = cc[tmp];
+			}
 		}
 	}
-	d_i = output->d[i];
 
 	// Find j
-	for (k = 0; k < MAX_N; k++) {
-		// j must be greater than i
-		if (output->d[j] <= d_i) j -= 1;
+	int j = -1;
+	for (k = 1; k < MAX_N - 1; k++) {
+		tmp = MAX_N - k;
+		if (j == -1 && tmp < n) {
+			// j must be greater than i
+			if (cc[tmp] > d_i) {
+				j = tmp;
+				d_j = cc[tmp];
+			}
+		}
 	}
 
 	// Swap D_i and D_j
-	tmp = output->d[j];
-	output->d[j] = output->d[i];
-	output->d[i] = tmp;
+	cc[i] = d_j; cc[j] = d_i;
 
-	// Revert D[i+1..n]
-	int p = i + 1;
-	int q = n - 1;
-	for (k = 0; k < MAX_N / 2; k += 1) {
-		if (p < q) {
-			tmp = output->d[p];
-			output->d[p] = output->d[q];
-			output->d[q] = tmp;
-			p++;
-			q--;
+	// Copy CC to D. Revert D[i+1..n]
+	for (k = 0; k < MAX_N; k += 1) {
+		if (k <= i) {
+			output->d[k] = cc[k];
+		} else if (k < n) {
+			output->d[k] = cc[n - k + i];
 		}
 	}
 }
