@@ -51,11 +51,15 @@ void compute(struct In *input, struct Out *output) {
 	cc[i] = d_j; cc[j] = d_i;
 
 	// Copy CC to D. Revert D[i+1..n]
+	int cor;
 	for (k = 0; k < MAX_N; k += 1) {
-		if (k <= i) {
-			output->d[k] = cc[k];
-		} else if (k < n) {
-			output->d[k] = cc[n - k + i];
+		if (k < n) {
+			if (k <= i) {
+				cor = k;
+			} else {
+				cor = n - k + i;
+			}
+			output->d[k] = cc[cor];
 		}
 	}
 }
