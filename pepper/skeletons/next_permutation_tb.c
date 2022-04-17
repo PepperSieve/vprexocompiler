@@ -56,7 +56,7 @@ void compute(struct In *input, struct Out *output) {
 			else if (k == i) cor = j;
 			else if (k == n - j + i) cor = i;
 			else cor = n - k + i;
-			assert_zero(input->c[k] != output->d[cor]);
+			assert_zero(output->d[k] != input->c[cor]);
 		}
 	}	
 }
