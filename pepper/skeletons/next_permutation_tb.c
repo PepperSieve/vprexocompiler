@@ -40,6 +40,10 @@ void compute(struct In *input, struct Out *output) {
 				assert_zero(cor < input->c[k+1]);
 			}
 		}
+		// case where j is n - 1
+		if (k == n - 1 && k == j) {
+			assert_zero(input->c[k] <= ci);
+		}
 	}
 
 	// if k < i, d[k] = c[k]
