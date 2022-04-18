@@ -56,17 +56,17 @@ void compute(struct In *input, struct Out *output) {
 		if (k == j + 1) assert_zero(cc[k] - cjp1);
 	}
 
-	// if k < i, d[k] = c[k]
-	// otherwise, d[k] = c[n - k + 1]
+	// if k < i, d[k] = cc[k]
+	// otherwise, d[k] = cc[n - k + 1]
 	for (k = 0; k < MAX_N; k++) {
 		if (k < n) {
 			if (k <= i) cor = k;
 			else cor = n - k + i;
 			assert_zero(input->d[k] != cc[cor]);
 
-			// forall k > i, d[k] < d[k+1]
+			// forall k > i, c[k] > c[k+1]
 			if (k != 0 && k - 1 > i)
-				assert_zero(input->d[k-1] >= input->d[k]);
+				assert_zero(input->c[k-1] <= input->c[k]);
 		}
 	}	
 }
