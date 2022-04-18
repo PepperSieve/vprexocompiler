@@ -62,7 +62,7 @@ void compute(struct In *input, struct Out *output) {
 	// Verify that d is correct
 	// D[0..i] = C[0..i]
 	// D_i = C_j
-	// D[i + 1..n] strictly increasing and is permutation of C[i..n] \ C_j
+	// D[i + 1..n] strictly increasing
 	for (k = 0; k < MAX_N; k++) {
 		if (k < n) {
 			if (k < i) assert_zero(input->d[k] != c[k]);
@@ -73,15 +73,21 @@ void compute(struct In *input, struct Out *output) {
 				// compile the program without it
 				else if (k < n - 1 && k < MAX_N - 1)
 					assert_zero(input->d[k] >= input->d[k+1]);
-				// D_k in C
-				indk = input->ind_in_c[k];
-				assert_zero(indk < i); assert_zero(indk >= n);
-				assert_zero(input->d[k] == c[indk]);
-				// C_k in D
-				indk = input->ind_in_d[k];
-				assert_zero(indk < i); assert_zero(indk >= n);
-				assert_zero(c[k] == input->d[indk]);
 			}
+		}
+	}
+	// D is a permutation C
+	for (k = 0; k < MAX_N; k++) {
+		// We can add k > i as a condition here, but it would only generate more constraints
+		if (k < n) {
+			// D_k in C
+			indk = input->ind_in_c[k];
+			assert_zero(indk < 0); assert_zero(indk >= n);
+			assert_zero(input->d[k] == c[indk]);
+			// C_k in D
+			indk = input->ind_in_d[k];
+			assert_zero(indk < 0); assert_zero(indk >= n);
+			assert_zero(c[k] == input->d[indk]);
 		}
 	}
 }
