@@ -3,8 +3,9 @@
 struct In {
 	uint32_t n;
 	uint32_t c[MAX_N];
+	uint32_t cc[MAX_N];
 	// D list, i and j provided by the prover
-	// c_j provided by the prover. Surprisingly, we do not need c_i.
+	// Value of c[i], c[j] provided by the prover..
 	uint32_t d[MAX_N];
 	uint32_t i;
 	uint32_t j;
@@ -24,11 +25,10 @@ void compute(struct In *input, struct Out *output) {
 	int cj = input->cj;
 	int cip1 = input->cip1;
 	int cjp1 = input->cjp1;
-	uint32_t cc[MAX_N];
 
 	// Copy C to CC and modify CC
 	for (k = 0; k < MAX_N; k++) {
-		if (k < n) cc[k] = input->c[k];
+		if (k < n && k != i && k != j) assert_zero(input->cc[k] != input->c[k]);
 	}
 
 	// Verify that i and j are correct
@@ -45,15 +45,15 @@ void compute(struct In *input, struct Out *output) {
 	// Swap c[i] and c[j]
 	for (k = 1; k < MAX_N; k++) {
 		if (k == i) {
-			assert_zero(cc[k] - ci);
-			cc[k] = cj;
+			assert_zero(input->c[k] - ci);
+			assert_zero(input->cc[k] - cj);
 		}
-		if (k == i + 1) assert_zero(cc[k] - cip1);
+		if (k == i + 1) assert_zero(input->c[k] - cip1);
 		if (k == j) {
-			assert_zero(cc[k] - cj);
-			cc[k] = ci;
+			assert_zero(input->c[k] - cj);
+			assert_zero(input->cc[k] - ci);
 		}
-		if (k == j + 1) assert_zero(cc[k] - cjp1);
+		if (k == j + 1) assert_zero(input->c[k] - cjp1);
 	}
 
 	// if k < i, d[k] = cc[k]
@@ -62,7 +62,7 @@ void compute(struct In *input, struct Out *output) {
 		if (k < n) {
 			if (k <= i) cor = k;
 			else cor = n - k + i;
-			assert_zero(input->d[k] != cc[cor]);
+			assert_zero(input->d[k] != input->cc[cor]);
 
 			// forall k > i, c[k] > c[k+1]
 			if (k != 0 && k - 1 > i)
