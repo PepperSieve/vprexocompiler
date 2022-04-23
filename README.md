@@ -16,15 +16,16 @@ docker run -it pequin bash -c 'cd $PEQUIN/pepper && python2 exec.py <benchmark> 
 ```
 Where `<benchmark>` can be:
 * `--all`: Test all benchmarks
-* `0`: Merging
-* `1`: Binary Search
-* `2`: KMP Search
-* `3`: Next Permutation
-* `4`: Dutch Flag
-* `5`: Recurrence Relations Sequence
-* `6`: Sum of Powers
-* `7`: 2D Convex Hull
-* `8`: MSC
+* `0`: Find Min
+* `1`: Merging
+* `2`: Binary Search
+* `3`: KMP Search
+* `4`: Next Permutation
+* `5`: Dutch Flag
+* `6`: Recurrence Relations Sequence
+* `7`: Sum of Powers
+* `8`: 2D Convex Hull
+* `9`: MSC
 
 And `<timeout>` is a positive number for number of seconds, or defaulted to 600 seconds.
 

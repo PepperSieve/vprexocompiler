@@ -6,15 +6,16 @@ def help_message():
     print("      python3 exec.py <benchmark> <timeout>")
     print("Valid <benchmark>:")
     print("  --all: test all benchmarks")
-    print("      0: Merging")
-    print("      1: Binary Search")
-    print("      2: KMP Search")
-    print("      3: Next Permutation")
-    print("      4: Dutch Flag")
-    print("      5: Recurrence Relations Sequence")
-    print("      6: Sum of Powers")
-    print("      7: 2D Convex Hull")
-    print("      8: MSC")
+    print("      0: Find Min")
+    print("      1: Merging")
+    print("      2: Binary Search")
+    print("      3: KMP Search")
+    print("      4: Next Permutation")
+    print("      5: Dutch Flag")
+    print("      6: Recurrence Relations Sequence")
+    print("      7: Sum of Powers")
+    print("      8: 2D Convex Hull")
+    print("      9: MSC")
     print("Valid <timeout>: a positive number (default = " + str(DEFAULT_TIMEOUT) + " seconds)")
 
 def pequin_test(name, new_code, prefix, to):
@@ -40,7 +41,7 @@ if not len(sys.argv) in [2, 3]:
     help_message()
     quit()
 param = sys.argv[1]
-if not param in ["--all", "0", "1", "2", "3", "4", "5", "6", "7", "8"]:
+if not param in ["--all", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]:
     help_message()
     quit()
 
@@ -53,9 +54,36 @@ if len(sys.argv) == 3:
         quit()
 
 # --
-# 0 - Merging
+# 0 - Find Min
 if param in ["--all", "0"]:
-    print("\n--\nTesting Benchmark 0: Merging")
+    print("\n--\nTesting Benchmark 0: Find Min")
+
+    print("\nT_I: (N = length of array)")
+    sk_file = open(r"skeletons/find_min_ti.c", "r")
+    sk_code = sk_file.read()
+    sk_file.close()
+    to_switch = False
+    n = 10
+    while not to_switch:
+        new_code = "#define MAX_N " + str(n) + sk_code
+        to_switch = pequin_test("find_min_ti", new_code, "N = " + str(n) + ": ", to)
+        n *= 2
+
+    print("\nT_S & T_B: (N = length of array)")
+    sk_file = open(r"skeletons/find_min_tb.c", "r")
+    sk_code = sk_file.read()
+    sk_file.close()
+    to_switch = False
+    n = 10
+    while not to_switch:
+        new_code = "#define MAX_N " + str(n) + "\n" + sk_code
+        to_switch = pequin_test("find_min_tb", new_code, "N = " + str(n) + ": ", to)
+        n *= 2
+
+# --
+# 1 - Merging
+if param in ["--all", "1"]:
+    print("\n--\nTesting Benchmark 1: Merging")
 
     print("\nT_I: (N = length of the longest array, L = number of arrays)")
     sk_file = open(r"skeletons/merging_ti.c", "r")
@@ -112,9 +140,9 @@ if param in ["--all", "0"]:
         n *= 2
 
 # --
-# 1 - Binary Search
-if param in ["--all", "1"]:
-    print("\n--\nTesting Benchmark 1: Binary Search")
+# 2 - Binary Search
+if param in ["--all", "2"]:
+    print("\n--\nTesting Benchmark 2: Binary Search")
 
     print("\nT_I: (N = length of array)")
     sk_file = open(r"skeletons/binary_search_ti.c", "r")
@@ -140,9 +168,9 @@ if param in ["--all", "1"]:
         n *= 2
 
 # --
-# 2 - KMP Search
-if param in ["--all", "2"]:
-    print("\n--\nTesting Benchmark 2: KMP Search")
+# 3 - KMP Search
+if param in ["--all", "3"]:
+    print("\n--\nTesting Benchmark 3: KMP Search")
 
     print("\nT_I: (N = length of text, M = length of pattern)")
     sk_file = open(r"skeletons/kmp_search_ti.c", "r")
@@ -179,9 +207,9 @@ if param in ["--all", "2"]:
         n *= 2
 
 # --
-# 3 - Next Permutation
-if param in ["--all", "3"]:
-    print("\n--\nTesting Benchmark 3: Next Permutation")
+# 4 - Next Permutation
+if param in ["--all", "4"]:
+    print("\n--\nTesting Benchmark 4: Next Permutation")
 
     print("\nT_I: (N = length of array)")
     sk_file = open(r"skeletons/next_permutation_ti.c", "r")
@@ -217,9 +245,9 @@ if param in ["--all", "3"]:
         n *= 2
 
 # --
-# 4 - Dutch Flag
-if param in ["--all", "4"]:
-    print("\n--\nTesting Benchmark 4: Dutch Flag")
+# 5 - Dutch Flag
+if param in ["--all", "5"]:
+    print("\n--\nTesting Benchmark 5: Dutch Flag")
 
     print("\nT_I: (N = length of array)")
     sk_file = open(r"skeletons/dutch_flag_ti.c", "r")
@@ -255,9 +283,9 @@ if param in ["--all", "4"]:
         n *= 2
 
 # --
-# 5 - Recurrence Relations Sequence
-if param in ["--all", "5"]:
-    print("\n--\nTesting Benchmark 5: Recurrence Relations Sequence")
+# 6 - Recurrence Relations Sequence
+if param in ["--all", "6"]:
+    print("\n--\nTesting Benchmark 6: Recurrence Relations Sequence")
 
     print("\nT_I: (N = length of the sequence, M = number of recurrence relations)")
     sk_file = open(r"skeletons/rr_sequence_find_ti.c", "r")
@@ -296,9 +324,9 @@ if param in ["--all", "5"]:
         n *= 2
 
 # --
-# 6 - Sum of Powers
-if param in ["--all", "6"]:
-    print("\n--\nTesting Benchmark 6: Sum of Powers")
+# 7 - Sum of Powers
+if param in ["--all", "7"]:
+    print("\n--\nTesting Benchmark 7: Sum of Powers")
 
     print("\nT_I: (Want X^K + Y^K = R, X > Y)")
     sk_file = open(r"skeletons/sum_of_powers_ti.c", "r")
@@ -335,9 +363,9 @@ if param in ["--all", "6"]:
         r *= 2
 
 # --
-# 7 - 2D Convex Hull
-if param in ["--all", "7"]:
-    print("\n--\nTesting Benchmark 7: 2D Convex Hull")
+# 8 - 2D Convex Hull
+if param in ["--all", "8"]:
+    print("\n--\nTesting Benchmark 8: 2D Convex Hull")
 
     print("\nT_I: (N = length of array)")
     sk_file = open(r"skeletons/2d_convex_hull_ti.c", "r")
@@ -384,9 +412,9 @@ if param in ["--all", "7"]:
         n *= 2
 
 # --
-# 8 - MSC
-if param in ["--all", "8"]:
-    print("\n--\nTesting Benchmark 8: MSC")
+# 9 - MSC
+if param in ["--all", "9"]:
+    print("\n--\nTesting Benchmark 9: MSC")
 
     print("\nT_I: (V = number of nodes, E = number of edges)")
     sk_file = open(r"skeletons/msc_ti.c", "r")

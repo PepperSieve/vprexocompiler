@@ -23,7 +23,6 @@ void compute(struct In *input, struct Out *output) {
 	output->seq[0] = seq_0;
 	for (j = 0; j < M; j++) {
 		i[j] = 0;
-		x[j] = f(j, output->seq[0]);
 	}
 
 	int count;
@@ -34,6 +33,8 @@ void compute(struct In *input, struct Out *output) {
 			// FIND_MIN
 			output->seq[count] = x[0];
 			for (j = 0; j < M; j++) {
+				
+				x[j] = f(j, output->seq[0]);
 				if (x[j] < output->seq[count]) {
 					output->seq[count] = x[j];
 				}
