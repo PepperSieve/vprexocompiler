@@ -31,7 +31,7 @@ And `<timeout>` is a positive number for number of seconds, or defaulted to 600 
 
 ## Example ##
 ```bash
-docker run -it pequin bash -c 'cd $PEQUIN/pepper && python2 exec.py 1 30'
+docker run -it pequin bash -c 'cd $PEQUIN/pepper && python2 exec.py 2 30'
 ```
 Runs the Binary Search benchmark, and test terminates if last longer than 30 seconds.
 
