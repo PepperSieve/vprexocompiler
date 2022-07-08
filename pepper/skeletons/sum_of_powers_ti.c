@@ -57,7 +57,7 @@ void compute(struct In *input, struct Out *output) {
                 (output->y)[i] = y;
                 i++;
                 x++;
-            } else if (pow(x, k) + pow(y, k) < r) {
+            } else {
                 x++;
             }
         }

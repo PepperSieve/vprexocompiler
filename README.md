@@ -1,6 +1,8 @@
 # Pequin-Automata #
 An automated process to test the performance between code that incorporate specifications and original source code of an algorithm.
 
+This is a fork of the original Pequin compiler: https://github.com/pepper-project/pequin
+
 ## Testing ##
 A dockerfile is provided to build a base docker image to use with projects. Just run:
 
@@ -37,3 +39,7 @@ Runs the Binary Search benchmark, and test terminates if last longer than 30 sec
 
 ## Debugging ##
 Warnings and errors are stored in `$PEQUIN/pepper/log`.
+
+## TODOs ##
+Currently, we have yet to finish the Viper proof for Dutch Flag, RR Sequence, and MSC.
+Data for these benchmarks are yet to be finalized.
