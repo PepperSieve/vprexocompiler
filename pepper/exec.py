@@ -19,6 +19,7 @@ def help_message():
     print("Valid <timeout>: a positive number (default = " + str(DEFAULT_TIMEOUT) + " seconds)")
 
 def pequin_test(name, new_code, prefix, to):
+    global rec_file
     new_file = open("apps/" + name + ".c", "w")
     new_file.write(new_code)
     new_file.close()
@@ -28,6 +29,8 @@ def pequin_test(name, new_code, prefix, to):
     if outr == "":
         print("Timeout after " + str(to) + " seconds.")
         return True
+    else:
+        rec_file.write(prefix + outr[25:])
     return False
 
 # --
@@ -53,12 +56,17 @@ if len(sys.argv) == 3:
         print("Invalid timeout number: must be a positive number.")
         quit()
 
+# Set Up Test File
+rec_file = open("result", "w")
+
 # --
 # 0 - Find Min
 if param in ["--all", "0"]:
     print("\n--\nTesting Benchmark 0: Find Min")
+    rec_file.write("\n0\n")
 
     print("\nT_I: (N = length of array)")
+    rec_file.write("T_I\n")
     sk_file = open(r"skeletons/find_min_ti.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -70,6 +78,7 @@ if param in ["--all", "0"]:
         n *= 2
 
     print("\nT_S & T_B: (N = length of array)")
+    rec_file.write("T_S & T_B\n")
     sk_file = open(r"skeletons/find_min_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -84,8 +93,10 @@ if param in ["--all", "0"]:
 # 1 - Merging
 if param in ["--all", "1"]:
     print("\n--\nTesting Benchmark 1: Merging")
+    rec_file.write("\n1\n")
 
     print("\nT_I: (N = length of the longest array, L = number of arrays)")
+    rec_file.write("T_I\n")
     sk_file = open(r"skeletons/merging_ti.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -104,6 +115,7 @@ if param in ["--all", "1"]:
         n *= 2
 
     print("\nT_S: (N = length of the longest array, L = number of arrays)")
+    rec_file.write("T_S\n")
     sk_file = open(r"skeletons/merging_ts.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -122,6 +134,7 @@ if param in ["--all", "1"]:
         n *= 2
 
     print("\nT_B: (N = length of the longest array, L = number of arrays)")
+    rec_file.write("T_B\n")
     sk_file = open(r"skeletons/merging_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -143,8 +156,10 @@ if param in ["--all", "1"]:
 # 2 - Binary Search
 if param in ["--all", "2"]:
     print("\n--\nTesting Benchmark 2: Binary Search")
+    rec_file.write("\n2\n")
 
     print("\nT_I: (N = length of array)")
+    rec_file.write("T_I\n")
     sk_file = open(r"skeletons/binary_search_ti.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -157,6 +172,7 @@ if param in ["--all", "2"]:
         n *= 2
 
     print("\nT_S & T_B: (N = length of array)")
+    rec_file.write("T_S & T_B\n")
     sk_file = open(r"skeletons/binary_search_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -171,8 +187,10 @@ if param in ["--all", "2"]:
 # 3 - KMP Search
 if param in ["--all", "3"]:
     print("\n--\nTesting Benchmark 3: KMP Search")
+    rec_file.write("\n3\n")
 
     print("\nT_I: (N = length of text, M = length of pattern)")
+    rec_file.write("T_I\n")
     sk_file = open(r"skeletons/kmp_search_ti.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -190,6 +208,7 @@ if param in ["--all", "3"]:
         n *= 2
 
     print("\nT_S & T_B: (N = length of text, M = length of pattern)")
+    rec_file.write("T_S & T_B\n")
     sk_file = open(r"skeletons/kmp_search_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -210,8 +229,10 @@ if param in ["--all", "3"]:
 # 4 - Next Permutation
 if param in ["--all", "4"]:
     print("\n--\nTesting Benchmark 4: Next Permutation")
+    rec_file.write("\n4\n")
 
     print("\nT_I: (N = length of array)")
+    rec_file.write("T_I\n")
     sk_file = open(r"skeletons/next_permutation_ti.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -223,6 +244,7 @@ if param in ["--all", "4"]:
         n *= 2
 
     print("\nT_S: (N = length of array)")
+    rec_file.write("T_S\n")
     sk_file = open(r"skeletons/next_permutation_ts.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -234,6 +256,7 @@ if param in ["--all", "4"]:
         n *= 2
 
     print("\nT_B: (N = length of array)")
+    rec_file.write("T_B\n")
     sk_file = open(r"skeletons/next_permutation_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -248,8 +271,10 @@ if param in ["--all", "4"]:
 # 5 - Dutch Flag
 if param in ["--all", "5"]:
     print("\n--\nTesting Benchmark 5: Dutch Flag")
+    rec_file.write("\n5\n")
 
     print("\nT_I: (N = length of array)")
+    rec_file.write("T_I\n")
     sk_file = open(r"skeletons/dutch_flag_ti.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -261,6 +286,7 @@ if param in ["--all", "5"]:
         n *= 2
 
     print("\nT_S: (N = length of array)")
+    rec_file.write("T_S\n")
     sk_file = open(r"skeletons/dutch_flag_ts.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -272,6 +298,7 @@ if param in ["--all", "5"]:
         n *= 2
 
     print("\nT_B: (N = length of array)")
+    rec_file.write("T_B\n")
     sk_file = open(r"skeletons/dutch_flag_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -286,8 +313,10 @@ if param in ["--all", "5"]:
 # 6 - Recurrence Relations Sequence
 if param in ["--all", "6"]:
     print("\n--\nTesting Benchmark 6: Recurrence Relations Sequence")
+    rec_file.write("\n6\n")
 
     print("\nT_I: (N = length of the sequence, M = number of recurrence relations)")
+    rec_file.write("T_I\n")
     sk_file = open(r"skeletons/rr_sequence_find_ti.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -306,6 +335,7 @@ if param in ["--all", "6"]:
         n *= 2
 
     print("\nT_S & T_B: (N = number of elements in the sequence, M = number of recurrence relations)")
+    rec_file.write("T_S & T_B\n")
     sk_file = open(r"skeletons/rr_sequence_find_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -327,8 +357,10 @@ if param in ["--all", "6"]:
 # 7 - Sum of Powers
 if param in ["--all", "7"]:
     print("\n--\nTesting Benchmark 7: Sum of Powers")
+    rec_file.write("\n7\n")
 
     print("\nT_I: (Want X^K + Y^K = R, X > Y)")
+    rec_file.write("T_I\n")
     sk_file = open(r"skeletons/sum_of_powers_ti.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -346,6 +378,7 @@ if param in ["--all", "7"]:
         r *= 2
 
     print("\nT_S & T_B: (Want X^K + Y^K = R, X > Y)")
+    rec_file.write("T_S & T_B\n")
     sk_file = open(r"skeletons/sum_of_powers_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -366,8 +399,10 @@ if param in ["--all", "7"]:
 # 8 - 2D Convex Hull
 if param in ["--all", "8"]:
     print("\n--\nTesting Benchmark 8: 2D Convex Hull")
+    rec_file.write("\n8\n")
 
     print("\nT_I: (N = length of array)")
+    rec_file.write("T_I\n")
     sk_file = open(r"skeletons/2d_convex_hull_ti.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -379,6 +414,7 @@ if param in ["--all", "8"]:
         n *= 2
 
     print("\nT_S: (N = length of array)")
+    rec_file.write("T_S\n")
     sk_file = open(r"skeletons/2d_convex_hull_ts.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -390,6 +426,7 @@ if param in ["--all", "8"]:
         n *= 2
 
     print("\nT_B: (N = length of array)")
+    rec_file.write("T_B\n")
     sk_file = open(r"skeletons/2d_convex_hull_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -401,6 +438,7 @@ if param in ["--all", "8"]:
         n *= 2
 
     print("\nT_B, Annotation Only: (N = length of array)")
+    rec_file.write("T_B Ann\n")
     sk_file = open(r"skeletons/2d_convex_hull_tb_ann.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -415,8 +453,10 @@ if param in ["--all", "8"]:
 # 9 - MSC
 if param in ["--all", "9"]:
     print("\n--\nTesting Benchmark 9: MSC")
+    rec_file.write("\n9\n")
 
     print("\nT_I: (V = number of nodes, E = number of edges)")
+    rec_file.write("T_I\n")
     sk_file = open(r"skeletons/msc_ti.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -438,6 +478,7 @@ if param in ["--all", "9"]:
         v *= 2
 
     print("\nT_S: (V = number of nodes, E = number of edges)")
+    rec_file.write("T_S\n")
     sk_file = open(r"skeletons/msc_ts.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -461,6 +502,7 @@ if param in ["--all", "9"]:
         exp = 2 ** v
 
     print("\nT_B: (V = number of nodes, E = number of edges)")
+    rec_file.write("T_B\n")
     sk_file = open(r"skeletons/msc_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
