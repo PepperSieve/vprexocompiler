@@ -63,7 +63,7 @@ rec_file = open("result", "w")
 # 0 - Find Min
 if param in ["--all", "0"]:
     print("\n--\nTesting Benchmark 0: Find Min")
-    rec_file.write("\n0\n")
+    rec_file.write("Benchmark 0\n")
 
     print("\nT_I: (N = length of array)")
     rec_file.write("T_I\n")
@@ -93,7 +93,7 @@ if param in ["--all", "0"]:
 # 1 - Merging
 if param in ["--all", "1"]:
     print("\n--\nTesting Benchmark 1: Merging")
-    rec_file.write("\n1\n")
+    rec_file.write("Benchmark 1\n")
 
     print("\nT_I: (N = length of the longest array, L = number of arrays)")
     rec_file.write("T_I\n")
@@ -156,7 +156,7 @@ if param in ["--all", "1"]:
 # 2 - Binary Search
 if param in ["--all", "2"]:
     print("\n--\nTesting Benchmark 2: Binary Search")
-    rec_file.write("\n2\n")
+    rec_file.write("Benchmark 2\n")
 
     print("\nT_I: (N = length of array)")
     rec_file.write("T_I\n")
@@ -187,7 +187,7 @@ if param in ["--all", "2"]:
 # 3 - KMP Search
 if param in ["--all", "3"]:
     print("\n--\nTesting Benchmark 3: KMP Search")
-    rec_file.write("\n3\n")
+    rec_file.write("Benchmark 3\n")
 
     print("\nT_I: (N = length of text, M = length of pattern)")
     rec_file.write("T_I\n")
@@ -229,7 +229,7 @@ if param in ["--all", "3"]:
 # 4 - Next Permutation
 if param in ["--all", "4"]:
     print("\n--\nTesting Benchmark 4: Next Permutation")
-    rec_file.write("\n4\n")
+    rec_file.write("Benchmark 4\n")
 
     print("\nT_I: (N = length of array)")
     rec_file.write("T_I\n")
@@ -271,7 +271,7 @@ if param in ["--all", "4"]:
 # 5 - Dutch Flag
 if param in ["--all", "5"]:
     print("\n--\nTesting Benchmark 5: Dutch Flag")
-    rec_file.write("\n5\n")
+    rec_file.write("Benchmark 5\n")
 
     print("\nT_I: (N = length of array)")
     rec_file.write("T_I\n")
@@ -313,7 +313,7 @@ if param in ["--all", "5"]:
 # 6 - Recurrence Relations Sequence
 if param in ["--all", "6"]:
     print("\n--\nTesting Benchmark 6: Recurrence Relations Sequence")
-    rec_file.write("\n6\n")
+    rec_file.write("Benchmark 6\n")
 
     print("\nT_I: (N = length of the sequence, M = number of recurrence relations)")
     rec_file.write("T_I\n")
@@ -357,7 +357,7 @@ if param in ["--all", "6"]:
 # 7 - Sum of Powers
 if param in ["--all", "7"]:
     print("\n--\nTesting Benchmark 7: Sum of Powers")
-    rec_file.write("\n7\n")
+    rec_file.write("Benchmark 7\n")
 
     print("\nT_I: (Want X^K + Y^K = R, X > Y)")
     rec_file.write("T_I\n")
@@ -399,7 +399,7 @@ if param in ["--all", "7"]:
 # 8 - 2D Convex Hull
 if param in ["--all", "8"]:
     print("\n--\nTesting Benchmark 8: 2D Convex Hull")
-    rec_file.write("\n8\n")
+    rec_file.write("Benchmark 8\n")
 
     print("\nT_I: (N = length of array)")
     rec_file.write("T_I\n")
@@ -453,7 +453,7 @@ if param in ["--all", "8"]:
 # 9 - MSC
 if param in ["--all", "9"]:
     print("\n--\nTesting Benchmark 9: MSC")
-    rec_file.write("\n9\n")
+    rec_file.write("Benchmark 9\n")
 
     print("\nT_I: (V = number of nodes, E = number of edges)")
     rec_file.write("T_I\n")
@@ -523,4 +523,6 @@ if param in ["--all", "9"]:
                 e = v ** 2
         v *= 2
 
+rec_file.write("End\n")
+rec_file.close()
 print("\nPlease refer to $PEQUIN/pepper/log for any stderr outputs.")
