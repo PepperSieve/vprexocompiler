@@ -78,7 +78,7 @@ if param in ["--all", "0"]:
         n *= 2
 
     print("\nT_S & T_B: (N = length of array)")
-    rec_file.write("T_S & T_B\n")
+    rec_file.write("T_SB\n")
     sk_file = open(r"skeletons/find_min_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -172,7 +172,7 @@ if param in ["--all", "2"]:
         n *= 2
 
     print("\nT_S & T_B: (N = length of array)")
-    rec_file.write("T_S & T_B\n")
+    rec_file.write("T_SB\n")
     sk_file = open(r"skeletons/binary_search_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -208,7 +208,7 @@ if param in ["--all", "3"]:
         n *= 2
 
     print("\nT_S & T_B: (N = length of text, M = length of pattern)")
-    rec_file.write("T_S & T_B\n")
+    rec_file.write("T_SB\n")
     sk_file = open(r"skeletons/kmp_search_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -335,7 +335,7 @@ if param in ["--all", "6"]:
         n *= 2
 
     print("\nT_S & T_B: (N = number of elements in the sequence, M = number of recurrence relations)")
-    rec_file.write("T_S & T_B\n")
+    rec_file.write("T_SB\n")
     sk_file = open(r"skeletons/rr_sequence_find_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -378,7 +378,7 @@ if param in ["--all", "7"]:
         r *= 2
 
     print("\nT_S & T_B: (Want X^K + Y^K = R, X > Y)")
-    rec_file.write("T_S & T_B\n")
+    rec_file.write("T_SB\n")
     sk_file = open(r"skeletons/sum_of_powers_tb.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
@@ -438,7 +438,7 @@ if param in ["--all", "8"]:
         n *= 2
 
     print("\nT_B, Annotation Only: (N = length of array)")
-    rec_file.write("T_B Ann\n")
+    rec_file.write("T_BA\n")
     sk_file = open(r"skeletons/2d_convex_hull_tb_ann.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
