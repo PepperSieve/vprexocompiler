@@ -34,7 +34,7 @@ void compute(struct In *input, struct Out *output) {
     int seq_0 = input->seq_0;
     int n = input->n;
     int seq_last = input->seq_last;
-    int i, prev, j, prev_count;
+    int k, prev, j, prev_count;
     int seq = input->seq[0];
     assert_zero(seq - seq_0);
     for (j = 0; j < M; j++) {
@@ -45,27 +45,27 @@ void compute(struct In *input, struct Out *output) {
             assert_zero(input->seq[fLOAD(j, 0)] - f(j, seq));
     }
 
-    for (i = 1; i < MAX_N; i++) {
-        if (i < n) {
-            seq = input->seq[i];
+    for (k = 1; k < MAX_N; k++) {
+        if (k < n) {
+            seq = input->seq[k];
             // verify seq_last
-            if (i == n - 1) assert_zero(seq - seq_last);
+            if (k == n - 1) assert_zero(seq - seq_last);
             
             // monotone increasing
-            assert_zero(input->seq[i - 1] >= seq);
+            assert_zero(input->seq[k - 1] >= seq);
             
-            // Verify prev, which must exist for i >= 1
-            assert_zero(input->prev[i] < 0 || input->prev[i] >= i);
-            prev = input->seq[input->prev[i]];
+            // Verify prev, which must exist for k >= 1
+            assert_zero(input->prev[k] < 0 || input->prev[k] >= k);
+            prev = input->seq[input->prev[k]];
 
             prev_count = 0;
             for (j = 0; j < M; j++) {
                 if (f(j, prev) == seq) prev_count++;
-                assert_zero(fLOAD(j, i) <= i);
-                if (fLOAD(j, i) >= n)
+                assert_zero(fLOAD(j, k) < 0);
+                if (fLOAD(j, k) >= n)
                     assert_zero(f(j, seq) <= seq_last);
                 else
-                    assert_zero(input->seq[fLOAD(j, i)] - f(j, seq));
+                    assert_zero(input->seq[fLOAD(j, k)] - f(j, seq));
             }
             // one of f(j, prev) must equal to seq
             assert_zero(prev_count == 0);

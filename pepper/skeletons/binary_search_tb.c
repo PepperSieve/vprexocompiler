@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 struct In {
-    // both l and r are inclusive
+    // l inclusive, r exclusive
     uint32_t l;
     uint32_t r;
     uint32_t x;
@@ -12,7 +12,7 @@ struct In {
     // sup is provided if ind == -1
     // a[sup] < x && a[sup + 1] > x
     // if x < a[l], sup = l - 1
-    // if x > a[r], sup = r
+    // if x > a[r - 1], sup = r - 1
     uint32_t sup;
 };
 
@@ -28,22 +28,20 @@ void compute(struct In *input, struct Out *output) {
     uint32_t sup = input->sup;
     
     uint32_t al = input->a[l];
-    uint32_t ar = input->a[r];
+    uint32_t ar = input->a[r - 1];
 
-    assert_zero((ind < l) && (ind != -1));
-    assert_zero(ind > r);
-    assert_zero(sup < l - 1 || sup > r);
-    if (ind != -1) assert_zero(input->a[ind] - x);
-    else if (sup == l - 1) assert_zero(x >= al);
-    else if (sup == r) assert_zero(x <= ar);
-    else {
+    if (x < al || x > ar) assert_zero(ind + 1);
+    else if (ind == -1) {
         assert_zero(sup < l);
-        assert_zero(sup >= r);
+        assert_zero(sup >= r - 1);
         uint32_t tmp1 = input->a[sup];
         uint32_t tmp2 = input->a[sup + 1];
         assert_zero(tmp1 >= x);
-        assert_zero(x >= tmp2);
+        assert_zero(x >= tmp2);                
+    } else {
+        assert_zero(ind < l);
+        assert_zero(ind >= r);
+        assert_zero(input->a[ind] - x);
     }
-    
     output->ind = ind;
 }

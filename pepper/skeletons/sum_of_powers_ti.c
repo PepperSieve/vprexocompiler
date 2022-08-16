@@ -6,16 +6,15 @@
 
 #include <stdint.h>
 
-#define MAX_OUT 2
-
 struct In {
     uint32_t r;
     uint32_t k;
 };
 
 struct Out {
-    uint32_t x[MAX_OUT];
-    uint32_t y[MAX_OUT];
+    uint32_t x[MAX_R + 1];
+    uint32_t y[MAX_R + 1];
+    uint32_t out_size;
 };
 
 int pow(int x, int k) {
@@ -44,11 +43,6 @@ void compute(struct In *input, struct Out *output) {
         }
     }
     int i = 0;
-    for (i = 0; i < MAX_OUT; i++) {
-        output->x[i] = -1;
-        output->y[i] = -1;
-    }
-    i = 0;
     for (tmp = 0; tmp < 2 * (MAX_R + 1); tmp++) {
         if (pow(x, k) <= r) {
             if (pow(x, k) + pow(y, k) > r) y--;
@@ -62,4 +56,5 @@ void compute(struct In *input, struct Out *output) {
             }
         }
     }
+    output->out_size = i;
 }

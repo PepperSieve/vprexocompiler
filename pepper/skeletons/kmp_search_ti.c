@@ -44,7 +44,6 @@ void compute(struct In *input, struct Out *output) {
     int found = 0;
     for (k = 0; k < MAX_N * 2; k++) {
         if (i < N) {
-            // We find a solution
             if (j < M) {
                 // Case of a mismatch
                 if ((input->pat)[j] != (input->txt)[i]) {
@@ -59,6 +58,7 @@ void compute(struct In *input, struct Out *output) {
                     i++;
                 }
             }
+            // We find a solution
             if (j == M) {
                 output->ind = i - M;
                 found = 1;
