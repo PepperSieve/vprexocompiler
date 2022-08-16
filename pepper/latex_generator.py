@@ -13,7 +13,7 @@
 import numpy as np
 
 from pylatex import Document, Section, Subsection, Tabular, Math, TikZ, Axis, \
-    Plot, Figure, Matrix, Alignat, NoEscape
+    Plot, Figure, Matrix, Alignat, NoEscape, SubFigure
 from pylatex.utils import italic
 import matplotlib.pyplot as plt
 import os
@@ -279,15 +279,15 @@ if __name__ == '__main__':
         plt.xticks(y_pos, (short_names[i] for i in ex_names))
         yt = [str('%.1f' % (0.2 * i)) for i in range(int(5 * inf_h) + 1)]
         yt[0] = "0"
-        yt[-1] = "$\infty$"
+        # yt[-1] = "$\infty$"
         plt.yticks([0.2 * i for i in range(len(yt))], yt)
         plt.ylabel('Circuit Size Scale')
         plt.legend(loc="upper right")
-        plt.title("graph_name")
+        plt.title("Non-Asymptotic Examples")
 
-        with doc.create(Subsection('Graph:')):
+        with doc.create(Subsection('Graphs:')):
             with doc.create(Figure(position='htbp')) as plot:
-                plot.add_plot(width=NoEscape(r'1\textwidth'))
+                plot.add_plot(width=NoEscape(r'1.1\textwidth'))
                 plot.add_caption('Graph of Circuit Size Scale')
 
 rec_file.close()
@@ -298,194 +298,196 @@ rec_file = open("result", "r")
 line = rec_file.readline()
 lineseg = line.split()
 
-# Record Values
-while lineseg[0] != "End":
-    # Parser
-    graph_name = graph_name_list[int(lineseg[1])]
-    #    T_S  T_I  T_B/T_SB  T_BA
-    T = [ [],  [],       [],   []]
-
-    line = rec_file.readline()
-    lineseg = line.split()
-    method_names = []
-    
-    ti_max = -1
-    ti_max_ind = -1
-
-    case_name = []
-    while not lineseg[0] in ["Benchmark", "End"]:
-        method_names.append(lineseg[0])
-        method_ind = method_name_list[lineseg[0]]
+with doc.create(Figure(position='htbp')) as sup_plot:
+    # Record Values
+    while lineseg[0] != "End":
+        # Parser
+        graph_name = graph_name_list[int(lineseg[1])]
+        #    T_S  T_I  T_B/T_SB  T_BA
+        T = [ [],  [],       [],   []]
 
         line = rec_file.readline()
         lineseg = line.split()
-        cur_case = 0
-        while not lineseg[0][:2] in ["T_", "Be", "En"]:
-            tmp_name = ""
-            # Don't want to parse LOG and EXP into names
-            s = ""
-            i = 0
-            s = lineseg[0]
-            while i < len(lineseg) - 1 and (len(s) < 3 or not s[:3] in ["LOG", "EXP"]):
-                tmp_name += s + " "
-                i += 1
-                s = lineseg[i]
-            tmp_name = tmp_name[:-2]
+        method_names = []
+    
+        ti_max = -1
+        ti_max_ind = -1
 
-            if method_ind == 1:
-                case_name.append(tmp_name)
-                T[method_ind].append(int(lineseg[-1]))
-                cur_case += 1
-                if T[1][-1] > ti_max:
-                    ti_max = T[1][-1]
-                    ti_max_ind = len(T[1]) - 1
-            elif cur_case < len(case_name) and case_name[cur_case] == tmp_name:
-                T[method_ind].append(int(lineseg[-1]))
-                cur_case += 1
-            elif tmp_name in case_name:
-                while case_name[cur_case] != tmp_name:
-                    T[method_ind].append(0)
-                    cur_case += 1
-                T[method_ind].append(int(lineseg[-1]))
-                cur_case += 1
-
+        case_name = []
+        while not lineseg[0] in ["Benchmark", "End"]:
+            method_names.append(lineseg[0])
+            method_ind = method_name_list[lineseg[0]]
 
             line = rec_file.readline()
             lineseg = line.split()
-        
-        while cur_case < len(case_name):
-            T[method_ind].append(0)
-            cur_case += 1
+            cur_case = 0
+            while not lineseg[0][:2] in ["T_", "Be", "En"]:
+                tmp_name = ""
+                # Don't want to parse LOG and EXP into names
+                s = ""
+                i = 0
+                s = lineseg[0]
+                while i < len(lineseg) - 1 and (len(s) < 3 or not s[:3] in ["LOG", "EXP"]):
+                    tmp_name += s + " "
+                    i += 1
+                    s = lineseg[i]
+                tmp_name = tmp_name[:-2]
 
-    # Post-processing Examples: Merging
-    if graph_name in ["Merging"]:
-        inf_h = 1.2
-        ts_factor = []
-        te_factor = []
-        if len(T[1]) == 0:
-            errval = "No value for T_I of " + graph_name + " has been produced. Please extend timeout limit."
-            raise ValueError(errval)
-        
-        for j in range(len(case_name[0]) - 1):
-            if case_name[0][j] == ",":
-                prefix = case_name[0][:j]
-                break        
+                if method_ind == 1:
+                    case_name.append(tmp_name)
+                    T[method_ind].append(int(lineseg[-1]))
+                    cur_case += 1
+                    if T[1][-1] > ti_max:
+                        ti_max = T[1][-1]
+                        ti_max_ind = len(T[1]) - 1
+                elif cur_case < len(case_name) and case_name[cur_case] == tmp_name:
+                    T[method_ind].append(int(lineseg[-1]))
+                    cur_case += 1
+                elif tmp_name in case_name:
+                    while case_name[cur_case] != tmp_name:
+                        T[method_ind].append(0)
+                        cur_case += 1
+                    T[method_ind].append(int(lineseg[-1]))
+                    cur_case += 1
 
-        case_num = 0
-        for i in range(len(T[1])):
-            if case_name[i][:len(prefix)] == prefix:
+
+                line = rec_file.readline()
+                lineseg = line.split()
+        
+            while cur_case < len(case_name):
+                T[method_ind].append(0)
+                cur_case += 1
+
+        # Post-processing Examples: Merging
+        if graph_name in ["Merging"]:
+            inf_h = 1.2
+            ts_factor = []
+            te_factor = []
+            if len(T[1]) == 0:
+                errval = "No value for T_I of " + graph_name + " has been produced. Please extend timeout limit."
+                raise ValueError(errval)
+        
+            for j in range(len(case_name[0]) - 1):
+                if case_name[0][j] == ",":
+                    prefix = case_name[0][:j]
+                    break        
+
+            case_num = 0
+            for i in range(len(T[1])):
+                if case_name[i][:len(prefix)] == prefix:
+                    if not T[0] or T[0][i] == 0:
+                        ts_factor.append(inf_h)
+                    else:
+                        ts_factor.append(T[0][i] / T[1][i])
+                    if "T_SB" in method_names:
+                        te_factor.append(-2)
+                    elif not T[2] or T[2][i] == 0:
+                        te_factor.append(inf_h)
+                    else:
+                        te_factor.append(T[2][i] / T[1][i])
+                    case_num += 1
+
+            # Process Case Name
+            for i in range(len(case_name)):
+                for j in range(len(case_name[i]) - 1):
+                    if case_name[i][j] == "L":
+                        case_name[i] = case_name[i][j:]
+                        break
+
+            plt.clf()
+            plt.figure(figsize=(4,4))
+            y_pos = np.arange(len(case_name))
+            y_pos = y_pos[:case_num]
+            plt.ylim(0, inf_h)
+            plt.xlim(-0.4, y_pos[-1] + 0.8)
+            default_width = 0.2
+            width = 0
+            plt.axhline(y = 1, color = "red", linestyle = "-")
+
+            label_ts = False
+            label_te = False
+
+            # Generate bars
+            if ts_factor[0] != -2:
+                plt.bar(y_pos + width - 0.15, ts_factor, width=default_width, color='orange', label="T_S")
+                for i in range(len(ts_factor)):
+                    plt.text(y_pos[i] + width, ts_factor[i] - 0.02, str('%.2f' % ts_factor[i]), fontsize = 10, color = 'black')
+                width += default_width
+            if te_factor[0] != -2:
+                plt.bar(y_pos + width - 0.05, te_factor, width=default_width, color='#069AF3', label="T_E")
+                for i in range(len(te_factor)):
+                    plt.text(y_pos[i] + width + 0.1, te_factor[i] - 0.02, str('%.2f' % te_factor[i]), fontsize = 10, color = 'black')
+                width += default_width
+
+            plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
+            plt.axhline(y = 1, color = "red", linestyle = "-")
+            plt.xticks(y_pos, case_name[:case_num])
+            plt.ylabel('Circuit Size Scale')
+            plt.legend(loc="upper right")
+            plt.title(graph_name + ", " + prefix)
+
+            with doc.create(SubFigure(position='b')) as plot:
+                plot.add_plot(width=NoEscape(r'0.9\textwidth'))
+                plot.add_caption('Graph of ' + graph_name)
+
+        # Post-processing Examples: 2D Convex Hull
+        if graph_name in ["2D Convex Hull"]:
+            inf_h = 0.1
+            ts_factor = []
+            tea_factor = []
+            if len(T[1]) == 0:
+                errval = "No value for T_I of " + graph_name + " has been produced. Please extend timeout limit."
+                raise ValueError(errval)
+        
+            for i in range(len(T[1])):
                 if not T[0] or T[0][i] == 0:
                     ts_factor.append(inf_h)
                 else:
                     ts_factor.append(T[0][i] / T[1][i])
-                if "T_SB" in method_names:
-                    te_factor.append(-2)
-                elif not T[2] or T[2][i] == 0:
-                    te_factor.append(inf_h)
+                if not T[3]:
+                    tea_factor.append(-2)
+                elif T[3][i] == 0:
+                    tea_factor.append(inf_h)
                 else:
-                    te_factor.append(T[2][i] / T[1][i])
-                case_num += 1
+                    tea_factor.append(T[3][i] / T[1][i])
 
-        # Process Case Name
-        for i in range(len(case_name)):
-            for j in range(len(case_name[i]) - 1):
-                if case_name[i][j] == "L":
-                    case_name[i] = case_name[i][j:]
-                    break
+            plt.clf()
+            plt.figure(figsize=(5,4))
+            y_pos = np.arange(0, 2 * len(case_name), 2)
+            plt.ylim(0, inf_h)
+            plt.xlim(-0.8, y_pos[-1] + 4.2)
+            default_width = 0.4
+            width = 0
+            plt.axhline(y = 1, color = "red", linestyle = "-")
 
-        plt.clf()
-        plt.figure(figsize=(4,4))
-        y_pos = np.arange(len(case_name))
-        y_pos = y_pos[:case_num]
-        plt.ylim(0, inf_h)
-        plt.xlim(-0.4, y_pos[-1] + 0.8)
-        default_width = 0.2
-        width = 0
-        plt.axhline(y = 1, color = "red", linestyle = "-")
+            label_ts = False
+            label_te = False
 
-        label_ts = False
-        label_te = False
+            if ts_factor[0] != -2:
+                plt.bar(y_pos + width - 0.3, ts_factor, width=default_width, color='orange', label="T_S")
+                for i in range(len(ts_factor)):
+                    plt.text(y_pos[i] + width, inf_h - 0.006, str('%.2f' % ts_factor[i]) if ts_factor[i] != inf_h else "T/O", fontsize = 10, color = 'black')
+                width += default_width
+            if tea_factor[0] != -2:
+                plt.bar(y_pos + width - 0.1, tea_factor, width=default_width, color='#069AF3', label="T_E")
+                for i in range(len(tea_factor)):
+                    plt.text(y_pos[i] + width + 0.16, tea_factor[i] - 0.002, str('%.3f' % tea_factor[i]), fontsize = 7, color = 'black')
+                width += default_width
 
-        # Generate bars
-        if ts_factor[0] != -2:
-            plt.bar(y_pos + width - 0.15, ts_factor, width=default_width, color='orange', label="T_S")
-            for i in range(len(ts_factor)):
-                plt.text(y_pos[i] + width, ts_factor[i] - 0.02, str('%.2f' % ts_factor[i]), fontsize = 10, color = 'black')
-            width += default_width
-        if te_factor[0] != -2:
-            plt.bar(y_pos + width - 0.05, te_factor, width=default_width, color='#069AF3', label="T_E")
-            for i in range(len(te_factor)):
-                plt.text(y_pos[i] + width + 0.1, te_factor[i] - 0.02, str('%.2f' % te_factor[i]), fontsize = 10, color = 'black')
-            width += default_width
+            plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
+            plt.axhline(y = 1, color = "red", linestyle = "-")
+            plt.xticks(y_pos, case_name)
+            plt.ylabel('Circuit Size Scale')
+            plt.xlabel('Value of N')
+            plt.legend(loc="upper right")
+            plt.title(graph_name + ", using Annotations")
 
-        plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
-        plt.axhline(y = 1, color = "red", linestyle = "-")
-        plt.xticks(y_pos, case_name[:case_num])
-        plt.ylabel('Circuit Size Scale')
-        plt.legend(loc="upper right")
-        plt.title(graph_name + ", " + prefix)
+            with doc.create(SubFigure(position='b')) as plot:
+                plot.add_plot(width=NoEscape(r'1.1\textwidth'))
+                plot.add_caption('Graph of ' + graph_name)
 
-        with doc.create(Figure(position='htbp')) as plot:
-            plot.add_plot(width=NoEscape(r'1\textwidth'))
-            plot.add_caption('Graph of ' + graph_name)
-
-    # Post-processing Examples: 2D Convex Hull
-    if graph_name in ["2D Convex Hull"]:
-        inf_h = 0.15
-        ts_factor = []
-        tea_factor = []
-        if len(T[1]) == 0:
-            errval = "No value for T_I of " + graph_name + " has been produced. Please extend timeout limit."
-            raise ValueError(errval)
-        
-        for i in range(len(T[1])):
-            if not T[0] or T[0][i] == 0:
-                ts_factor.append(inf_h)
-            else:
-                ts_factor.append(T[0][i] / T[1][i])
-            if not T[3]:
-                tea_factor.append(-2)
-            elif T[3][i] == 0:
-                tea_factor.append(inf_h)
-            else:
-                tea_factor.append(T[3][i] / T[1][i])
-
-        plt.clf()
-        plt.figure(figsize=(6,4))
-        y_pos = np.arange(0, 2 * len(case_name), 2)
-        plt.ylim(0, inf_h)
-        plt.xlim(-0.8, y_pos[-1] + 4.2)
-        default_width = 0.4
-        width = 0
-        plt.axhline(y = 1, color = "red", linestyle = "-")
-
-        label_ts = False
-        label_te = False
-
-        if ts_factor[0] != -2:
-            plt.bar(y_pos + width - 0.3, ts_factor, width=default_width, color='orange', label="T_S")
-            for i in range(len(ts_factor)):
-                plt.text(y_pos[i] + width, inf_h - 0.008, str('%.2f' % ts_factor[i]) if ts_factor[i] != inf_h else "T/O", fontsize = 10, color = 'black')
-            width += default_width
-        if tea_factor[0] != -2:
-            plt.bar(y_pos + width - 0.1, tea_factor, width=default_width, color='#069AF3', label="T_E Ann")
-            for i in range(len(tea_factor)):
-                plt.text(y_pos[i] + width + 0.16, tea_factor[i] - 0.002, str('%.3f' % tea_factor[i]), fontsize = 7, color = 'black')
-            width += default_width
-
-        plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
-        plt.axhline(y = 1, color = "red", linestyle = "-")
-        plt.xticks(y_pos, case_name)
-        plt.ylabel('Circuit Size Scale')
-        plt.xlabel('Value of N')
-        plt.legend(loc="upper right")
-        plt.title(graph_name)
-
-        with doc.create(Figure(position='htbp')) as plot:
-            plot.add_plot(width=NoEscape(r'1\textwidth'))
-            plot.add_caption('Graph of ' + graph_name)
-
-    print("Finished " + graph_name)
+        print("Finished " + graph_name)
+    sup_plot.add_caption('Graphs of Asymptotic Examples')
 
 doc.generate_pdf('Graphs', clean_tex=False)
 rec_file.close()
