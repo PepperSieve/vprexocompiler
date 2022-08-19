@@ -16,7 +16,7 @@ struct In {
     // Array representing the tree structure, bounded by V * log(V)
     // Fill unused slots with values >= NV. The prover can and may do so in the middle of the array
     // and it won't affect the outcome as long as the valid slots are correct.
-    uint32_t T[2 * MAX_V - 1];
+    int T[2 * MAX_V - 1];
     // The next three arrays are only used when we encounter a pcomp.
     // They record respectively # of remaining slots,
     // index of the receiving vertex, and index of the outgoing vertex
@@ -72,6 +72,7 @@ void compute(struct In *input, struct Out *output) {
     // which MSC are we currently in? initialize to -1
     int cur_msc = -1;
 
+    int recv, outg, v, e;
     for (i = 0; i < 2 * MAX_V - 1; i++) {
         if (input->T[i] < NV) {
 
@@ -84,8 +85,8 @@ void compute(struct In *input, struct Out *output) {
             if (input->T[i] < 0) {
                 remn_last = remn - input->P_remn[i] - 1;
                 remn = input->P_remn[i];
-                int recv = input->P_recv[i];
-                int outg = input->P_outg[i];
+                recv = input->P_recv[i];
+                outg = input->P_outg[i];
                 assert_zero(recv <= i); assert_zero(outg <= i);
                 assert_zero(recv > i + remn); assert_zero(outg > i + remn);
                 // No need to bound check v_recv and v_outg because otherwise it cannot satisfy an edge
@@ -95,7 +96,7 @@ void compute(struct In *input, struct Out *output) {
             
             // Case 2: we meet a singleton vertex (ncomp)
             else {
-                int v = input->T[i];
+                v = input->T[i];
                 // if we are at level 0, we reach a new MSC (singleton vertex)
                 // Verify that MSC[v] == current MSC, also record that v appears
                 assert_zero(output->MSC[v] - cur_msc);
@@ -113,17 +114,19 @@ void compute(struct In *input, struct Out *output) {
                 // Prove the supplementary E edge is correct
                 if (input->next_T[i] == NV) next = head;
                 else next = input->next_T[i];
-                int e = input->E[i];
+                e = input->E[i];
                 assert_zero(e < 0); assert_zero(e >= NE);
                 assert_zero(input->edgeV[e] - v_outg);
                 assert_zero(input->edges[e] - next);
             }
-            
+
             // Prepare for entering next level if we are in a pcomp
             if (input->T[i] < 0) {
                 // store current level in stack if needed
                 // one should notice that if we are at level 0, then remn_last will always be < 0 at this state
-                if (remn_last != 0) { stack_push(level, head, next, remn_last); }
+                if (remn_last != 0) {   
+                    stack_push(level, head, next, remn_last);
+                }
                 level++;
                 head = -1;
                 next = -1;
@@ -155,10 +158,10 @@ void compute(struct In *input, struct Out *output) {
     for (tmp = 0; tmp < MAX_E + MAX_V; tmp++) {
         if (i < NV) {
                 if (j == ebi1) {
-                i++;
-                cur_msc = output->MSC[i];
-                ebi0 = ebi1;
-                if (i < NV) ebi1 = input->edgeB[i + 1];
+                    i++;
+                    cur_msc = output->MSC[i];
+                    ebi0 = ebi1;
+                    if (i < NV) ebi1 = input->edgeB[i + 1];
                 }
             else {
                 assert_zero(output->MSC[input->edges[j]] > cur_msc);

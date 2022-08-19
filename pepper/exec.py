@@ -103,6 +103,7 @@ if param in ["--all", "0"]:
 
 # --
 # 1 - Merging
+# Testing this example linearly as per request from Thomas
 if param in ["--all", "1"]:
     print("\n--\nTesting Benchmark 1: Merging")
     rec_file.write("Benchmark 1\n")
@@ -118,13 +119,18 @@ if param in ["--all", "1"]:
         to_success = 0
         to_switch = False
         l = 2
+        # while not to_switch:
+            # new_code = "#define MAX_N " + str(n) + "\n" + "#define MAX_L " + str(l) + "\n" + sk_code
+            # to_switch = pequin_test("merging_ti", new_code, "N = " + str(n) + ", L = " + str(l) + ": ", to)
+            # l *= 2
+            # if not to_switch:
+                # to_success += 1
+        # n *= 2
         while not to_switch:
             new_code = "#define MAX_N " + str(n) + "\n" + "#define MAX_L " + str(l) + "\n" + sk_code
             to_switch = pequin_test("merging_ti", new_code, "N = " + str(n) + ", L = " + str(l) + ": ", to)
-            l *= 2
-            if not to_switch:
-                to_success += 1
-        n *= 2
+            l += 2
+    max_l = l
 
     print("\nT_S: (N = length of the longest array, L = number of arrays)")
     rec_file.write("T_S\n")
@@ -137,13 +143,17 @@ if param in ["--all", "1"]:
         to_success = 0
         to_switch = False
         l = 2
-        while not to_switch:
+        # while not to_switch:
+            # new_code = "#define MAX_N " + str(n) + "\n" + "#define MAX_L " + str(l) + "\n" + sk_code
+            # to_switch = pequin_test("merging_ts", new_code, "N = " + str(n) + ", L = " + str(l) + ": ", to)
+            # l *= 2
+            # if not to_switch:
+                # to_success += 1
+        # n *= 2
+        while not to_switch and l < max_l:
             new_code = "#define MAX_N " + str(n) + "\n" + "#define MAX_L " + str(l) + "\n" + sk_code
             to_switch = pequin_test("merging_ts", new_code, "N = " + str(n) + ", L = " + str(l) + ": ", to)
-            l *= 2
-            if not to_switch:
-                to_success += 1
-        n *= 2
+            l += 2
 
     print("\nT_E: (N = length of the longest array, L = number of arrays)")
     rec_file.write("T_B\n")
@@ -156,13 +166,17 @@ if param in ["--all", "1"]:
         to_success = 0
         to_switch = False
         l = 2
-        while not to_switch:
+        # while not to_switch:
+            # new_code = "#define MAX_N " + str(n) + "\n" + "#define MAX_L " + str(l) + "\n" + sk_code
+            # to_switch = pequin_test("merging_ti", new_code, "N = " + str(n) + ", L = " + str(l) + ": ", to)
+            # l *= 2
+            # if not to_switch:
+                # to_success += 1
+        # n *= 2
+        while not to_switch and l < max_l:
             new_code = "#define MAX_N " + str(n) + "\n" + "#define MAX_L " + str(l) + "\n" + sk_code
             to_switch = pequin_test("merging_tb", new_code, "N = " + str(n) + ", L = " + str(l) + ": ", to)
-            l *= 2
-            if not to_switch:
-                to_success += 1
-        n *= 2
+            l += 2
 
 # --
 # 2 - Binary Search
@@ -205,6 +219,35 @@ if param in ["--all", "2"]:
     while not to_switch:
         new_code = "#define MAX_N " + str(n) + "\n" + sk_code
         to_switch = pequin_test("binary_search_tb", new_code, "N = " + str(n) + ": ", to)
+        n *= 2
+
+    print("\nFor the following 2 examples, the timeout limit is set to 10 seconds due to their sub-linear complexity.")
+    print("T_I, without RAM Initialization: (N = length of array)")
+    rec_file.write("T_IA\n")
+    sk_file = open(r"skeletons/binary_search_ti_no_init.c", "r")
+    sk_code = sk_file.read()
+    sk_file.close()
+    to_switch = False
+    n = 10
+    while not to_switch:
+        l = int(math.ceil(math.log(n, 2)))
+        new_code = "#define MAX_N " + str(n) + "\n#define MAX_LOG " + str(l) + "\n" + sk_code
+        to_switch = pequin_test("binary_search_ti_no_init", new_code, "N = " + str(n) + ", LOG_N = " + str(l) + ": ", 10)
+        n *= 2
+
+    n_term = n
+
+    print("\nT_E, without RAM Initialization: (N = length of array)")
+    rec_file.write("T_BA\n")
+    sk_file = open(r"skeletons/binary_search_tb_no_init.c", "r")
+    sk_code = sk_file.read()
+    sk_file.close()
+    to_switch = False
+    n = 10
+    # Execute it at most 4 times to show it is constant
+    while not to_switch and n < n_term:
+        new_code = "#define MAX_N " + str(n) + "\n" + sk_code
+        to_switch = pequin_test("binary_search_tb_no_init", new_code, "N = " + str(n) + ": ", 10)
         n *= 2
 
 # --
@@ -516,7 +559,7 @@ if param in ["--all", "8"]:
 if param in ["--all", "9"]:
     print("\n--\nTesting Benchmark 9: MSC")
     rec_file.write("Benchmark 9\n")
-
+    
     print("\nT_I: (V = number of nodes, E = number of edges)")
     rec_file.write("T_I\n")
     sk_file = open(r"skeletons/msc_ti.c", "r")
@@ -538,6 +581,7 @@ if param in ["--all", "9"]:
             if e > v ** 2:
                 e = v ** 2
         v *= 2
+    max_v = v
 
     print("\nT_S: (V = number of nodes, E = number of edges)")
     rec_file.write("T_S\n")
@@ -570,7 +614,7 @@ if param in ["--all", "9"]:
     sk_file.close()
     v = 5
     to_success = -1
-    while to_success != 1:
+    while to_success != 1 and v < max_v:
         to_success = 0
         to_switch = False
         e = 10

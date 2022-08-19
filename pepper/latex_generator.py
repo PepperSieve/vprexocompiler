@@ -20,8 +20,8 @@ import os
 
 # Init
 graph_name_list = ["Find Min", "Merging", "Binary Search", "KMP Search", "Next Permutation", "Dutch Flag", "Recurrence Relations Sequence", "Sum of Powers", "2D Convex Hull", "MSC"]
-short_names = {"Find Min": "FMin", "Merging": "Merg", "Binary Search": "BinS*", "KMP Search": "KMP", "Next Permutation": "NPerm", "Dutch Flag": "DFlag", "Recurrence Relations Sequence": "RRSeq", "Sum of Powers": "SoP", "2D Convex Hull": "2DCH", "MSC": "MSC"}
-method_name_list = {"T_S": 0, "T_I": 1, "T_B": 2, "T_SB": 0, "T_BA": 3}
+short_names = {"Find Min": "FMin", "Merging": "Merg", "Binary Search": "BinS", "KMP Search": "KMP", "Next Permutation": "NPerm", "Dutch Flag": "DFlag", "Recurrence Relations Sequence": "RRSeq", "Sum of Powers": "SoP", "2D Convex Hull": "2DCH", "MSC": "MSC"}
+method_name_list = {"T_S": 0, "T_I": 1, "T_B": 2, "T_SB": 0, "T_IA": 3, "T_BA": 4}
 rec_file = open("result", "r")
 line = rec_file.readline()
 lineseg = line.split()
@@ -44,8 +44,8 @@ final_te = []
 while lineseg[0] != "End":
     # Parser
     graph_name = graph_name_list[int(lineseg[1])]
-    #    T_S  T_I  T_B/T_SB  T_BA
-    T = [ [],  [],       [],   []]
+    #    T_S  T_I  T_B/T_SB  T_IA  T_BA
+    T = [ [],  [],       [],   [],   []]
 
     line = rec_file.readline()
     lineseg = line.split()
@@ -203,6 +203,7 @@ if __name__ == '__main__':
                     xp = final_ts[i]
                     if init_ts[i] >= 0:
                         plt.hlines(y = init_ts[i], xmin = yp - (default_width / 2), xmax = yp + (default_width / 2), color = "black", linestyle = "-")
+                        plt.hlines(y = final_ts[i], xmin = yp - (default_width / 2), xmax = yp + (default_width / 2), color = "black", linestyle = "-")
                         if init_ts[i] - xp > 0:
                             error = [[0], [init_ts[i] - xp]]
                         else:
@@ -214,13 +215,13 @@ if __name__ == '__main__':
                         label_ts = True
                     else:
                         plt.bar(yp, xp, yerr = error, width=default_width, color = 'orange')
-                    if init_ts[i] >= 0:
-                        if init_ts[i] - xp > 0:
-                            if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.1:
-                                plt.arrow(x = yp, y = xp + 0.1, dx = 0, dy = -0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
-                        else:
-                            if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.1:
-                                plt.arrow(x = yp, y = xp - 0.1, dx = 0, dy = 0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
+                    # if init_ts[i] >= 0:
+                        # if init_ts[i] - xp > 0:
+                            # if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.1:
+                                # plt.hlines(x = yp, y = xp + 0.1, dx = 0, dy = -0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
+                        #else:
+                            # if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.1:
+                                # plt.arrow(x = yp, y = xp - 0.1, dx = 0, dy = 0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
                     plt.text(yp + 0.15, xp - 0.02, str('%.2f' % xp), fontsize = 10, color = 'black')
                 # T_S with T/O
                 elif final_ts[i] == -1:
@@ -229,6 +230,7 @@ if __name__ == '__main__':
                     xp = inf_h
                     if init_ts[i] >= 0:
                         plt.hlines(y = init_ts[i], xmin = yp - (default_width / 2), xmax = yp + (default_width / 2), color = "black", linestyle = "-")
+                        plt.hlines(y = final_ts[i], xmin = yp - (default_width / 2), xmax = yp + (default_width / 2), color = "black", linestyle = "-")
                         if init_ts[i] - xp > 0:
                             error = [[0], [init_ts[i] - xp]]
                         else:
@@ -236,17 +238,17 @@ if __name__ == '__main__':
                         if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.1:
                             plt.text(yp + 0.15, init_ts[i] - 0.02, str('%.2f' % init_ts[i]), fontsize = 10, color = 'gray')
                     if not label_ts:
-                        plt.bar(yp, xp, yerr = error, width=default_width, color = 'orange', label = "Timeout")
+                        plt.bar(yp, xp, yerr = error, width=default_width, color = 'orange', label = "T_S")
                         label_ts = True
                     else:
                         plt.bar(yp, xp, yerr = error, width=default_width, color = 'orange')
-                    if init_ts[i] >= 0:
-                        if init_ts[i] - xp > 0:
-                            if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.08:
-                                plt.arrow(x = yp, y = xp + 0.1, dx = 0, dy = -0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
-                        else:
-                            if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.08:
-                                plt.arrow(x = yp, y = xp - 0.1, dx = 0, dy = 0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
+                    # if init_ts[i] >= 0:
+                        # if init_ts[i] - xp > 0:
+                            # if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.08:
+                                # plt.arrow(x = yp, y = xp + 0.1, dx = 0, dy = -0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
+                        # else:
+                            # if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.08:
+                                # plt.arrow(x = yp, y = xp - 0.1, dx = 0, dy = 0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
                     plt.text(yp + 0.15, xp - 0.1, "T/O", fontsize = 10, color = 'black')
                 # T_E
                 if final_te[i] >= 0:
@@ -254,6 +256,7 @@ if __name__ == '__main__':
                     xp = final_te[i]
                     if init_te[i] >= 0:
                         plt.hlines(y = init_te[i], xmin = yp - (default_width / 2), xmax = yp + (default_width / 2), color = "black", linestyle = "-")
+                        plt.hlines(y = final_te[i], xmin = yp - (default_width / 2), xmax = yp + (default_width / 2), color = "black", linestyle = "-")
                         if init_te[i] - xp > 0:
                             error = [[0], [init_te[i] - xp]]
                         else:
@@ -265,13 +268,13 @@ if __name__ == '__main__':
                         label_te = True
                     else:
                         plt.bar(yp, xp, yerr = error, width=default_width, color = '#069AF3')
-                    if init_te[i] >= 0:
-                        if init_te[i] - xp > 0:
-                            if init_te[i] < inf_h and abs(init_te[i] - xp) >= 0.08:
-                                plt.arrow(x = yp, y = xp + 0.1, dx = 0, dy = -0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
-                        else:
-                            if init_te[i] < inf_h and abs(init_te[i] - xp) >= 0.08:
-                                plt.arrow(x = yp, y = xp - 0.1, dx = 0, dy = 0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
+                    # if init_te[i] >= 0:
+                        # if init_te[i] - xp > 0:
+                            # if init_te[i] < inf_h and abs(init_te[i] - xp) >= 0.08:
+                                # plt.arrow(x = yp, y = xp + 0.1, dx = 0, dy = -0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
+                        # else:
+                            # if init_te[i] < inf_h and abs(init_te[i] - xp) >= 0.08:
+                                # plt.arrow(x = yp, y = xp - 0.1, dx = 0, dy = 0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
                     plt.text(yp + 0.15, xp - 0.02, str('%.2f' % xp), fontsize = 10, color = 'black')
         plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
 
@@ -281,14 +284,24 @@ if __name__ == '__main__':
         yt[0] = "0"
         # yt[-1] = "$\infty$"
         plt.yticks([0.2 * i for i in range(len(yt))], yt)
-        plt.ylabel('Circuit Size Scale')
+        plt.ylabel('Relative Constraint Size\n(Lower is Better)')
         plt.legend(loc="upper right")
-        plt.title("Non-Asymptotic Examples")
+
+        plt.savefig('graph1.png')
+        plt.savefig('graph1.pdf', dpi=None, 
+                          facecolor='w',                                                
+                          edgecolor='w',
+                          orientation='portrait',                                 
+                          format=None,                                
+                          transparent=False,     
+                          bbox_inches=None,                
+                          pad_inches=0.1,                                      
+                          metadata=None)
 
         with doc.create(Subsection('Graphs:')):
             with doc.create(Figure(position='htbp')) as plot:
                 plot.add_plot(width=NoEscape(r'1.1\textwidth'))
-                plot.add_caption('Graph of Circuit Size Scale')
+                plot.add_caption('Graph of Relative Constraint Size')
 
 rec_file.close()
 
@@ -303,8 +316,8 @@ with doc.create(Figure(position='htbp')) as sup_plot:
     while lineseg[0] != "End":
         # Parser
         graph_name = graph_name_list[int(lineseg[1])]
-        #    T_S  T_I  T_B/T_SB  T_BA
-        T = [ [],  [],       [],   []]
+        #    T_S  T_I  T_B/T_SB  T_IA  T_BA
+        T = [ [],  [],       [],   [],   []]
 
         line = rec_file.readline()
         lineseg = line.split()
@@ -333,23 +346,40 @@ with doc.create(Figure(position='htbp')) as sup_plot:
                     s = lineseg[i]
                 tmp_name = tmp_name[:-2]
 
-                if method_ind == 1:
-                    case_name.append(tmp_name)
-                    T[method_ind].append(int(lineseg[-1]))
-                    cur_case += 1
-                    if T[1][-1] > ti_max:
-                        ti_max = T[1][-1]
-                        ti_max_ind = len(T[1]) - 1
-                elif cur_case < len(case_name) and case_name[cur_case] == tmp_name:
-                    T[method_ind].append(int(lineseg[-1]))
-                    cur_case += 1
-                elif tmp_name in case_name:
-                    while case_name[cur_case] != tmp_name:
-                        T[method_ind].append(0)
+                if graph_name in ["Binary Search"]:
+                    if method_ind == 3:
+                        case_name.append(tmp_name)
+                        T[method_ind].append(int(lineseg[-1]))
                         cur_case += 1
-                    T[method_ind].append(int(lineseg[-1]))
-                    cur_case += 1
-
+                        if T[3][-1] > ti_max:
+                            ti_max = T[3][-1]
+                            ti_max_ind = len(T[3]) - 1
+                    elif cur_case < len(case_name) and case_name[cur_case] == tmp_name:
+                        T[method_ind].append(int(lineseg[-1]))
+                        cur_case += 1
+                    elif tmp_name in case_name:
+                        while case_name[cur_case] != tmp_name:
+                            T[method_ind].append(0)
+                            cur_case += 1
+                        T[method_ind].append(int(lineseg[-1]))
+                        cur_case += 1
+                else:
+                    if method_ind == 1:
+                        case_name.append(tmp_name)
+                        T[method_ind].append(int(lineseg[-1]))
+                        cur_case += 1
+                        if T[1][-1] > ti_max:
+                            ti_max = T[1][-1]
+                            ti_max_ind = len(T[1]) - 1
+                    elif cur_case < len(case_name) and case_name[cur_case] == tmp_name:
+                        T[method_ind].append(int(lineseg[-1]))
+                        cur_case += 1
+                    elif tmp_name in case_name:
+                        while case_name[cur_case] != tmp_name:
+                            T[method_ind].append(0)
+                            cur_case += 1
+                        T[method_ind].append(int(lineseg[-1]))
+                        cur_case += 1
 
                 line = rec_file.readline()
                 lineseg = line.split()
@@ -387,6 +417,11 @@ with doc.create(Figure(position='htbp')) as sup_plot:
                         te_factor.append(T[2][i] / T[1][i])
                     case_num += 1
 
+            # Only plot the first 5
+            case_name = case_name[:5]
+            ts_factor = ts_factor[:5]
+            te_factor = te_factor[:5]
+
             # Process Case Name
             for i in range(len(case_name)):
                 for j in range(len(case_name[i]) - 1):
@@ -395,12 +430,11 @@ with doc.create(Figure(position='htbp')) as sup_plot:
                         break
 
             plt.clf()
-            plt.figure(figsize=(4,4))
-            y_pos = np.arange(len(case_name))
-            y_pos = y_pos[:case_num]
+            plt.figure(figsize=(6,4))
+            y_pos = np.arange(0, 2 * (len(case_name)), 2)
             plt.ylim(0, inf_h)
-            plt.xlim(-0.4, y_pos[-1] + 0.8)
-            default_width = 0.2
+            plt.xlim(-0.8, y_pos[-1] + 2)
+            default_width = 0.4
             width = 0
             plt.axhline(y = 1, color = "red", linestyle = "-")
 
@@ -411,24 +445,105 @@ with doc.create(Figure(position='htbp')) as sup_plot:
             if ts_factor[0] != -2:
                 plt.bar(y_pos + width - 0.15, ts_factor, width=default_width, color='orange', label="T_S")
                 for i in range(len(ts_factor)):
-                    plt.text(y_pos[i] + width, ts_factor[i] - 0.02, str('%.2f' % ts_factor[i]), fontsize = 10, color = 'black')
+                    plt.text(y_pos[i] + width + 0.2, ts_factor[i] - 0.02, str('%.2f' % ts_factor[i]), fontsize = 8, color = 'black')
                 width += default_width
             if te_factor[0] != -2:
                 plt.bar(y_pos + width - 0.05, te_factor, width=default_width, color='#069AF3', label="T_E")
                 for i in range(len(te_factor)):
-                    plt.text(y_pos[i] + width + 0.1, te_factor[i] - 0.02, str('%.2f' % te_factor[i]), fontsize = 10, color = 'black')
+                    plt.text(y_pos[i] + width + 0.2, te_factor[i] - 0.02, str('%.2f' % te_factor[i]), fontsize = 8, color = 'black')
                 width += default_width
 
             plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
             plt.axhline(y = 1, color = "red", linestyle = "-")
             plt.xticks(y_pos, case_name[:case_num])
-            plt.ylabel('Circuit Size Scale')
+            plt.ylabel('Relative Constraint Size\n(Lower is Better)')
             plt.legend(loc="upper right")
-            plt.title(graph_name + ", " + prefix)
+
+            plt.savefig('graph2.png')
+            plt.savefig('graph2.pdf', dpi=None, 
+                          facecolor='w',                                                
+                          edgecolor='w',
+                          orientation='portrait',                                 
+                          format=None,                                
+                          transparent=False,     
+                          bbox_inches=None,                
+                          pad_inches=0.1,                                      
+                          metadata=None)
 
             with doc.create(SubFigure(position='b')) as plot:
-                plot.add_plot(width=NoEscape(r'0.9\textwidth'))
+                plot.add_plot(width=NoEscape(r'0.8\textwidth'))
                 plot.add_caption('Graph of ' + graph_name)
+
+        # Post-processing Examples: Binary Search
+        if graph_name in ["Binary Search"]:
+            inf_h = 1.2
+            ts_factor = []
+            tea_factor = []
+            if len(T[3]) == 0:
+                errval = "No value for T_I of " + graph_name + " has been produced. Please extend timeout limit."
+                raise ValueError(errval)
+        
+            for i in range(len(T[3])):
+                if not T[0] or T[0][i] == 0:
+                    ts_factor.append(inf_h)
+                else:
+                    ts_factor.append(T[0][i] / T[3][i])
+                if not T[4]:
+                    tea_factor.append(-2)
+                elif T[4][i] == 0:
+                    tea_factor.append(inf_h)
+                else:
+                    tea_factor.append(T[4][i] / T[3][i])
+
+            # Only plot the first 5
+            case_name = case_name[:5]
+            ts_factor = ts_factor[:5]
+            tea_factor = tea_factor[:5]
+
+            plt.clf()
+            plt.figure(figsize=(6,4))
+            y_pos = np.arange(0, 2 * (len(case_name)), 2)
+            plt.ylim(0, inf_h)
+            plt.xlim(-0.8, y_pos[-1] + 3)
+            default_width = 0.4
+            width = 0
+            plt.axhline(y = 1, color = "red", linestyle = "-")
+
+            label_ts = False
+            label_te = False
+
+            if ts_factor[0] != -2:
+                plt.bar(y_pos + width - 0.3, ts_factor, width=default_width, color='orange', label="T_S")
+                for i in range(len(ts_factor)):
+                    plt.text(y_pos[i] + width, inf_h - 0.06, str('%.2f' % ts_factor[i]) if ts_factor[i] != inf_h else "T/O", fontsize = 10, color = 'black')
+                width += default_width
+            if tea_factor[0] != -2:
+                plt.bar(y_pos + width - 0.1, tea_factor, width=default_width, color='#069AF3', label="T_E")
+                for i in range(len(tea_factor)):
+                    plt.text(y_pos[i] + width + 0.16, tea_factor[i] - 0.008, str('%.2f' % tea_factor[i]), fontsize = 8, color = 'black')
+                width += default_width
+
+            plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
+            plt.axhline(y = 1, color = "red", linestyle = "-")
+            plt.xticks(y_pos, case_name)
+            # plt.ylabel('Relative Constraint Size\n(Lower is Better)')
+            plt.legend(loc="upper right")
+
+            plt.savefig('graph3.png')
+            plt.savefig('graph3.pdf', dpi=None, 
+                          facecolor='w',                                                
+                          edgecolor='w',
+                          orientation='portrait',                                 
+                          format=None,                                
+                          transparent=False,     
+                          bbox_inches=None,                
+                          pad_inches=0.1,                                      
+                          metadata=None)
+
+            with doc.create(SubFigure(position='b')) as plot:
+                plot.add_plot(width=NoEscape(r'0.8\textwidth'))
+                plot.add_caption('Graph of ' + graph_name)
+
 
         # Post-processing Examples: 2D Convex Hull
         if graph_name in ["2D Convex Hull"]:
@@ -444,18 +559,23 @@ with doc.create(Figure(position='htbp')) as sup_plot:
                     ts_factor.append(inf_h)
                 else:
                     ts_factor.append(T[0][i] / T[1][i])
-                if not T[3]:
+                if not T[4]:
                     tea_factor.append(-2)
-                elif T[3][i] == 0:
+                elif T[4][i] == 0:
                     tea_factor.append(inf_h)
                 else:
-                    tea_factor.append(T[3][i] / T[1][i])
+                    tea_factor.append(T[4][i] / T[1][i])
+
+            # Only plot the first 5
+            case_name = case_name[:5]
+            ts_factor = ts_factor[:5]
+            tea_factor = tea_factor[:5]
 
             plt.clf()
             plt.figure(figsize=(5,4))
             y_pos = np.arange(0, 2 * len(case_name), 2)
             plt.ylim(0, inf_h)
-            plt.xlim(-0.8, y_pos[-1] + 4.2)
+            plt.xlim(-0.8, y_pos[-1] + 3.6)
             default_width = 0.4
             width = 0
             plt.axhline(y = 1, color = "red", linestyle = "-")
@@ -477,13 +597,22 @@ with doc.create(Figure(position='htbp')) as sup_plot:
             plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
             plt.axhline(y = 1, color = "red", linestyle = "-")
             plt.xticks(y_pos, case_name)
-            plt.ylabel('Circuit Size Scale')
-            plt.xlabel('Value of N')
+            # plt.ylabel('Relative Constraint Size\n(Lower is Better)')
             plt.legend(loc="upper right")
-            plt.title(graph_name + ", using Annotations")
+
+            plt.savefig('graph4.png')
+            plt.savefig('graph4.pdf', dpi=None, 
+                          facecolor='w',                                                
+                          edgecolor='w',
+                          orientation='portrait',                                 
+                          format=None,                                
+                          transparent=False,     
+                          bbox_inches=None,                
+                          pad_inches=0.1,                                      
+                          metadata=None)
 
             with doc.create(SubFigure(position='b')) as plot:
-                plot.add_plot(width=NoEscape(r'1.1\textwidth'))
+                plot.add_plot(width=NoEscape(r'0.8\textwidth'))
                 plot.add_caption('Graph of ' + graph_name)
 
         print("Finished " + graph_name)
