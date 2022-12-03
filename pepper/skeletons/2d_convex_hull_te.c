@@ -18,8 +18,6 @@ struct In {
     uint32_t n;
     uint32_t x[MAX_N];
     uint32_t y[MAX_N];
-    // in_c: 0 if point is not in convex hull, 1 otherwise
-    uint32_t in_c[MAX_N];
     // use next_xy to record the coordinate of the next point in hull
     // not in use if the point is not on convex hull
     uint32_t next_x[MAX_N];
@@ -58,14 +56,13 @@ void compute(struct In *input, struct Out *output) {
             xi = input->x[i];
             yi = input->y[i];
             // If in convex hull
-            if (input->in_c[i] == 1) {
+            if (xi == next_x) {
                 // Verify that the point in stack is correct
                 count++;
                 assert_zero(input->stack_x[count] - xi);
                 assert_zero(input->stack_y[count] - yi);
 
                 // Verify that next is correct
-                assert_zero(xi - next_x);
                 assert_zero(yi - next_y);
                 
                 // Verify that an outward angle is formed

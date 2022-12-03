@@ -19,8 +19,8 @@ import matplotlib.pyplot as plt
 import os
 
 # Init
-graph_name_list = ["Find Min", "Merging", "Binary Search", "KMP Search", "Next Permutation", "Dutch Flag", "Recurrence Relations Sequence", "Sum of Powers", "2D Convex Hull", "MSC"]
-short_names = {"Find Min": "FMin", "Merging": "Merg", "Binary Search": "BinS", "KMP Search": "KMP", "Next Permutation": "NPerm", "Dutch Flag": "DFlag", "Recurrence Relations Sequence": "RRSeq", "Sum of Powers": "SoP", "2D Convex Hull": "2DCH", "MSC": "MSC"}
+graph_name_list = ["Find Min", "Merging", "Binary Search", "KMP Search", "Next Permutation", "Dutch Flag", "Recurrence Relations Sequence", "Sum of Powers", "2D Convex Hull", "MSC", "MST"]
+short_names = {"Find Min": "FMin", "Merging": "Merg", "Binary Search": "BinS", "KMP Search": "KMP", "Next Permutation": "NPerm", "Dutch Flag": "DFlag", "Recurrence Relations Sequence": "RRSeq", "Sum of Powers": "SoP", "2D Convex Hull": "2DCH", "MSC": "MSC", "MST": "MST"}
 method_name_list = {"T_S": 0, "T_I": 1, "T_B": 2, "T_SB": 0, "T_IA": 3, "T_BA": 4}
 rec_file = open("result", "r")
 line = rec_file.readline()
@@ -180,7 +180,7 @@ if __name__ == '__main__':
 
         plt.clf()
         plt.figure(figsize=(14,4))
-        plt.xlim(0, 0.2 + 1.2 * len(ex_names) + 0.8)
+        plt.xlim(0, 0.2 + 1.2 * len(ex_names) + 0.4)
         plt.ylim(0, inf_h)
         # Compute y_pos
         j = 0
@@ -236,7 +236,10 @@ if __name__ == '__main__':
                         else:
                             error = [[xp - init_ts[i]], [0]]
                         if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.1:
-                            plt.text(yp + 0.15, init_ts[i] - 0.02, str('%.2f' % init_ts[i]), fontsize = 10, color = 'gray')
+                            if ex_names_full[i] == "MSC":
+                                plt.text(yp - 0.52, init_ts[i] - 0.02, str('%.2f' % init_ts[i]), fontsize = 10, color = 'gray')
+                            else:
+                                plt.text(yp + 0.15, init_ts[i] - 0.02, str('%.2f' % init_ts[i]), fontsize = 10, color = 'gray')
                     if not label_ts:
                         plt.bar(yp, xp, yerr = error, width=default_width, color = 'orange', label = "T_S")
                         label_ts = True
@@ -445,18 +448,19 @@ with doc.create(Figure(position='htbp')) as sup_plot:
             if ts_factor[0] != -2:
                 plt.bar(y_pos + width - 0.15, ts_factor, width=default_width, color='orange', label="T_S")
                 for i in range(len(ts_factor)):
-                    plt.text(y_pos[i] + width + 0.2, ts_factor[i] - 0.02, str('%.2f' % ts_factor[i]), fontsize = 8, color = 'black')
+                    plt.text(y_pos[i] + width + 0.2, ts_factor[i] - 0.02, str('%.2f' % ts_factor[i]), fontsize = 11, color = 'black')
                 width += default_width
             if te_factor[0] != -2:
                 plt.bar(y_pos + width - 0.05, te_factor, width=default_width, color='#069AF3', label="T_E")
                 for i in range(len(te_factor)):
-                    plt.text(y_pos[i] + width + 0.2, te_factor[i] - 0.02, str('%.2f' % te_factor[i]), fontsize = 8, color = 'black')
+                    plt.text(y_pos[i] + width + 0.2, te_factor[i] - 0.02, str('%.2f' % te_factor[i]), fontsize = 11, color = 'black')
                 width += default_width
 
             plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
             plt.axhline(y = 1, color = "red", linestyle = "-")
-            plt.xticks(y_pos, case_name[:case_num])
-            plt.ylabel('Relative Constraint Size\n(Lower is Better)')
+            plt.xticks(y_pos, case_name[:case_num], fontsize = 11)
+            plt.yticks(fontsize = 11)
+            plt.ylabel('Relative Constraint Size\n(Lower is Better)', fontsize = 11)
             plt.legend(loc="upper right")
 
             plt.savefig('graph2.png')
@@ -496,7 +500,7 @@ with doc.create(Figure(position='htbp')) as sup_plot:
                     tea_factor.append(T[4][i] / T[3][i])
 
             # Only plot the first 5
-            case_name = case_name[:5]
+            case_name = [i.lower() for i in case_name[:5]]
             ts_factor = ts_factor[:5]
             tea_factor = tea_factor[:5]
 
@@ -515,17 +519,18 @@ with doc.create(Figure(position='htbp')) as sup_plot:
             if ts_factor[0] != -2:
                 plt.bar(y_pos + width - 0.3, ts_factor, width=default_width, color='orange', label="T_S")
                 for i in range(len(ts_factor)):
-                    plt.text(y_pos[i] + width, inf_h - 0.06, str('%.2f' % ts_factor[i]) if ts_factor[i] != inf_h else "T/O", fontsize = 10, color = 'black')
+                    plt.text(y_pos[i] + width, inf_h - 0.06, str('%.2f' % ts_factor[i]) if ts_factor[i] != inf_h else "T/O", fontsize = 11, color = 'black')
                 width += default_width
             if tea_factor[0] != -2:
                 plt.bar(y_pos + width - 0.1, tea_factor, width=default_width, color='#069AF3', label="T_E")
                 for i in range(len(tea_factor)):
-                    plt.text(y_pos[i] + width + 0.16, tea_factor[i] - 0.008, str('%.2f' % tea_factor[i]), fontsize = 8, color = 'black')
+                    plt.text(y_pos[i] + width + 0.16, tea_factor[i] - 0.008, str('%.2f' % tea_factor[i]), fontsize = 11, color = 'black')
                 width += default_width
 
             plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
             plt.axhline(y = 1, color = "red", linestyle = "-")
-            plt.xticks(y_pos, case_name)
+            plt.xticks(y_pos, case_name, fontsize = 11)
+            plt.yticks(fontsize = 11)
             # plt.ylabel('Relative Constraint Size\n(Lower is Better)')
             plt.legend(loc="upper right")
 
@@ -567,7 +572,7 @@ with doc.create(Figure(position='htbp')) as sup_plot:
                     tea_factor.append(T[4][i] / T[1][i])
 
             # Only plot the first 5
-            case_name = case_name[:5]
+            case_name = [i.lower() for i in case_name[:5]]
             ts_factor = ts_factor[:5]
             tea_factor = tea_factor[:5]
 
@@ -586,17 +591,18 @@ with doc.create(Figure(position='htbp')) as sup_plot:
             if ts_factor[0] != -2:
                 plt.bar(y_pos + width - 0.3, ts_factor, width=default_width, color='orange', label="T_S")
                 for i in range(len(ts_factor)):
-                    plt.text(y_pos[i] + width, inf_h - 0.006, str('%.2f' % ts_factor[i]) if ts_factor[i] != inf_h else "T/O", fontsize = 10, color = 'black')
+                    plt.text(y_pos[i] + width, inf_h - 0.006, str('%.2f' % ts_factor[i]) if ts_factor[i] != inf_h else "T/O", fontsize = 11, color = 'black')
                 width += default_width
             if tea_factor[0] != -2:
                 plt.bar(y_pos + width - 0.1, tea_factor, width=default_width, color='#069AF3', label="T_E")
                 for i in range(len(tea_factor)):
-                    plt.text(y_pos[i] + width + 0.16, tea_factor[i] - 0.002, str('%.3f' % tea_factor[i]), fontsize = 7, color = 'black')
+                    plt.text(y_pos[i] + width + 0.06, tea_factor[i] + 0.001, str('%.3f' % tea_factor[i])[1:], fontsize = 11, color = 'black')
                 width += default_width
 
             plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
             plt.axhline(y = 1, color = "red", linestyle = "-")
-            plt.xticks(y_pos, case_name)
+            plt.xticks(y_pos, case_name, fontsize = 11)
+            plt.yticks(fontsize = 11)
             # plt.ylabel('Relative Constraint Size\n(Lower is Better)')
             plt.legend(loc="upper right")
 

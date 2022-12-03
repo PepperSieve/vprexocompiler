@@ -91,14 +91,14 @@ if param in ["--all", "0"]:
 
     print("\nT_E: (N = length of array)")
     rec_file.write("T_B\n")
-    sk_file = open(r"skeletons/find_min_tb.c", "r")
+    sk_file = open(r"skeletons/find_min_te.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     to_switch = False
     n = 10
     while not to_switch:
         new_code = "#define MAX_N " + str(n) + "\n" + sk_code
-        to_switch = pequin_test("find_min_tb", new_code, "N = " + str(n) + ": ", to)
+        to_switch = pequin_test("find_min_te", new_code, "N = " + str(n) + ": ", to)
         n *= 2
 
 # --
@@ -157,7 +157,7 @@ if param in ["--all", "1"]:
 
     print("\nT_E: (N = length of the longest array, L = number of arrays)")
     rec_file.write("T_B\n")
-    sk_file = open(r"skeletons/merging_tb.c", "r")
+    sk_file = open(r"skeletons/merging_te.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     n = 10
@@ -175,7 +175,7 @@ if param in ["--all", "1"]:
         # n *= 2
         while not to_switch and l < max_l:
             new_code = "#define MAX_N " + str(n) + "\n" + "#define MAX_L " + str(l) + "\n" + sk_code
-            to_switch = pequin_test("merging_tb", new_code, "N = " + str(n) + ", L = " + str(l) + ": ", to)
+            to_switch = pequin_test("merging_te", new_code, "N = " + str(n) + ", L = " + str(l) + ": ", to)
             l += 2
 
 # --
@@ -211,14 +211,14 @@ if param in ["--all", "2"]:
 
     print("\nT_E: (N = length of array)")
     rec_file.write("T_B\n")
-    sk_file = open(r"skeletons/binary_search_tb.c", "r")
+    sk_file = open(r"skeletons/binary_search_te.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     to_switch = False
     n = 10
     while not to_switch:
         new_code = "#define MAX_N " + str(n) + "\n" + sk_code
-        to_switch = pequin_test("binary_search_tb", new_code, "N = " + str(n) + ": ", to)
+        to_switch = pequin_test("binary_search_te", new_code, "N = " + str(n) + ": ", to)
         n *= 2
 
     print("\nFor the following 2 examples, the timeout limit is set to 10 seconds due to their sub-linear complexity.")
@@ -239,7 +239,7 @@ if param in ["--all", "2"]:
 
     print("\nT_E, without RAM Initialization: (N = length of array)")
     rec_file.write("T_BA\n")
-    sk_file = open(r"skeletons/binary_search_tb_no_init.c", "r")
+    sk_file = open(r"skeletons/binary_search_te_no_init.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     to_switch = False
@@ -247,7 +247,7 @@ if param in ["--all", "2"]:
     # Execute it at most 4 times to show it is constant
     while not to_switch and n < n_term:
         new_code = "#define MAX_N " + str(n) + "\n" + sk_code
-        to_switch = pequin_test("binary_search_tb_no_init", new_code, "N = " + str(n) + ": ", 10)
+        to_switch = pequin_test("binary_search_te_no_init", new_code, "N = " + str(n) + ": ", 10)
         n *= 2
 
 # --
@@ -276,7 +276,7 @@ if param in ["--all", "3"]:
 
     print("\nT_S & T_E: (N = length of text, M = length of pattern)")
     rec_file.write("T_SB\n")
-    sk_file = open(r"skeletons/kmp_search_tb.c", "r")
+    sk_file = open(r"skeletons/kmp_search_te.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     n = 10
@@ -288,7 +288,7 @@ if param in ["--all", "3"]:
         while (not to_switch) and n > m * 2:
             to_success += 1
             new_code = "#define MAX_N " + str(n) + "\n" + "#define MAX_M " + str(m) + "\n" + sk_code
-            to_switch = pequin_test("kmp_search_tb", new_code, "N = " + str(n) + ", M = " + str(m) + ": ", to)
+            to_switch = pequin_test("kmp_search_te", new_code, "N = " + str(n) + ", M = " + str(m) + ": ", to)
             m *= 2
         n *= 2
 
@@ -325,14 +325,14 @@ if param in ["--all", "4"]:
 
     print("\nT_E: (N = length of array)")
     rec_file.write("T_B\n")
-    sk_file = open(r"skeletons/next_permutation_tb.c", "r")
+    sk_file = open(r"skeletons/next_permutation_te.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     to_switch = False
     n = 10
     while not to_switch:
         new_code = "#define MAX_N " + str(n) + "\n" + sk_code
-        to_switch = pequin_test("next_permutation_tb", new_code, "N = " + str(n) + ": ", to)
+        to_switch = pequin_test("next_permutation_te", new_code, "N = " + str(n) + ": ", to)
         n *= 2
 
 # --
@@ -367,14 +367,14 @@ if param in ["--all", "5"]:
 
     print("\nT_E: (N = length of array)")
     rec_file.write("T_B\n")
-    sk_file = open(r"skeletons/dutch_flag_tb.c", "r")
+    sk_file = open(r"skeletons/dutch_flag_te.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     to_switch = False
     n = 10
     while not to_switch:
         new_code = "#define MAX_N " + str(n) + "\n" + sk_code
-        to_switch = pequin_test("dutch_flag_tb", new_code, "N = " + str(n) + ": ", to)
+        to_switch = pequin_test("dutch_flag_te", new_code, "N = " + str(n) + ": ", to)
         n *= 2
 
 # --
@@ -423,7 +423,7 @@ if param in ["--all", "6"]:
 
     print("\nT_E: (N = number of elements in the sequence, M = number of recurrence relations)")
     rec_file.write("T_B\n")
-    sk_file = open(r"skeletons/rr_sequence_find_tb.c", "r")
+    sk_file = open(r"skeletons/rr_sequence_find_te.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     n = 10
@@ -434,7 +434,7 @@ if param in ["--all", "6"]:
         m = 2
         while not to_switch:
             new_code = "#define MAX_N " + str(n) + "\n" + "#define M " + str(m) + "\n" + sk_code
-            to_switch = pequin_test("rr_sequence_find_tb", new_code, "N = " + str(n) + ", M = " + str(m) + ": ", to)
+            to_switch = pequin_test("rr_sequence_find_te", new_code, "N = " + str(n) + ", M = " + str(m) + ": ", to)
             m *= 2
             if not to_switch:
                 to_success += 1
@@ -484,7 +484,7 @@ if param in ["--all", "7"]:
 
     print("\nT_E: (Want X^K + Y^K = R, X > Y)")
     rec_file.write("T_B\n")
-    sk_file = open(r"skeletons/sum_of_powers_tb.c", "r")
+    sk_file = open(r"skeletons/sum_of_powers_te.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     r = 10
@@ -496,7 +496,7 @@ if param in ["--all", "7"]:
         while (not to_switch) and 2 ** k < r:
             to_success += 1
             new_code = "#define MAX_R " + str(r) + "\n" + "#define MAX_K " + str(k) + "\n" + sk_code
-            to_switch = pequin_test("sum_of_powers_tb", new_code, "R = " + str(r) + ", K = " + str(k) + ": ", to)
+            to_switch = pequin_test("sum_of_powers_te", new_code, "R = " + str(r) + ", K = " + str(k) + ": ", to)
             k *= 2
         r *= 2
 
@@ -532,26 +532,26 @@ if param in ["--all", "8"]:
 
     print("\nT_E: (N = length of array)")
     rec_file.write("T_B\n")
-    sk_file = open(r"skeletons/2d_convex_hull_tb.c", "r")
+    sk_file = open(r"skeletons/2d_convex_hull_te.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     to_switch = False
     n = 10
     while not to_switch:
         new_code = "#define MAX_N " + str(n) + "\n" + sk_code
-        to_switch = pequin_test("td_convex_hull_tb", new_code, "N = " + str(n) + ": ", to)
+        to_switch = pequin_test("td_convex_hull_te", new_code, "N = " + str(n) + ": ", to)
         n *= 2
 
     print("\nT_E, Annotation Only: (N = length of array)")
     rec_file.write("T_BA\n")
-    sk_file = open(r"skeletons/2d_convex_hull_tb_ann.c", "r")
+    sk_file = open(r"skeletons/2d_convex_hull_te_ann.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     to_switch = False
     n = 10
     while not to_switch:
         new_code = "#define MAX_N " + str(n) + "\n" + sk_code
-        to_switch = pequin_test("td_convex_hull_tb_ann", new_code, "N = " + str(n) + ": ", to)
+        to_switch = pequin_test("td_convex_hull_te_ann", new_code, "N = " + str(n) + ": ", to)
         n *= 2
 
 # --
@@ -609,7 +609,7 @@ if param in ["--all", "9"]:
 
     print("\nT_E: (V = number of nodes, E = number of edges)")
     rec_file.write("T_B\n")
-    sk_file = open(r"skeletons/msc_tb.c", "r")
+    sk_file = open(r"skeletons/msc_te.c", "r")
     sk_code = sk_file.read()
     sk_file.close()
     v = 5
@@ -621,7 +621,7 @@ if param in ["--all", "9"]:
         while (not to_switch) and e <= v ** 2:
             to_success += 1
             new_code = "#define MAX_V " + str(v) + "\n" + "#define MAX_E " + str(e) + "\n" + sk_code
-            to_switch = pequin_test("msc_tb", new_code, "V = " + str(v) + ", E = " + str(e) + ": ", to)
+            to_switch = pequin_test("msc_te", new_code, "V = " + str(v) + ", E = " + str(e) + ": ", to)
             if e == v ** 2:
                 to_switch = True
             e *= 2

@@ -1,5 +1,5 @@
 #define MAX_VERTICES 256
-#define LOG_VERTICES 8
+#define INV_ACKER_EDGES 4
 #define MAX_EDGES 32640
 
 // This is a pseudocode for MST_Ti using pequin style.
@@ -30,7 +30,7 @@ void compute(struct In *input, struct Out *output) {
 	uint32_t rank[MAX_VERTICES];
 
 	/* Make Set (For all Vertices) */
-	for (i = 0; i < MAX_VERTICES; i++) {
+	for (uint32_t i = 0; i < MAX_VERTICES; i++) {
         if (i < num_v) {
 		    parent[i] = i;
 		    rank[i] = 0;
@@ -40,9 +40,9 @@ void compute(struct In *input, struct Out *output) {
 	/* Assume here we have access to a sort routine (permutation network with final order check) */
 	assert(is_permutation(edges, sorted_edges));
 
-    i = 0;
-	/* In the worst case the below while loops take MAX_E * (log_2 MAX_V) iterations */
-    [[buffet::fsm(MAX_EDGES * 2 * LOG_VERTICES)]]
+    uint32_t i = 0;
+	/* In the worst case the below, the inner while loops take MAX_E * INV_ACKER_EDGES iterations */
+    [[buffet::fsm(9 * MAX_EDGES * INV_ACKER_EDGES)]]
 	while (i < num_e) {
 		/* Free, just aliased here */
 		uint32_t u = sorted_edges[i][0];
@@ -83,12 +83,13 @@ void compute(struct In *input, struct Out *output) {
 			idx++;
 
 			/* disjoint Set Union by rank */
-			bool swap = (rank[u] < rank[v]);
-			uint32_t min = swap * (parent[u] - parent[v]) + parent[v];
-			uint32_t max = swap * (parent[v] - parent[u]) + parent[u];
-			parent[rank[u] < rank[v] ? u : v] = 
+			uint32_t u_rank = rank[u];
+			uint32_t v_rank = rank[v];
+			bool swap = (u_rank < v_rank);
+			uint32_t min = swap * (u_root - v_root) + v_root;
+			uint32_t max = swap * (v_root - u_root) + u_root;
 			parent[min] = max;
-			rank[v] = rank[v] + (rank[u] == rank[v]);
+			rank[v] += (u_rank == v_rank);
 		}
         i++;
 	}

@@ -5,7 +5,6 @@ struct In {
     uint32_t l;
     uint32_t r;
     uint32_t x;
-    // Initialize A in compute() to avoid linear STOREs for initialization
     uint32_t a[MAX_N];
     // index of the element s.t. a[ind] = x;
     // if no such element exists, then ind = -1
@@ -30,6 +29,7 @@ void compute(struct In *input, struct Out *output) {
     
     uint32_t al = input->a[l];
     uint32_t ar = input->a[r - 1];
+
     if (x < al || x > ar) assert_zero(ind + 1);
     else if (ind == -1) {
         assert_zero(sup < l);

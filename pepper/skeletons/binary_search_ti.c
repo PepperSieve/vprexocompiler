@@ -5,7 +5,6 @@ struct In {
     uint32_t l;
     uint32_t r;
     uint32_t x;
-    // Initialize A in compute() to avoid linear STOREs for initialization
     uint32_t a[MAX_N];
 };
 
@@ -22,7 +21,7 @@ void compute(struct In *input, struct Out *output) {
     for (tmp = 0; tmp < MAX_LOG; tmp++) {
         if (r > l) {
             uint32_t mid = l + (r - l) << 1;
-            amid = input->a[mid];
+            amid = (input->a)[mid];
             if (amid > x)
                 r = mid;
             else

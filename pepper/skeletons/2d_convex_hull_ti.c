@@ -41,12 +41,8 @@ void compute(struct In *input, struct Out *output) {
             ss--;
             x2 = x1;
             y2 = y1;
-            // We actually don't need this if condition,
-            // but pequin won't let me pass without adding it.
-            if (ss >= 2) {
-                x1 = output->stack_x[ss - 1];
-                y1 = output->stack_y[ss - 1];
-            }
+            x1 = output->stack_x[ss - 2];
+            y1 = output->stack_y[ss - 2];
             prod = X_PROD(x1, y1, x2, y2, next_x, next_y);
         }
         output->stack_x[ss] = next_x;

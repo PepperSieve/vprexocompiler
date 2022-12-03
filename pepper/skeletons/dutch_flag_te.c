@@ -31,6 +31,7 @@ void compute(struct In *input, struct Out *output) {
     int n = input->n;
     int k1 = input->k1;
     int k2 = input->k2;
+    int cur_color = 0;
     struct item* tmp;
     // Use count to make sure everything is only used once
     int count[MAX_N];
@@ -42,17 +43,19 @@ void compute(struct In *input, struct Out *output) {
     assert_zero(k2 >= n);
     for (i = 0; i < MAX_N; i++) {
         ord = input->ord[i];
+        // We might have no items with color 0 or color 1
+        if (i - 1 == k1) cur_color++;
+        if (i - 1 == k2) cur_color++;
         if (i < n) {
             assert_zero(ord < 0 || ord >= n);
             // Pigeonhole: if n ORD assigns n COUNT to 1, then every ORD
             // must have assigned a distinct COUNT
             count[ord] = 1;
             assert_zero(input->b[i] != input->a[ord]);
+            // Verify color
+            tmp = input->b[i];
+            assert_zero(tmp->color - cur_color);
         } else count[i] = 1;
-        tmp = input->b[i];
-        if (i <= k1) assert_zero(tmp->color);
-        else if (i <= k2) assert_zero(tmp->color - 1);
-        else if (i < n) assert_zero(tmp->color - 2);
     }
     for (i = 0; i < MAX_N; i++) {
         assert_zero(count[i] - 1);
