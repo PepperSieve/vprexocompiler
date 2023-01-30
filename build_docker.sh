@@ -2,7 +2,7 @@
 
 set -e
  
-docker build -t pequin -f docker/Dockerfile .
+docker build -t vprexocompiler -f docker/Dockerfile .
 
 # Test created image
-docker run -it pequin bash -c 'cd $PEQUIN/pepper && python2 exec.py --all 10'
+docker run -it vprexocompiler bash -c 'bash exec.sh find_min'

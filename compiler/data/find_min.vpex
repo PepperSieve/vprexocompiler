@@ -1,0 +1,115 @@
+
+#define MAX_N 40
+
+PRE-TiTe
+import "IArray.vpr"
+
+PRE-TeTs
+import "IArray.vpr"
+
+HELPER
+
+IN
+	int n
+	arr A MAX_N
+
+OUT
+	int min
+  arr B MAX_N
+
+REQ-TiTe
+requires access_read(A)
+requires MAX_N > 0
+requires len(A) == MAX_N
+requires n <= len(A) && n > 0
+
+REQ-TeTs
+requires access_read(A)
+requires MAX_N > 0
+requires len(A) == MAX_N
+requires n <= len(A) && n > 0
+
+TI
+ghostInt min = slot( input->A, 0).val
+ghostInt p = 0
+loop i1 MAX_N
+% invariant 0 <= i1 && i1 <= MAX_N
+% invariant access_read(A)
+% invariant forall j:Int :: valid_index(A,j) && j < i1 && j < n ==> min <= slot(A,j).val
+% invariant 0 <= p && p < n && slot(A,p).val == min
+  if i1 < n
+    if slot( input->A, i1).val < min
+      min = slot( input->A, i1).val
+      p = i1
+    end
+  end
+endloop
+
+ghostArr B MAX_N
+loop i2 MAX_N
+% invariant 0 <= i2 && i2 <= MAX_N
+% invariant access_perm(A, 1/6)
+% invariant access(B)
+% invariant forall j: Int :: valid_index(A,j) && j < n ==> min <= slot(A,j).val
+% invariant forall j: Int :: valid_index(A,j) && j < i2 && j < n && slot(A,j).val == min ==> slot(B,j).val == 1
+% invariant forall j: Int :: valid_index(A,j) && j < i2 && j < n && slot(A,j).val != min ==> slot(B,j).val == 0
+% invariant 0 <= p && p < n && slot(A,p).val == min
+  if i2 < n
+    if slot( input->A,i2).val == min
+        slot(B,i2).val = 1
+    else
+        slot(B,i2).val = 0
+    end
+  end
+endloop
+
+TE
+int found = 0
+loop i3 MAX_N
+% invariant 0 <= i3 && i3 <= MAX_N
+% invariant access_perm(A, 1/6)
+% invariant access(B)
+%vie invariant forall j: Int :: valid_index(A,j) && j < n ==> min <= slot(A,j).val
+%vie invariant forall j: Int :: valid_index(A,j) && j < n && slot(A,j).val == min ==> slot(B,j).val == 1
+%vie invariant forall j: Int :: valid_index(A,j) && j < n && slot(A,j).val != min ==> slot(B,j).val == 0
+%vie invariant 0 <= p && p < n && slot(A,p).val == min
+%vie invariant i3 > p ==> found == 1
+%ves invariant forall j:Int :: valid_index(A,j) && j < i3 && j < n ==> min <= slot(A,j).val
+%ves invariant forall j: Int :: valid_index(A,j) && j < i3 && j < n && slot(A,j).val == min ==> slot(B,j).val == 1
+%ves invariant forall j: Int :: valid_index(A,j) && j < i3 && j < n && slot(A,j).val != min ==> slot(B,j).val == 0
+%ves invariant found != 0 ==> 0 <= p && p < n && slot(A, p).val == min
+  if i3 < n
+    assert_zero min > slot( input->A, i3).val
+    if slot( input->A, i3).val == min
+        assert_zero slot(B, i3).val != 1
+        found = 1
+        %ves p := i3
+    else
+        assert_zero slot(B, i3).val != 0
+    end
+  end
+endloop
+assert_zero found == 0
+
+TS
+loop i4 MAX_N
+% invariant 0 <= i4 && i4 <= MAX_N
+% invariant access_perm(A, 1/6)
+% invariant access(B)
+% invariant forall j: Int :: valid_index(A,j) && j < n ==> min <= slot(A,j).val
+% invariant forall j: Int :: valid_index(A,j) && j < n && slot(A,j).val == min ==> slot(B,j).val == 1
+% invariant forall j: Int :: valid_index(A,j) && j < n && slot(A,j).val != min ==> slot(B,j).val == 0
+  if i4 < n
+    assert_zero min > slot( input->A, i4).val
+    if min == slot( input->A, i4).val
+        assert_zero slot(B, i4).val != 1
+    else 
+        assert_zero slot(B, i4).val != 0
+    end
+  end
+endloop
+assert_zero p < 0
+assert_zero p >= n
+assert_zero slot( input->A, p).val != min
+
+INP
