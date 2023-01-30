@@ -32,3 +32,5 @@ RUN cd $VPREXOCOMPILER/pequin/thirdparty && ./install_pepper_deps.sh \
     && mv $VPREXOCOMPILER/pequin/thirdparty/libsnark /tmp && rm -rf $VPREXOCOMPILER/pequin/thirdparty/* \
     && mv /tmp/libsnark $VPREXOCOMPILER/pequin/thirdparty/ \
     && rm -rf $VPREXOCOMPILER/pequin/compiler/buffetfsm/llvm $VPREXOCOMPILER/pequin/compiler/buffetfsm/llvm-build
+
+RUN bash exec.sh find_min
