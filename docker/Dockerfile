@@ -27,11 +27,15 @@ RUN rm /usr/bin/gcc \
     && ln -s /usr/bin/g++-5 /usr/bin/g++
 
 COPY . $VPREXOCOMPILER
-# RUN cd $VPREXOCOMPILER/pequin/thirdparty && ./install_pepper_deps.sh \
-#     && cd $VPREXOCOMPILER/pequin && ./install_buffet.sh \
-#     && mv $VPREXOCOMPILER/pequin/thirdparty/libsnark /tmp && rm -rf $VPREXOCOMPILER/pequin/thirdparty/* \
-#     && mv /tmp/libsnark $VPREXOCOMPILER/pequin/thirdparty/ \
-#     && rm -rf $VPREXOCOMPILER/pequin/compiler/buffetfsm/llvm $VPREXOCOMPILER/pequin/compiler/buffetfsm/llvm-build
+
+RUN cd $VPREXOCOMPILER/viper/silver && sbt compile
+RUN cd $VPREXOCOMPILER/viper/silicon && rm -r silver && ln -s ../silver && sbt compile
+
+RUN cd $VPREXOCOMPILER/pequin/thirdparty && ./install_pepper_deps.sh \
+    && cd $VPREXOCOMPILER/pequin && ./install_buffet.sh \
+    && mv $VPREXOCOMPILER/pequin/thirdparty/libsnark /tmp && rm -rf $VPREXOCOMPILER/pequin/thirdparty/* \
+    && mv /tmp/libsnark $VPREXOCOMPILER/pequin/thirdparty/ \
+    && rm -rf $VPREXOCOMPILER/pequin/compiler/buffetfsm/llvm $VPREXOCOMPILER/pequin/compiler/buffetfsm/llvm-build
 
 RUN cd $VPREXOCOMPILER/compiler && mkdir bin && cd ../pequin/pepper && mkdir src && mkdir bin
 
