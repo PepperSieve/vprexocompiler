@@ -1,6 +1,6 @@
 FROM ubuntu:bionic
 
-ENV PEQUIN /opt/pequin
+ENV VPREXOCOMPILER /opt/vprexocompiler
 
 RUN set -ex \
     && buildDeps=" \
