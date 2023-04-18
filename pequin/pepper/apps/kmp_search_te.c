@@ -1,0 +1,52 @@
+#define MAX_N 10
+#define MAX_M 2
+#include <stdint.h>
+#define slot(A, i) A[i]
+#define mat_slot(A, n, i, j) A[i * n + j]
+struct In {
+  int TXT[MAX_N];
+  int PAT[MAX_M];
+  int N[1];
+  int M[1];
+};
+struct Out {
+  int ind;
+};
+typedef struct ghost_s {
+	int values[MAX_N + 1];
+} ghost_t;
+void compute(struct In *input, struct Out *output) {
+	int ITER1; int ITER2;
+	int *public_info[4] = {input->TXT, input->PAT, input->N, input->M};
+	ghost_t ghost[1];
+	int len[4] = {MAX_N, MAX_M, 1, 1};
+	exo_compute(public_info, len, ghost, 1);
+	int B[MAX_N];
+	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
+		B[ITER1] = ghost[0].values[0 + ITER1];
+	}
+	int ind = ghost[0].values[0 + MAX_N];
+	int N = input->N[0];
+	int M = input->M[0];
+	assert_zero(ind > N - M + 1);
+	int k3; for(k3 = 0; k3 < MAX_N; k3++) {
+		if(k3 < ind) {
+			int b_i = slot(B, k3);
+			assert_zero(b_i >= M);
+			int t = slot( input->TXT, k3+b_i);
+			int p = slot( input->PAT, b_i);
+			assert_zero(t == p);
+		}
+	}
+	if(ind != N - M + 1) {
+		int k4; for(k4 = 0; k4 < MAX_M; k4++) {
+			if(k4 < M) {
+				int t = slot( input->TXT, ind+k4);
+				int p = slot( input->PAT, k4);
+				assert_zero(t != p);
+			}
+		}
+	} else {
+		ind = N;
+	}
+}

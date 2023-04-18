@@ -4,27 +4,27 @@
 #define stack_pop(level, head, next, remn) sp--; level = level_s[sp]; head = head_s[sp]; next = next_s[sp]; remn = remn_s[sp];
 
 struct In {
-    uint32_t NV;
+    int NV;
     // Number of edges provided by the USER
-    uint32_t NE;
+    int NE;
     // Record down the number of edges in the extra slot of edgeB
-    uint32_t edgeB[MAX_V + 1];
+    int edgeB[MAX_V + 1];
     // Starting vertex of each edge, provided by the USER
-    uint32_t edgeV[MAX_E];
-    uint32_t edges[MAX_E];
+    int edgeV[MAX_E];
+    int edges[MAX_E];
 
     // New_Cycl[i] = 0 ==> T[i] is the beginning of a circular path to verify a new MSC
-    uint32_t cycl[MAX_EXP]; 
+    int cycl[MAX_EXP]; 
     // Array record circular paths to prove each MSC
-    uint32_t T[MAX_EXP];
+    int T[MAX_EXP];
     // Edge array to supplement the proof for T
-    uint32_t E[MAX_EXP];
+    int E[MAX_EXP];
 };
 
 struct Out {
     // We expect the value of MSC already provided by the prover
-    uint32_t MSCnum;
-    uint32_t MSC[MAX_V];
+    int MSCnum;
+    int MSC[MAX_V];
 };
 
 void compute(struct In *input, struct Out *output) {
@@ -91,18 +91,18 @@ void compute(struct In *input, struct Out *output) {
     int ebi1 = input->edgeB[1];
     for (tmp = 0; tmp < MAX_E + MAX_V; tmp++) {
         if (i < NV) {
-                if (j == ebi1) {
+            if (j == ebi1) {
                 i++;
                 cur_msc = output->MSC[i];
                 ebi0 = ebi1;
                 if (i < NV) ebi1 = input->edgeB[i + 1];
-                }
-            else {
+            } else {
                 assert_zero(output->MSC[input->edges[j]] > cur_msc);
                 j++;
             }
         }
     }
     // ----
+    output->MSCnum = MSCnum;
 
 }

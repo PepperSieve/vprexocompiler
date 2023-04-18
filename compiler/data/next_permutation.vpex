@@ -1,0 +1,129 @@
+PREAMBLE
+
+PRE-TiTe
+
+PRE-TeTs
+
+HELPER
+
+IN
+	int n
+    arr C MAX_N
+
+OUT
+    arr D MAX_N
+
+REQ-TiTe
+
+REQ-TeTs
+
+TI
+    ghostArr CC MAX_N
+    ghostArr D MAX_N
+
+    loop k1 MAX_N
+        if k1 < n 
+            slot(CC, k1).val = slot( input->C, k1).val
+        end
+    endloop
+
+    ghostInt i = -1
+    int d_i = 0
+    int d_j = 0
+    loop k2 MAX_N-1
+        int tmp = MAX_N - (k2+1) - 1
+        if i == -1 && tmp < n - 1
+            if slot(CC, tmp).val < slot(CC, tmp+1).val
+                i = tmp
+                d_i = slot(CC, tmp).val
+            end
+        end
+    endloop
+
+    ghostInt j = -1
+    loop k3 MAX_N-1
+        int tmp = MAX_N - (k3+1)
+        if j == -1 && tmp < n
+            if slot(CC, tmp).val > d_i
+                j = tmp
+                d_j = slot(CC, tmp).val
+            end
+        end
+    endloop
+
+    slot(CC, i).val = d_j
+    slot(CC, j).val = d_i
+
+    int cor_ti = -1
+    loop k4 MAX_N
+        if k4 < n
+            if k4 <= i
+                cor_ti = k4
+            else
+                cor_ti = n - k4 + i
+            end
+            slot( D, k4).val = slot(CC, cor_ti).val
+        end
+    endloop
+
+    %exo ghostInt ci = d_i
+    %exo ghostInt cj = d_j
+    %exo ghostInt cip1 = slot( input->C, i+1).val
+    %exo ghostInt cjp1 = -1
+    %exo if j != n - 1
+    %exo     cjp1 = slot( input->C, j+1).val
+    %exo end
+
+TE
+    loop k5 MAX_N
+        if k5 < n && k5 != i && k5 != j
+            assert_zero slot(CC, k5).val != slot( input->C, k5).val
+        end
+    endloop
+
+    assert_zero 0 > i
+    assert_zero i >= j
+    assert_zero j >= n
+
+    assert_zero ci >= cip1
+    assert_zero cj <= ci
+    if j != n - 1
+        assert_zero cjp1 >= ci
+    end
+
+    loop k6 MAX_N-1
+        if k6+1 == i
+            assert_zero slot( input->C, k6+1).val - ci
+            assert_zero slot( CC, k6+1).val - cj
+        end
+        if k6+1 == i + 1
+            assert_zero slot( input->C, k6+1).val - cip1
+        end
+        if k6+1 == j
+            assert_zero slot( input->C, k6+1).val - cj
+            assert_zero slot( CC, k6+1).val - ci
+        end
+        if k6+1 == j + 1 && k6+1 != n
+            assert_zero slot( input->C, k6+1).val - cjp1
+        end
+    endloop
+
+    int cor_te = -1
+    loop k7 MAX_N
+        if k7 < n
+            if k7 <= i
+                cor_te = k7
+            else
+                cor_te = n - k7 + i
+            end
+            assert_zero slot(D, k7).val != slot(CC, cor_te).val
+
+            if k7 != 0 && k7 - 1 > i
+                assert_zero slot( input->C, k7-1).val <= slot( input->C, k7).val
+            end
+        end
+    endloop
+
+TS
+
+INP

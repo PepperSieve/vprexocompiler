@@ -3,8 +3,11 @@
 ## Basic Structure
 A `vpex` file can be divided into 11 sections, each must be present (can be empty) and must be listed as the exact order as below:
 
+### Usize Flag:
+An option line `UFLAG on` at the beginning of the file. If the line is added, we treat all variable as unsigned (`uint32_t`).
+
 ### Macro:
-This section begins at the start of the file. Each non-empty line in this section must be of the C macro format:
+Begins with a single line: `PREAMBLE`. Each non-empty line in this section must be of the C macro format:
 ```
 #define <SYM> <VAL>
 ```

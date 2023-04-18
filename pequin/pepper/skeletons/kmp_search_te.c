@@ -1,56 +1,50 @@
-// This algorithm checks the FIRST MATCH
-
-// For every comparison starting from i, either it is a match, or PAT and
-// TXT differs at some index b[i], i.e. txt[i + b] != pat[b]
-// Let the prover provide this b[i]. If it is a match, set b[i] to M.
-// The claim is that we can let the prover find this b[i] quickly by
-// slightly modifying the KMP algorithm. 
-
 #include <stdint.h>
-
+#define slot(A, i) A[i]
+#define mat_slot(A, n, i, j) A[i * n + j]
 struct In {
-    uint32_t M;
-    uint32_t N;
-    uint32_t pat[MAX_M];
-    uint32_t txt[MAX_N];
-    // ind and b[i] provided by the prover
-    // ind: index of the match
-    // If there is no match, set ind to N - M + 1
-    // If match, set b[i] to M
-    uint32_t ind;
-    uint32_t b[MAX_N];
+  int TXT[MAX_N];
+  int PAT[MAX_M];
+  int N[1];
+  int M[1];
 };
-
 struct Out {
-    uint32_t ind;
+  int ind;
 };
-
+typedef struct ghost_s {
+	int values[MAX_N + 1];
+} ghost_t;
 void compute(struct In *input, struct Out *output) {
-    int ind = input->ind;
-    int M = input->M;
-    int N = input->N;
-    int i, b, t, p;
-    assert_zero(ind < 0 || ind > N - M + 1);
-    // Verify Mismatch
-    for (i = 0; i < MAX_N; i++) {
-        if (i < ind) {
-            b = input->b[i];
-            assert_zero(b < 0 || b >= M);
-            t = input->txt[i + b];
-            p = input->pat[b];
-            assert_zero(t == p);
-        }
-    }
-
-    // Verify Match
-    if (ind != N - M + 1) {
-        for (i = 0; i < MAX_M; i++) {
-            if (i < M) {
-                t = input->txt[ind + i];
-                p = input->pat[i];
-                assert_zero(t - p);
-            }
-        }
-        output->ind = ind;
-    } else output->ind = N;
+	int ITER1; int ITER2;
+	int *public_info[4] = {input->TXT, input->PAT, input->N, input->M};
+	ghost_t ghost[1];
+	int len[4] = {MAX_N, MAX_M, 1, 1};
+	exo_compute(public_info, len, ghost, 1);
+	int B[MAX_N];
+	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
+		B[ITER1] = ghost[0].values[0 + ITER1];
+	}
+	int ind = ghost[0].values[0 + MAX_N];
+	int N = input->N[0];
+	int M = input->M[0];
+	assert_zero(ind > N - M + 1);
+	int k3; for(k3 = 0; k3 < MAX_N; k3++) {
+		if(k3 < ind) {
+			int b_i = slot(B, k3);
+			assert_zero(b_i >= M);
+			int t = slot( input->TXT, k3+b_i);
+			int p = slot( input->PAT, b_i);
+			assert_zero(t == p);
+		}
+	}
+	if(ind != N - M + 1) {
+		int k4; for(k4 = 0; k4 < MAX_M; k4++) {
+			if(k4 < M) {
+				int t = slot( input->TXT, ind+k4);
+				int p = slot( input->PAT, k4);
+				assert_zero(t != p);
+			}
+		}
+	} else {
+		ind = N;
+	}
 }

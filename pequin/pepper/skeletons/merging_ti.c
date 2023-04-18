@@ -1,45 +1,46 @@
-// Merge L sorted lists into one sorted list C
-// Original L lists are stored in a 2-D array, A
-// The length of each array is stored in an array, N
-
 #include <stdint.h>
-
-#define Arr(i, k) input->A[i * MAX_N + k]
-
+#define slot(A, i) A[i]
+#define mat_slot(A, n, i, j) A[i * n + j]
 struct In {
-    uint32_t L;
-    uint32_t N[MAX_L];
-    uint32_t A[MAX_L * MAX_N];
+  int A[MAX_L * MAX_N];
+  int N[MAX_L];
+  int L;
 };
-
 struct Out {
-    uint32_t B[MAX_L * MAX_N];
+  int B[MAX_L*MAX_N];
 };
-
 void compute(struct In *input, struct Out *output) {
-    int i[MAX_L];
-    int L = input->L;
-    int k, j, min, min_j, aji;
-    // Compute the length of B
-    int B_len = 0;
-    for (k = 0; k < MAX_L; k++) {
-        i[k] = 0;
-        if (k < L) B_len += input->N[k];
-    }
-    // Use find min to compute each B[k]
-    for (k = 0; k < MAX_L * MAX_N; k++) {
-        if (k < B_len) {
-            min = 2147483647;
-            min_j = -1;
-            for (j = 0; j < MAX_L; j++) {
-                aji == Arr(j, i[j]);
-                if (j < L && i[j] < input->N[j] && aji < min) {
-                    min = aji;
-                    min_j = j;
-                }
-            }
-            output->B[k] = min;
-            i[min_j]++;
-        }
-    }
+	int ITER1; int ITER2;
+	int L = input->L;
+	int curr[MAX_L];
+	int min = 0;
+	int kstar = 0;
+	int aki = 0;
+	int B[MAX_N*MAX_L];
+	// Compute the length of B;
+	int B_len_ti = 0;
+	int k1; for(k1 = 0; k1 < MAX_L; k1++){
+		slot(curr, k1) = 0;
+		if(k1 < L) {
+			B_len_ti = B_len_ti + slot( input->N, k1);
+		}
+	}
+	int k2; for(k2 = 0; k2 < MAX_L*MAX_N; k2++){
+		if(k2 < B_len_ti) {
+			min = 2147483647;
+			kstar = -1;
+			int k; for(k = 0; k < MAX_L; k++){
+				aki = mat_slot( input->A, MAX_N, k, slot(curr, k) );
+				if(k < L && slot(curr, k) < slot( input->N, k) && aki < min) {
+					min = aki;
+					kstar = k;
+				}
+			}
+			slot(B, k2) = min;
+			slot(curr, kstar) = slot(curr, kstar) + 1;
+		}
+	}
+	for(ITER1 = 0; ITER1 < MAX_L*MAX_N; ITER1++) {
+		output->B[ITER1] = B[ITER1];
+	}
 }

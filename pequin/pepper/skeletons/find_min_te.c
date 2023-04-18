@@ -1,32 +1,17 @@
 #include <stdint.h>
-
+#define slot(A, i) A[i]
+#define mat_slot(A, n, i, j) A[i * n + j]
 struct In {
-    uint32_t n;
-    uint32_t a[MAX_N];
-    uint32_t b[MAX_N];
-    uint32_t min;
 };
-
 struct Out {
-    uint32_t min;
 };
-
+typedef struct ghost_s {
+	int values[];
+} ghost_t;
 void compute(struct In *input, struct Out *output) {
-    uint32_t min = input->min;
-    int n = input->n;
-    int k, count;
-    count = 0;
-
-    for (k = 0; k < MAX_N; k++) {
-        if (k < n) {
-            assert_zero(min > input->a[k]);
-            if (min == input->a[k]) {
-                count++;
-                assert_zero(input->b[k] - 1);
-            }
-            else assert_zero(input->b[k]);
-        }
-    }
-
-    assert_zero(count == 0);
+	int ITER1; int ITER2;
+	int *public_info[0] = {};
+	ghost_t ghost[1];
+	int len[0] = {};
+	exo_compute(public_info, len, ghost, 1);
 }

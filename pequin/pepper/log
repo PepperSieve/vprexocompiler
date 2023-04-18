@@ -1,0 +1,8 @@
+In file included from ./storage/configurable_block_store.h:8,
+                 from common/utility.cpp:7:
+./storage/kyoto_block_store.h:4:10: fatal error: kcdirdb.h: No such file or directory
+    4 | #include <kcdirdb.h>
+      |          ^~~~~~~~~~~
+compilation terminated.
+make: *** [Makefile:154: obj/common/utility.o] Error 1
+./pepper_compile_and_setup_V.sh: line 35: bin/pepper_verifier_mst_te: No such file or directory

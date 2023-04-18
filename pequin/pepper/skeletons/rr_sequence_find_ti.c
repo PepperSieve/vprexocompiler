@@ -1,50 +1,43 @@
 #include <stdint.h>
-
-// N --> Number of elements in the sequence
-// M --> Number of recurrence relations
-
+#define slot(A, i) A[i]
+#define mat_slot(A, n, i, j) A[i * n + j]
 #define f(i, x) (2 * i + 3) * x
-
 struct In {
-    uint32_t seq_0;
-    uint32_t n;
+  int n;
+  int seq_0;
 };
-
 struct Out {
-    uint32_t seq[MAX_N];
+  int seq[MAX_N];
 };
-
 void compute(struct In *input, struct Out *output) {
-    int seq_0 = input->seq_0;
-    int n = input->n;
-    int x[M];
-    int i[M];
-    int j;
-    output->seq[0] = seq_0;
-    for (j = 0; j < M; j++) {
-        i[j] = 0;
-        x[j] = f(j, output->seq[0]);
-    }
-
-    int count;
-    // Always ensure Fk(output->seq[ik]) > output->seq[count]
-    for (count = 1; count < MAX_N; count++) {
-        if (count < n) {
-
-            // FIND_MIN
-            output->seq[count] = x[0];
-            for (j = 0; j < M; j++) {
-                if (x[j] < output->seq[count]) {
-                    output->seq[count] = x[j];
-                }
-            }
-
-            for (j = 0; j < M; j++) {
-                if (x[j] == output->seq[count]) {
-                    i[j] += 1;
-                    x[j] = f(j, output->seq[i[j]]);
-                }
-            }
-        }
-    }
+	int ITER1; int ITER2;
+	int n = input->n;
+	int seq_0 = input->seq_0;
+	int x[M];
+	int i[M];
+	int seq[MAX_N];
+	slot(seq, 0) = seq_0;
+	int j1; for(j1 = 0; j1 < M; j1++){
+		slot(i, j1) = 0;
+		slot(x, j1) = f(j1, slot(seq, 0) );
+	}
+	int count; for(count = 0; count < MAX_N-1; count++){
+		if(count+1 < n) {
+			slot(seq, count+1) = slot(x, 0);
+			int j2; for(j2 = 0; j2 < M; j2++){
+				if(slot(x, j2) < slot(seq, count+1)) {
+					slot(seq, count+1) = slot(x, j2);
+				}
+			}
+			int j3; for(j3 = 0; j3 < M; j3++){
+				if(slot(x, j3) == slot(seq, count+1)) {
+					slot(i, j3) = slot(i, j3) + 1;
+					slot(x, j3) = f(j3, slot(seq, slot(i, j3) ) );;
+				}
+			}
+		}
+	}
+	for(ITER1 = 0; ITER1 < MAX_N; ITER1++) {
+		output->seq[ITER1] = seq[ITER1];
+	}
 }

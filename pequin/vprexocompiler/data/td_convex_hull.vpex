@@ -1,0 +1,118 @@
+PREAMBLE
+
+PRE-TiTe
+
+PRE-TeTs
+
+HELPER
+#define X_PROD(x1, y1, x2, y2, x3, y3) (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1)
+
+IN
+int n
+arr X MAX_N
+arr Y MAX_N
+
+OUT
+int ss
+arr stack_x MAX_N
+arr stack_y MAX_N
+
+REQ-TiTe
+
+REQ-TeTs
+
+TI
+    ghostArr stack_x MAX_N
+    ghostArr stack_y MAX_N
+    int x1 = slot( input->X, 0).val
+    slot( stack_x, 0).val = x1
+    int y1 = slot( input->Y, 0).val
+    slot( stack_y, 0).val = y1
+    int x2 = slot( input->X, 1).val
+    slot( stack_x, 1).val = x2
+    int y2 = slot( input->Y, 1).val
+    slot( stack_y, 1).val = y2
+    int ss = 2
+    int i = 2
+
+    int next_x = slot( input->X, i).val
+    int next_y = slot( input->Y, i).val
+
+    %exo ghostArr NX MAX_N
+    %exo ghostArr NY MAX_N
+
+    int prod = X_PROD(x1, y1, x2, y2, next_x, next_y)
+    slot( stack_x, ss).val = next_x
+    slot( stack_y, ss).val = next_y
+    ss = ss + 1
+    x1 = x2
+    y1 = y2
+    x2 = next_x
+    y2 = next_y
+    i = i + 1
+
+    buffet 2*MAX_N
+    while i < n
+        next_x = slot( input->X, i).val
+        next_y = slot( input->Y, i).val
+        prod = X_PROD(x1, y1, x2, y2, next_x, next_y)
+        while prod < 0
+            ss = ss - 1
+            x2 = x1
+            y2 = y1
+            x1 = slot( stack_x, ss-2).val
+            y1 = slot( stack_y, ss-2).val
+            prod = X_PROD(x1, y1, x2, y2, next_x, next_y)
+        end
+        slot( stack_x, ss).val = next_x
+        slot( stack_y, ss).val = next_y
+        ss = ss + 1
+        x1 = x2
+        y1 = y2
+        x2 = next_x
+        y2 = next_y
+        i = i + 1
+    end
+
+TE
+    int x0 = slot( input->X, 0).val
+    int y0 = slot( input->Y, 0).val
+    int next_x = slot(NX, 0).val
+    int next_y = slot(NY, 0).val
+    int last_x = x0
+    int last_y = y0
+
+    assert_zero x0 - slot(stack_x, 0).val
+    assert_zero y0 - slot(stack_y, 0).val
+
+    int count = 0
+    
+    loop k1 MAX_N-1
+        if k1+1 < n
+            int xi = slot( input->X, k1+1).val
+            int yi = slot( input->Y, k1+1).val
+
+            if xi == next_x
+                count = count + 1
+                assert_zero slot(stack_x, count).val - xi
+                assert_zero slot(stack_y, count).val - yi
+                assert_zero yi - next_y
+                next_x = slot(NX, k1+1).val
+                next_y = slot(NY, k1+1).val
+                int prod = X_PROD(last_x, last_y, xi, yi, next_x, next_y)
+                assert_zero prod <= 0
+                last_x = xi
+                last_y = yi
+            else
+                int prod = X_PROD(last_x, last_y, xi, yi, next_x, next_y)
+                assert_zero prod >= 0
+            end
+        end
+    endloop
+
+    assert_zero x0 - next_x
+    assert_zero y0 - next_y
+
+TS
+
+INP

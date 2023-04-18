@@ -1,0 +1,136 @@
+PREAMBLE
+
+PRE-TiTe
+import "IArray.vpr"
+
+define seg_sorted(A, l, r)
+    forall k1: Int, k2: Int :: {slot(A, k1).val, slot(A, k2).val}
+        l <= k1 && k1 < k2 && k2 < r ==> slot(A, k1).val < slot(A, k2).val
+
+define in_range(i, l, r)
+    l <= i && i < r
+
+define valid_lr(array, l, r)
+    // l and r give indices within which to search the array (both inclusive)
+    0 <= l && l < r && r <= len(array)
+
+define good_search(ind, A, x, l, r)
+    // if ind != -1, then ind gives correct index for elt x
+    ind != -1 ? in_range(ind, l, r) && slot(A, ind).val == x
+        // else ind == -1, so x is not in the array
+        : forall k: Int :: {slot(A, k).val}
+            l <= k && k < r ==> x != slot(A, k).val
+
+PRE-TeTs
+import "IArray.vpr"
+
+define seg_sorted(A, l, r)
+    forall k1: Int, k2: Int :: {slot(A, k1).val, slot(A, k2).val}
+        l <= k1 && k1 < k2 && k2 < r ==> slot(A, k1).val < slot(A, k2).val
+
+define in_range(i, l, r)
+    l <= i && i < r
+
+define valid_lr(array, l, r)
+    // l and r give indices within which to search the array (both inclusive)
+    0 <= l && l < r && r <= len(array)
+
+define good_search(ind, A, x, l, r)
+    // if ind != -1, then ind gives correct index for elt x
+    ind != -1 ? in_range(ind, l, r) && slot(A, ind).val == x
+        // else ind == -1, so x is not in the array
+        : forall k: Int :: {slot(A, k).val}
+            l <= k && k < r ==> x != slot(A, k).val
+
+HELPER
+
+IN
+	int l
+	int r
+	int x
+	arr A MAX_N
+
+OUT
+	int ind
+
+REQ-TiTe
+requires 0 < MAX_LOG && 0 <= MAX_N 
+requires access_read(A)
+requires sorted(A)
+requires 0 <= l && l <= r && r <= len(A)
+
+REQ-TeTs
+requires access_read(A)
+requires valid_lr(A, l, r)
+requires seg_sorted(A, l, r)
+
+TI
+int r1 = input->r
+int l1 = input->l
+ghostInt ind = -1
+loop tmp MAX_LOG
+% invariant 0 <= tmp && tmp <= MAX_LOG
+% invariant access_read(A)
+% invariant sorted(A)
+% invariant l <= l1 && l1 <= r1 && r1 <= r
+% invariant l1 == r1 && l1 < r && slot(A,l1).val == x ==> ind != -1
+% invariant ind == -1 || l <= ind && ind < r && slot(A, ind).val == x
+% invariant l1 > l && ind == -1 ==> slot(A,l1-1).val < x 
+% invariant r1 < r ==> x < slot(A, r1).val 
+  if ind == -1 && r1 > l1
+    int mid = (l1 + r1) >> 1
+    int amid = slot( input->A, mid).val
+    if amid > x
+      r1 = mid
+    else
+      l1 = mid + 1
+    end
+    if amid == x
+      ind = mid
+    end
+  end
+endloop
+assume ind != -1 || r1 <= l1
+
+%exo ghostInt sup = 0
+%exo if ind == -1 && l < r && slot( input->A, l).val < x + 1 && x < slot( input->A, r - 1).val + 1
+%exo  sup = l1 - 1
+%exo end
+
+TE
+if l == r || x < slot( input->A, l).val || slot( input->A, r - 1).val < x
+  assert_zero ind != -1
+else
+  if ind == -1
+    assert_zero sup < l
+    assert_zero sup >= r - 1
+    int tmp1 = slot( input->A, sup).val
+    assert_zero tmp1 >= x
+    int tmp2 = slot( input->A, sup + 1).val
+    assert_zero x >= tmp2
+  else
+    assert_zero ind < l
+    assert_zero ind >= r
+    assert_zero x != slot( input->A, ind).val
+  end
+end
+
+TS
+assert_zero ind < l && ind != -1
+assert_zero ind >= r
+if ind != -1
+  assert_zero slot( input->A, ind).val != x
+else
+  loop tmp MAX_N
+  % invariant tmp >= 0
+  % invariant access_read(A) && valid_lr(A, l, r) && seg_sorted(A, l, r)
+  % invariant good_search(ind, A, x, l, r)
+    if tmp >= l
+      if tmp < r
+        assert_zero slot( input->A, tmp).val == x
+      end
+    end
+  endloop
+end
+
+INP

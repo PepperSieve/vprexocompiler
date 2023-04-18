@@ -1,63 +1,71 @@
-// We assume that the order within the same color does not matter
-// Since the standard dutch flag is also does not respect the original order 
-
 #include <stdint.h>
-
+#define slot(A, i) A[i]
+#define mat_slot(A, n, i, j) A[i * n + j]
 struct item {
-    // color: 0, 1, 2
-    int color;
-    int content;
+  int color;
+  int content;
 };
-
 struct In {
-    uint32_t n;
-    struct item* a[MAX_N];
-    // b provided by the prover
-    struct item* b[MAX_N];
-    // k1: a[k1] RED && a[k1 + 1] WHITE
-    // k2: a[k2] WHITE && a[k2 + 1] BLUE
-    // Use -1 and n-1 if some of the colors does not exist
-    uint32_t k1, k2;
-    // Extra verification that every item in a corresponds to something in b
-    uint32_t ord[MAX_N];
+  struct item* a[MAX_N];
+  int n[1];
 };
-
 struct Out {
-    struct item* b[MAX_N];
+  struct item* b[MAX_N];
 };
-
+typedef struct ghost_s {
+	int values[1 + MAX_N + 1 + MAX_N + MAX_N];
+} ghost_t;
 void compute(struct In *input, struct Out *output) {
-    int i, ord;
-    int n = input->n;
-    int k1 = input->k1;
-    int k2 = input->k2;
-    int cur_color = 0;
-    struct item* tmp;
-    // Use count to make sure everything is only used once
-    int count[MAX_N];
-    for (i = 0; i < MAX_N; i++) {
-        count[i] = 0;
-    }
-    assert_zero(k1 < -1);
-    assert_zero(k1 > k2);
-    assert_zero(k2 >= n);
-    for (i = 0; i < MAX_N; i++) {
-        ord = input->ord[i];
-        // We might have no items with color 0 or color 1
-        if (i - 1 == k1) cur_color++;
-        if (i - 1 == k2) cur_color++;
-        if (i < n) {
-            assert_zero(ord < 0 || ord >= n);
-            // Pigeonhole: if n ORD assigns n COUNT to 1, then every ORD
-            // must have assigned a distinct COUNT
-            count[ord] = 1;
-            assert_zero(input->b[i] != input->a[ord]);
-            // Verify color
-            tmp = input->b[i];
-            assert_zero(tmp->color - cur_color);
-        } else count[i] = 1;
-    }
-    for (i = 0; i < MAX_N; i++) {
-        assert_zero(count[i] - 1);
-    }
+	int ITER1; int ITER2;
+	int *public_info[1] = {input->n};
+	ghost_t ghost[1];
+	int len[1] = {1};
+	exo_compute(public_info, len, ghost, 1);
+	int k2 = ghost[0].values[0];
+	int ord[MAX_N];
+	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
+		ord[ITER1] = ghost[0].values[0 + 1 + ITER1];
+	}
+	int k1 = ghost[0].values[0 + 1 + MAX_N];
+	int bj_content[MAX_N];
+	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
+		bj_content[ITER1] = ghost[0].values[0 + 1 + MAX_N + 1 + ITER1];
+	}
+	int bj_color[MAX_N];
+	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
+		bj_color[ITER1] = ghost[0].values[0 + 1 + MAX_N + 1 + MAX_N + ITER1];
+	}
+	int n = input->n[0];
+	int cur_color = 0;
+struct item* b[MAX_N]; 
+	int count[MAX_N];
+	int it4; for(it4 = 0; it4 < MAX_N; it4++) {
+		slot(count, it4) = 0;
+b[it4]->color = bj_color[it4]; 
+b[it4]->content = bj_content[it4]; 
+	}
+	assert_zero(k1 < -1);
+	assert_zero(k1 > k2);
+	assert_zero(k2 >= n);
+	int it5; for(it5 = 0; it5 < MAX_N; it5++) {
+		int ord_j = slot(ord, it5);
+		if(it5 - 1 == k1) {
+			cur_color = cur_color + 1;
+		}
+		if(it5 - 1 == k2) {
+			cur_color = cur_color + 1;
+		}
+		if(it5 < n) {
+			assert_zero(ord_j >= n);
+			slot(count, ord_j) = 1;
+assert_zero(b[it5] != input->a[ord_j]); 
+			int tmp_color = slot(bj_color, it5);
+			assert_zero(tmp_color - cur_color);
+		} else {
+			slot(count, it5) = 1;
+		}
+	}
+	int it6; for(it6 = 0; it6 < MAX_N; it6++) {
+		assert_zero(slot(count, it6) - 1);
+	}
 }

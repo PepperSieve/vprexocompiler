@@ -127,7 +127,6 @@ while lineseg[0] != "End":
     else:
         final_te.append(T[2][ti_max_ind] / T[1][ti_max_ind])
 
-
     # Individual Case Data
     if __name__ == '__main__':
 
@@ -222,7 +221,8 @@ if __name__ == '__main__':
                         #else:
                             # if init_ts[i] < inf_h and abs(init_ts[i] - xp) >= 0.1:
                                 # plt.arrow(x = yp, y = xp - 0.1, dx = 0, dy = 0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
-                    plt.text(yp + 0.15, xp - 0.02, str('%.2f' % xp), fontsize = 10, color = 'black')
+                    xp_height = xp if xp < inf_h - 0.08 else inf_h - 0.08
+                    plt.text(yp + 0.15, xp_height - 0.02, str('%.2f' % xp), fontsize = 10, color = 'black')
                 # T_S with T/O
                 elif final_ts[i] == -1:
                     # Set bar height to inf_h
@@ -278,7 +278,7 @@ if __name__ == '__main__':
                         # else:
                             # if init_te[i] < inf_h and abs(init_te[i] - xp) >= 0.08:
                                 # plt.arrow(x = yp, y = xp - 0.1, dx = 0, dy = 0.1, length_includes_head = True, head_width=0.15, head_length=0.06, color = 'black', overhang = 1)
-                    plt.text(yp + 0.15, xp - 0.02, str('%.2f' % xp), fontsize = 10, color = 'black')
+                    plt.text(yp + 0.15, xp - 0.02, str('%.3f' % init_te[i]) if str('%.2f' % init_te[i]) == "0.00" else str('%.2f' % xp), fontsize = 10, color = 'black')
         plt.grid(color='#95a5a6', linestyle='--', linewidth=1, axis='y', alpha=0.7)
 
         y_pos = [0.4 + 1.2 * i for i in range(len(ex_names))]

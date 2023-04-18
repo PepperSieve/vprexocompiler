@@ -1,0 +1,97 @@
+PREAMBLE
+
+PRE-TiTe
+
+PRE-TeTs
+
+HELPER
+int pow(int x, int k) {
+    int y = 1;
+    int tmp;
+    for (tmp = 0; tmp < MAX_K; tmp++) {
+        if (k > 0) {
+            y *= x;
+            k--;
+        }
+    }
+    return y;
+}
+
+IN
+	int r
+    int k
+
+OUT
+    arr x MAX_R+1
+    arr y MAX_R+1
+    int out_size
+
+REQ-TiTe
+
+REQ-TeTs
+
+TI
+    int cur_x = 0
+    int cur_y = 0
+    ghostArr x MAX_R+1
+    ghostArr y MAX_R+1
+    %exo ghostArr cor_y MAX_R+1
+
+    loop tmp1 MAX_R
+        if pow(cur_x, k) + pow(cur_x, k) < r 
+            cur_x = cur_x + 1
+            cur_x = cur_x + 1
+        end
+    endloop
+    %exo ghostInt x1 = cur_x
+    int i = 0
+    loop tmp2 2*(MAX_R+1)
+        if pow(cur_x, k) <= r
+            if pow(cur_x, k) + pow(cur_y, k) > r 
+                cur_y = cur_y - 1
+            else
+                %exo slot(cor_y, cur_x-x1).val = cur_y
+                if pow(cur_x, k) + pow(cur_y, k) == r
+                    slot(x, i).val = cur_x
+                    slot(y, i).val = cur_y
+                    i = i + 1
+                    cur_x = cur_x + 1
+                else
+                    cur_x = cur_x + 1
+                end
+            end
+        end
+    endloop
+    %exo ghostInt x2 = cur_x - 1
+    int out_size = i
+
+TE
+    assert_zero x1 < 0
+    if x1 != 0
+        assert_zero 2 * pow(x1 - 1, k) >= r
+    end
+    assert_zero 2 * pow(x1, k) < r
+    assert_zero pow(x2, k) > r
+    assert_zero pow(x2 + 1, k) <= r
+
+    int count = 0
+    loop j MAX_R+1
+        if x1 + j <= x2
+            int tmp1 = pow(x1 + j, k)
+            int tmp2 = pow( slot(cor_y, j).val , k)
+
+            assert_zero tmp1 + tmp2 > r
+            assert_zero tmp1 + pow( slot(cor_y, j).val + 1, k) <= r
+
+            if tmp1 + tmp2 == r
+                assert_zero slot(x, count).val != x1 + j
+                assert_zero slot(y, count).val != slot(cor_y, j).val
+                count = count + 1
+            end
+        end
+    endloop
+
+    int out_size = count
+TS
+
+INP

@@ -1,65 +1,59 @@
 #include <stdint.h>
-
+#define slot(A, i) A[i]
+#define mat_slot(A, n, i, j) A[i * n + j]
 struct In {
-    uint32_t n;
-    uint32_t c[MAX_N];
+  int C[MAX_N];
+  int n;
 };
-
 struct Out {
-    uint32_t d[MAX_N];
+  int D[MAX_N];
 };
-
 void compute(struct In *input, struct Out *output) {
-    int n = input->n;
-    int k, tmp;
-    uint32_t cc[MAX_N];
-
-    // Copy C to CC and modify CC
-    for (k = 0; k < MAX_N; k++) {
-        if (k < n) cc[k] = input->c[k];
-    }
-
-    // Find i
-    int i = -1;
-    int d_i, d_j;
-    for (k = 1; k < MAX_N; k++) {
-        // Assume that cc has a next permutation
-        // This means that the while loop must terminate before i = 0
-        tmp = MAX_N - k - 1;
-        if (i == -1 && tmp < n - 1) {
-            if (cc[tmp] < cc[tmp + 1]) {
-                i = tmp;
-                d_i = cc[tmp];
-            }
-        }
-    }
-
-    // Find j
-    int j = -1;
-    for (k = 1; k < MAX_N; k++) {
-        tmp = MAX_N - k;
-        if (j == -1 && tmp < n) {
-            // j must be greater than i
-            if (cc[tmp] > d_i) {
-                j = tmp;
-                d_j = cc[tmp];
-            }
-        }
-    }
-
-    // Swap CC_i and CC_j
-    cc[i] = d_j; cc[j] = d_i;
-
-    // Copy CC to D. Revert D[i+1..n]
-    int cor;
-    for (k = 0; k < MAX_N; k += 1) {
-        if (k < n) {
-            if (k <= i) {
-                cor = k;
-            } else {
-                cor = n - k + i;
-            }
-            output->d[k] = cc[cor];
-        }
-    }
+	int ITER1; int ITER2;
+	int n = input->n;
+	int CC[MAX_N];
+	int D[MAX_N];
+	int k1; for(k1 = 0; k1 < MAX_N; k1++){
+		if(k1 < n) {
+			slot(CC, k1) = slot( input->C, k1);
+		}
+	}
+	int i = -1;
+	int d_i = 0;
+	int d_j = 0;
+	int k2; for(k2 = 0; k2 < MAX_N-1; k2++){
+		int tmp = MAX_N - (k2+1) - 1;
+		if(i == -1 && tmp < n - 1) {
+			if(slot(CC, tmp) < slot(CC, tmp+1)) {
+				i = tmp;
+				d_i = slot(CC, tmp);
+			}
+		}
+	}
+	int j = -1;
+	int k3; for(k3 = 0; k3 < MAX_N-1; k3++){
+		int tmp = MAX_N - (k3+1);
+		if(j == -1 && tmp < n) {
+			if(slot(CC, tmp) > d_i) {
+				j = tmp;
+				d_j = slot(CC, tmp);
+			}
+		}
+	}
+	slot(CC, i) = d_j;
+	slot(CC, j) = d_i;
+	int cor_ti = -1;
+	int k4; for(k4 = 0; k4 < MAX_N; k4++){
+		if(k4 < n) {
+			if(k4 <= i) {
+				cor_ti = k4;
+			} else {
+				cor_ti = n - k4 + i;
+			}
+			slot( D, k4) = slot(CC, cor_ti);
+		}
+	}
+	for(ITER1 = 0; ITER1 < MAX_N; ITER1++) {
+		output->D[ITER1] = D[ITER1];
+	}
 }

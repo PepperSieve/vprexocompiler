@@ -10,8 +10,16 @@ A dockerfile is provided to build a base docker image to use with projects. Just
 ./build_docker.sh
 ```
 
-## Running ##
-After compiling the dockerfile, one can run the tests using command:
+## Generating the Graph ##
+After compiling the dockerfile, one can generate the graph using command:
+
+```bash docker run -it pequin bash -c 'cd $PEQUIN && bash ./default.sh'```
+
+Note that graphs might look slightly different depending on processor speed and
+how many cases can be processed before reaching timeout limit.
+
+## Other Testings ##
+One can also test each individual benchmarks by using the command:
 
 ```bash
 docker run -it pequin bash -c 'cd $PEQUIN/pepper && python2 exec.py <benchmark> <timeout>'
@@ -39,7 +47,3 @@ Runs the Binary Search benchmark, and test terminates if last longer than 30 sec
 
 ## Debugging ##
 Warnings and errors are stored in `$PEQUIN/pepper/log`.
-
-## TODOs ##
-Currently, we have yet to finish the Viper proof for Dutch Flag, RR Sequence, and MSC.
-Data for these benchmarks are yet to be finalized.

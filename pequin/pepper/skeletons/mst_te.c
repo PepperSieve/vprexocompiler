@@ -1,91 +1,96 @@
-/* Let arr[i](t) be an access to arr[i] at time t */
-/* FIND_SET finds the root and handles path compression */
-/* This is done as detailed in the notes (using fixed-points + two permutation networks) */
 
-#define MAX_VERTICES 256
-#define MAX_EDGES 32640
-
-// This is a pseudocode for MST_Tb using pequin style.
-// This code is NOT pequin compatible! 
 #include <stdint.h>
 
+// commented lines are accounted for in disjoint set data structure
+// this just generates a base constraint count and then we can add the theoretical disjoint set test costs
+
 struct In {
-	uint32_t num_v;
-	uint32_t num_e;
-	/* (u, v, w) */
-	uint32_t edges[MAX_EDGES][3];
-	/* (u, v, w) where first MAX_VERTICES - 1 are in the tree (not sorted by weight) */
-	uint32_t sorted_edges[MAX_EDGES][3];
+  int num_v;
+  int num_e;
+  /* (u, v, w) */
+  //int edges[3 * MAX_EDGES];
+  /* (u, v, w) where first MAX_VERTICES - 1 are in the tree (not sorted by weight) */
+  int sorted_edges[3 * MAX_EDGES];
+  int parent[MAX_VERTICES];
 };
 
 struct Out {
-	/* (u, v, w) */
-	uint32_t tree[MAX_VERTICES - 1][3];
+  /* (u, v, w) */
+  int tree[3 * (MAX_VERTICES - 1)];
 };
 
+void compute(struct In * input, struct Out * output) {
+  /* Initialize disjoint set */
+  int parent[MAX_VERTICES];
+  int rank[MAX_VERTICES];
 
-void compute(struct In *input, struct Out *output) {
-	/* Initialize disjoint set */
-	uint32_t parent[MAX_VERTICES];
-	uint32_t rank[MAX_VERTICES];
+  int i;
+  /* Make Set (For all Vertices) */
+  for (i = 0; i < MAX_VERTICES; i++) {
+    if (i < input->num_v) { 
+      //parent[i] = i;
+      rank[i] = 0;
+    }
+  }
 
-	/* Make Set (For all Vertices) */
-	for (uint32_t i = 0; i < MAX_VERTICES; i++) {
-		parent[i](0) = i;
-		rank[i](0) = 0;
-	}
+  /* Assume here we have access to a sort routine (permutation network with final order check) */
+  //assert(is_permutation(edges, sorted_edges));
 
-	/* Assume here we have access to a sort routine (permutation network with final order check) */
-	assert(is_permutation(edges, sorted_edges));
+  /* Edges in Tree */
+  for(i = 0; i < MAX_VERTICES; i++) {
+    if (i < input->num_v) { 
+    /* Free, just aliased here */
+    int u = input->sorted_edges[3 * i];
+    int v = input->sorted_edges[3 * i + 1];
+    //int w = input->sorted_edges[3 * i + 2];
+    //int u = i; int v = MAX_VERTICES - i - 1; int w = i + 2;
+    //int u, v, w;
+    //int u = input->sorted_edges[3 * i];
+    /* Find Set operations handled via new memory construct */
+    //FIND_SET(u, w);
+    //FIND_SET(v, w);
 
-	i = 0;
+    int u_root = parent[u];
+    int v_root = parent[v];
 
-	/* Edges in Tree */
-	[[buffet::fsm(MAX_VERTICES - 1)]]
-	while (i < num_v - 1) {
-		/* Free, just aliased here */
-		uint32_t u = sorted_edges[i][0];
-		uint32_t v = sorted_edges[i][1];
-		uint32_t w = sorted_edges[i][2];
+    assert_zero(u_root == v_root);
 
-		/* Find Set operations handled via new memory construct */
-		FIND_SET(u, w);
-		FIND_SET(v, w);
+    /* Add edge to tree (free), just aliased */
+    //output->tree[3 * i    ] = input->sorted_edges[3 * i];
+    //output->tree[3 * i + 1] = input->sorted_edges[3 * i + 1];
+    //output->tree[3 * i + 2] = input->sorted_edges[3 * i + 2];
 
-		uint32_t u_root = parent[u](w);
-		uint32_t v_root = parent[v](w);
-		
-		assert(u_root != v_root);
+    //output->tree[3 * i    ] = u;
+    //output->tree[3 * i + 1] = v;
+    //output->tree[3 * i + 2] = w;
+    
+    /* disjoint Set Union by rank */
+    int u_rank = rank[u];
+    int v_rank = rank[v];
+    //if(u_rank < v_rank) {
+      //parent[u_root] = v_root;
+    //} else {
+      //parent[v_root] = u_root;
+    //}
+    if(u_rank == v_rank) {
+      rank[v]++;
+    }
+    }
+  }
 
-		/* Add edge to tree (free), just aliased */
-		tree[i] = sorted_edges[i];
+  /* Edges not in Tree */
+  for(i = MAX_VERTICES; i < MAX_EDGES; i++) {
+    if(i < input->num_e) {
+    /* Free, just aliased here */
+    int u = input->sorted_edges[3 * i];
+    int v = input->sorted_edges[3 * i + 1];
+    //int w = input->sorted_edges[3 * i + 2];
+    //int u = i; int v = 1;
+    /* Find Set operations handled via new memory construct */
+    //FIND_SET(u, w);
+    //FIND_SET(v, w);
 
-		/* disjoint Set Union by rank */
-		uint32_t u_rank = rank[u](w);
-		uint32_t v_rank = rank[v](w);
-		bool swap = (u_rank < v_rank);
-		uint32_t min = swap * (u_root - v_root) + v_root;
-		uint32_t max = swap * (v_root - u_root) + u_root;
-		parent[min](w) = max;
-		rank[v](w) += (u_rank == v_rank);
-
-		i++;
-	}
-
-	/* Edges not in Tree */
-	[[buffet::fsm(MAX_EDGES - MAX_VERTICES + 1)]]
-	while (i < num_e) {
-		/* Free, just aliased here */
-		uint32_t u = sorted_edges[i][0];
-		uint32_t v = sorted_edges[i][1];
-		uint32_t w = sorted_edges[i][2];
-
-		/* Find Set operations handled via new memory construct */
-		FIND_SET(u, w);
-		FIND_SET(v, w);
-		
-		assert(parent[u](w) != parent[v](w));
-
-		i++;
-	}
+    assert_zero(parent[u] == parent[v]);
+    }  
+  }
 }

@@ -1,0 +1,100 @@
+UFLAG on
+
+PREAMBLE
+
+PRE-TiTe
+
+PRE-TeTs
+
+HELPER
+#define f(i, x) (2 * i + 3) * x
+
+IN
+	int seq_0
+    int n
+
+OUT
+    arr seq MAX_N
+
+REQ-TiTe
+
+REQ-TeTs
+
+TI
+    arr x M
+    arr i M
+    ghostArr seq MAX_N
+
+    %exo ghostArr prev_k MAX_N
+    %exo ghostMat fseq M MAX_N
+
+    slot(seq, 0).val = seq_0
+    loop j1 M
+        slot(i, j1).val = 0
+        slot(x, j1).val = f(j1, slot(seq, 0).val )
+    endloop
+
+    loop count MAX_N-1
+        if count+1 < n
+
+            slot(seq, count+1).val = slot(x, 0).val
+            loop j2 M
+                if slot(x, j2).val < slot(seq, count+1).val
+                    slot(seq, count+1).val = slot(x, j2).val
+                end
+            endloop
+
+            loop j3 M
+                if slot(x, j3).val == slot(seq, count+1).val
+                    slot(i, j3).val = slot(i, j3).val + 1
+                    slot(x, j3).val = f(j3, slot(seq, slot(i, j3).val ).val );
+                end
+            endloop
+        end
+    endloop
+    %exo ghostInt seq_last = slot(seq, n-1).val
+
+TE
+    int cur_seq = slot(seq, 0).val
+    assert_zero cur_seq != seq_0
+    loop j1 M
+        assert_zero mat_slot( fseq, MAX_N, j1, 0 ).val < 0
+        if mat_slot( fseq, MAX_N, j1, 0 ).val >= n
+            assert_zero f(j1, cur_seq) <= seq_last
+        else
+            assert_zero slot(seq, mat_slot( fseq, MAX_N, j1, 0 ).val ).val != f(j1, cur_seq)
+        end
+    endloop
+
+    loop k MAX_N-1
+        if k+1 < n
+            cur_seq = slot(seq, k+1).val
+            if k+1 == n - 1
+                assert_zero cur_seq != seq_last
+            end
+            assert_zero slot(seq, k+1-1 ).val >= cur_seq
+            assert_zero slot(prev_k, k+1).val < 0
+            assert_zero slot(prev_k, k+1).val >= k+1
+            int prev = slot( seq, slot( prev_k, k+1).val ).val
+
+            int prev_count = 0
+            loop j2 M
+                if f(j2, prev) == cur_seq
+                    prev_count = prev_count + 1
+                end
+                assert_zero mat_slot( fseq, MAX_N, j2, k+1 ).val < 0
+
+                if mat_slot( fseq, MAX_N, j2, k+1 ).val >= n
+                    assert_zero f(j2, cur_seq) <= seq_last
+                else
+                    assert_zero slot(seq, mat_slot( fseq, MAX_N, j2, k+1 ).val ).val != f(j2, cur_seq)
+                end
+            endloop
+
+            assert_zero prev_count == 0
+        end
+    endloop
+
+TS
+
+INP
