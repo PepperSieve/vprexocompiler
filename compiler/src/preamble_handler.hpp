@@ -24,7 +24,7 @@ void scan_for_usize_flag(Files& files, State& state) {
 }
 
 // scan for the preamble section and emit define lines to all files
-void scan_for_preamble(Files& files, State& state) {
+void scan_for_preamble(Files& files, State& state, bool pFlag) {
   std::cout << "Scanning for preamble..." << std::endl;
   std::string line;
   while (std::getline(files.src, line)) {
@@ -33,9 +33,9 @@ void scan_for_preamble(Files& files, State& state) {
     // otherwise if the line is not empty then emit it to all non-viper files
     else if (line != "") {
       // write define to c files
-      files.tsc << line << std::endl;
-      files.tic << line << std::endl;
-      files.tec << line << std::endl;
+      if (!pFlag) { files.tsc << line << std::endl; }
+      if (!pFlag) { files.tic << line << std::endl; }
+      if (!pFlag) { files.tec << line << std::endl; }
       files.exo << line << std::endl;
       files.inp << line << std::endl;
       // interpret define as a mapping an update state for viper files

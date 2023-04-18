@@ -20,17 +20,22 @@ int main(int argc, char* argv[]) {
     return 0;
   }
   std::string file_name = std::string(argv[1]);
-  bool aFlag = (std::string(argv[1]) == "-a") || (argc == 3 && std::string(argv[2]) == "-a");
-  if (argc == 3 && std::string(argv[1]) == "-a") { file_name = std::string(argv[2]); }
+  // aFlag: use counter to get around pequin assert_zero bug
+  bool aFlag = file_name == "-a" || file_name == "-ap" || file_name == "-pa";
+  // pFlag: ignore everything in preamble
+  bool pFlag = file_name == "-p" || file_name == "-ap" || file_name == "-pa";
+  if (argc == 3 && (file_name == "-a" || file_name == "-p" || file_name == "-ap" || file_name == "-pa")) {
+    file_name = std::string(argv[2]);
+  }
   // create a Files struct to hold all the files
   Files files(file_name);
   // create a State struct to hold current state of the compiler for persistance between sections
   State state;
-  state.name = std::string(argv[1]).substr(std::string(argv[1]).rfind('/') + 1);
+  state.name = file_name.substr(file_name.rfind('/') + 1);
   state.uflag = false;
   // read src_file line by line (section by section)
   scan_for_usize_flag(files, state);
-  scan_for_preamble(files, state);
+  scan_for_preamble(files, state, pFlag);
   // write boilerplate headers of the files
   write_headers(files);
   // compile all the sections

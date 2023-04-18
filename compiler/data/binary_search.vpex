@@ -1,4 +1,6 @@
 PREAMBLE
+#define MAX_N 20
+#define MAX_LOG 5
 
 PRE-TiTe
 import "IArray.vpr"

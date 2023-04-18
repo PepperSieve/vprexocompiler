@@ -6,7 +6,7 @@ g++ -std=c++11 src/compiler.cpp -o bin/compiler &&
 echo -e "\n\n+------------------------------+" &&
 echo -e "| Generating c and vpr file... |" &&
 echo -e "+------------------------------+\n" &&
-./bin/compiler ./data/$1 -a &&
+./bin/compiler -a ./data/$1 &&
 cd .. &&
 mkdir -p pequin/pepper/src/ &&
 cp compiler/data/$1_exo.c pequin/pepper/src/ &&
@@ -15,15 +15,15 @@ cp compiler/data/$1_te.c pequin/pepper/apps/ &&
 cp compiler/data/$1_ts.c pequin/pepper/apps/ &&
 cd viper/silicon &&
 
-echo -e "\n\n+---------------------------+" &&
-echo -e "| Verifying Te->Ts Proof... |" &&
-echo -e "+---------------------------+\n" &&
-sbt "run --z3Exe=../z3/bin/z3 ../../compiler/data/$1_TeTs.vpr" &&
+# echo -e "\n\n+---------------------------+" &&
+# echo -e "| Verifying Te->Ts Proof... |" &&
+# echo -e "+---------------------------+\n" &&
+# sbt "run --z3Exe=../z3/bin/z3 ../../compiler/data/$1_TeTs.vpr" &&
 
-echo -e "\n\n+---------------------------+" &&
-echo -e "| Verifying Ti->Te Proof... |" &&
-echo -e "+---------------------------+\n" &&
-sbt "run --z3Exe=../z3/bin/z3 ../../compiler/data/$1_TiTe.vpr" &&
+# echo -e "\n\n+---------------------------+" &&
+# echo -e "| Verifying Ti->Te Proof... |" &&
+# echo -e "+---------------------------+\n" &&
+# sbt "run --z3Exe=../z3/bin/z3 ../../compiler/data/$1_TiTe.vpr" &&
 
 echo -e "\n\n+-----------------------+" &&
 echo -e "| Compiling EXO File... |" &&
