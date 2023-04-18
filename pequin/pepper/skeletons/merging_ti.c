@@ -3,8 +3,8 @@
 #define mat_slot(A, n, i, j) A[i * n + j]
 struct In {
   int A[MAX_L * MAX_N];
-  int N[MAX_L];
   int L;
+  int N[MAX_L];
 };
 struct Out {
   int B[MAX_L*MAX_N];

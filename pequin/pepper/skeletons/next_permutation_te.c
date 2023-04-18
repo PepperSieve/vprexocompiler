@@ -9,7 +9,7 @@ struct Out {
   int D[MAX_N];
 };
 typedef struct ghost_s {
-	int values[1 + 1 + 1 + 1 + 1 + 1 + MAX_N + MAX_N];
+	int values[1 + 1 + MAX_N + MAX_N + 1 + 1 + 1 + 1];
 } ghost_t;
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
@@ -17,20 +17,20 @@ void compute(struct In *input, struct Out *output) {
 	ghost_t ghost[1];
 	int len[2] = {MAX_N, 1};
 	exo_compute(public_info, len, ghost, 1);
-	int cip1 = ghost[0].values[0];
-	int cjp1 = ghost[0].values[0 + 1];
-	int cj = ghost[0].values[0 + 1 + 1];
-	int ci = ghost[0].values[0 + 1 + 1 + 1];
-	int i = ghost[0].values[0 + 1 + 1 + 1 + 1];
-	int j = ghost[0].values[0 + 1 + 1 + 1 + 1 + 1];
-	int D[MAX_N];
-	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		D[ITER1] = ghost[0].values[0 + 1 + 1 + 1 + 1 + 1 + 1 + ITER1];
-	}
+	int cjp1 = ghost[0].values[0];
+	int cip1 = ghost[0].values[0 + 1];
 	int CC[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		CC[ITER1] = ghost[0].values[0 + 1 + 1 + 1 + 1 + 1 + 1 + MAX_N + ITER1];
+		CC[ITER1] = ghost[0].values[0 + 1 + 1 + ITER1];
 	}
+	int D[MAX_N];
+	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
+		D[ITER1] = ghost[0].values[0 + 1 + 1 + MAX_N + ITER1];
+	}
+	int i = ghost[0].values[0 + 1 + 1 + MAX_N + MAX_N];
+	int ci = ghost[0].values[0 + 1 + 1 + MAX_N + MAX_N + 1];
+	int cj = ghost[0].values[0 + 1 + 1 + MAX_N + MAX_N + 1 + 1];
+	int j = ghost[0].values[0 + 1 + 1 + MAX_N + MAX_N + 1 + 1 + 1];
 	int n = input->n[0];
 	int k5; for(k5 = 0; k5 < MAX_N; k5++) {
 		if(k5 < n && k5 != i && k5 != j) {

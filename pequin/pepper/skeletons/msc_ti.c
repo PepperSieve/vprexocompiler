@@ -11,10 +11,10 @@
 #define stack_pop(level, head, next, remn) sp--; level = level_s[sp]; head = head_s[sp]; next = next_s[sp]; remn = remn_s[sp];
 struct In {
   int edges[MAX_E];
-  int edgeV[MAX_E];
   int edgeB[MAX_V+1];
-  int NE;
   int NV;
+  int edgeV[MAX_E];
+  int NE;
 };
 struct Out {
   int MSC[MAX_V];
@@ -22,8 +22,8 @@ struct Out {
 };
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
-	int NE = input->NE;
 	int NV = input->NV;
+	int NE = input->NE;
 	int MSCnum = -1;
 	int rank[MAX_V];
 	int cc[MAX_V];

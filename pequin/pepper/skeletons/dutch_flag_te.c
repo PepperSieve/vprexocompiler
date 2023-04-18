@@ -13,7 +13,7 @@ struct Out {
   struct item* b[MAX_N];
 };
 typedef struct ghost_s {
-	int values[1 + MAX_N + 1 + MAX_N + MAX_N];
+	int values[MAX_N + 1 + 1 + MAX_N + MAX_N];
 } ghost_t;
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
@@ -21,19 +21,19 @@ void compute(struct In *input, struct Out *output) {
 	ghost_t ghost[1];
 	int len[1] = {1};
 	exo_compute(public_info, len, ghost, 1);
-	int k2 = ghost[0].values[0];
 	int ord[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		ord[ITER1] = ghost[0].values[0 + 1 + ITER1];
+		ord[ITER1] = ghost[0].values[0 + ITER1];
 	}
-	int k1 = ghost[0].values[0 + 1 + MAX_N];
-	int bj_content[MAX_N];
-	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		bj_content[ITER1] = ghost[0].values[0 + 1 + MAX_N + 1 + ITER1];
-	}
+	int k2 = ghost[0].values[0 + MAX_N];
+	int k1 = ghost[0].values[0 + MAX_N + 1];
 	int bj_color[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		bj_color[ITER1] = ghost[0].values[0 + 1 + MAX_N + 1 + MAX_N + ITER1];
+		bj_color[ITER1] = ghost[0].values[0 + MAX_N + 1 + 1 + ITER1];
+	}
+	int bj_content[MAX_N];
+	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
+		bj_content[ITER1] = ghost[0].values[0 + MAX_N + 1 + 1 + MAX_N + ITER1];
 	}
 	int n = input->n[0];
 	int cur_color = 0;

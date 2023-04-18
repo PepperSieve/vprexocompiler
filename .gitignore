@@ -2,4 +2,4 @@ compiler/data/*
 !compiler/data/*.vpex
 compiler/bin/*
 .vscode/*
-pequin/pepper/src/*
+pequin/pepper/*

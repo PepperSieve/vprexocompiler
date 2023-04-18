@@ -2,10 +2,10 @@
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
 struct In {
-  int TXT[MAX_N];
   int PAT[MAX_M];
-  int N[1];
   int M[1];
+  int TXT[MAX_N];
+  int N[1];
 };
 struct Out {
   int ind;
@@ -15,17 +15,17 @@ typedef struct ghost_s {
 } ghost_t;
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
-	int *public_info[4] = {input->TXT, input->PAT, input->N, input->M};
+	int *public_info[4] = {input->PAT, input->M, input->TXT, input->N};
 	ghost_t ghost[1];
-	int len[4] = {MAX_N, MAX_M, 1, 1};
+	int len[4] = {MAX_M, 1, MAX_N, 1};
 	exo_compute(public_info, len, ghost, 1);
 	int B[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
 		B[ITER1] = ghost[0].values[0 + ITER1];
 	}
 	int ind = ghost[0].values[0 + MAX_N];
-	int N = input->N[0];
 	int M = input->M[0];
+	int N = input->N[0];
 	assert_zero(ind > N - M + 1);
 	int k3; for(k3 = 0; k3 < MAX_N; k3++) {
 		if(k3 < ind) {

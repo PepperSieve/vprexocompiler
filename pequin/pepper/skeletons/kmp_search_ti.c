@@ -2,18 +2,18 @@
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
 struct In {
-  int TXT[MAX_N];
   int PAT[MAX_M];
-  int N;
   int M;
+  int TXT[MAX_N];
+  int N;
 };
 struct Out {
   int ind;
 };
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
-	int N = input->N;
 	int M = input->M;
+	int N = input->N;
 	int lps[MAX_M];
 	int len = 0;
 	slot(lps, 0) = 0;

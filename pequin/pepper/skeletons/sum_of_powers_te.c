@@ -18,11 +18,11 @@ struct In {
 };
 struct Out {
   int out_size;
-  int y[MAX_R+1];
   int x[MAX_R+1];
+  int y[MAX_R+1];
 };
 typedef struct ghost_s {
-	int values[1 + MAX_R+1 + 1 + MAX_R+1 + MAX_R+1];
+	int values[1 + 1 + MAX_R+1 + MAX_R+1 + MAX_R+1];
 } ghost_t;
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
@@ -31,18 +31,18 @@ void compute(struct In *input, struct Out *output) {
 	int len[2] = {1, 1};
 	exo_compute(public_info, len, ghost, 1);
 	int x2 = ghost[0].values[0];
+	int x1 = ghost[0].values[0 + 1];
 	int cor_y[MAX_R+1];
 	for (ITER1 = 0; ITER1 < MAX_R+1; ITER1++) {
-		cor_y[ITER1] = ghost[0].values[0 + 1 + ITER1];
-	}
-	int x1 = ghost[0].values[0 + 1 + MAX_R+1];
-	int y[MAX_R+1];
-	for (ITER1 = 0; ITER1 < MAX_R+1; ITER1++) {
-		y[ITER1] = ghost[0].values[0 + 1 + MAX_R+1 + 1 + ITER1];
+		cor_y[ITER1] = ghost[0].values[0 + 1 + 1 + ITER1];
 	}
 	int x[MAX_R+1];
 	for (ITER1 = 0; ITER1 < MAX_R+1; ITER1++) {
-		x[ITER1] = ghost[0].values[0 + 1 + MAX_R+1 + 1 + MAX_R+1 + ITER1];
+		x[ITER1] = ghost[0].values[0 + 1 + 1 + MAX_R+1 + ITER1];
+	}
+	int y[MAX_R+1];
+	for (ITER1 = 0; ITER1 < MAX_R+1; ITER1++) {
+		y[ITER1] = ghost[0].values[0 + 1 + 1 + MAX_R+1 + MAX_R+1 + ITER1];
 	}
 	int k = input->k[0];
 	int r = input->r[0];

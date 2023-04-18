@@ -11,10 +11,10 @@
 #define stack_pop(level, head, next, remn) sp--; level = level_s[sp]; head = head_s[sp]; next = next_s[sp]; remn = remn_s[sp];
 struct In {
   int edges[MAX_E];
-  int edgeV[MAX_E];
   int edgeB[MAX_V+1];
-  int NE[1];
   int NV[1];
+  int edgeV[MAX_E];
+  int NE[1];
 };
 struct Out {
   int MSC[MAX_V];
@@ -25,36 +25,36 @@ typedef struct ghost_s {
 } ghost_t;
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
-	int *public_info[5] = {input->edges, input->edgeV, input->edgeB, input->NE, input->NV};
+	int *public_info[5] = {input->edges, input->edgeB, input->NV, input->edgeV, input->NE};
 	ghost_t ghost[1];
-	int len[5] = {MAX_E, MAX_E, MAX_V+1, 1, 1};
+	int len[5] = {MAX_E, MAX_V+1, 1, MAX_E, 1};
 	exo_compute(public_info, len, ghost, 1);
-	int E[2*MAX_V-1];
+	int next_T[2*MAX_V-1];
 	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
-		E[ITER1] = ghost[0].values[0 + ITER1];
+		next_T[ITER1] = ghost[0].values[0 + ITER1];
 	}
 	int P_outg[2*MAX_V-1];
 	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
 		P_outg[ITER1] = ghost[0].values[0 + 2*MAX_V-1 + ITER1];
 	}
-	int next_T[2*MAX_V-1];
+	int E[2*MAX_V-1];
 	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
-		next_T[ITER1] = ghost[0].values[0 + 2*MAX_V-1 + 2*MAX_V-1 + ITER1];
+		E[ITER1] = ghost[0].values[0 + 2*MAX_V-1 + 2*MAX_V-1 + ITER1];
 	}
 	int P_recv[2*MAX_V-1];
 	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
 		P_recv[ITER1] = ghost[0].values[0 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + ITER1];
 	}
-	int P_remn[2*MAX_V-1];
-	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
-		P_remn[ITER1] = ghost[0].values[0 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + ITER1];
-	}
 	int T[2*MAX_V-1];
 	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
-		T[ITER1] = ghost[0].values[0 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + ITER1];
+		T[ITER1] = ghost[0].values[0 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + ITER1];
 	}
-	int NE = input->NE[0];
+	int P_remn[2*MAX_V-1];
+	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
+		P_remn[ITER1] = ghost[0].values[0 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + 2*MAX_V-1 + ITER1];
+	}
 	int NV = input->NV[0];
+	int NE = input->NE[0];
 	int level_s[MAX_V];
 	int head_s[MAX_V];
 	int next_s[MAX_V];

@@ -18,8 +18,8 @@ struct In {
 };
 struct Out {
   int out_size;
-  int y[MAX_R+1];
   int x[MAX_R+1];
+  int y[MAX_R+1];
 };
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
@@ -55,9 +55,9 @@ void compute(struct In *input, struct Out *output) {
 	int out_size = i;
 	output->out_size = out_size;
 	for(ITER1 = 0; ITER1 < MAX_R+1; ITER1++) {
-		output->y[ITER1] = y[ITER1];
+		output->x[ITER1] = x[ITER1];
 	}
 	for(ITER1 = 0; ITER1 < MAX_R+1; ITER1++) {
-		output->x[ITER1] = x[ITER1];
+		output->y[ITER1] = y[ITER1];
 	}
 }

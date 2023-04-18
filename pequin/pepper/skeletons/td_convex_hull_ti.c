@@ -3,14 +3,14 @@
 #define mat_slot(A, n, i, j) A[i * n + j]
 #define X_PROD(x1, y1, x2, y2, x3, y3) (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1)
 struct In {
-  int X[MAX_N];
-  int Y[MAX_N];
   int n;
+  int Y[MAX_N];
+  int X[MAX_N];
 };
 struct Out {
   int stack_y[MAX_N];
-  int stack_x[MAX_N];
   int ss;
+  int stack_x[MAX_N];
 };
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
@@ -63,8 +63,8 @@ void compute(struct In *input, struct Out *output) {
 	for(ITER1 = 0; ITER1 < MAX_N; ITER1++) {
 		output->stack_y[ITER1] = stack_y[ITER1];
 	}
+	output->ss = ss;
 	for(ITER1 = 0; ITER1 < MAX_N; ITER1++) {
 		output->stack_x[ITER1] = stack_x[ITER1];
 	}
-	output->ss = ss;
 }
