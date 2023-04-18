@@ -39,4 +39,4 @@ RUN cd $VPREXOCOMPILER/pequin/thirdparty && ./install_pepper_deps.sh \
 
 RUN cd $VPREXOCOMPILER/compiler && mkdir bin && cd ../pequin/pepper && mkdir src && mkdir bin
 
-RUN cd $VPREXOCOMPILER && bash exec.sh find_min
+RUN cd $VPREXOCOMPILER && bash unifier.sh find_min
