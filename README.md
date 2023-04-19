@@ -1,5 +1,6 @@
 # Vpr-Exo Compiler #
 End-to-end automation to test `vpex` benchmarks in Viper and Pequin
+**PLEASE CLONE USING THE FLAG `-recurse-submodule`!!**
 
 ## Running  ##
 A dockerfile is provided to build a base docker image to use with projects. Just run:
