@@ -5,6 +5,7 @@ ENV VPREXOCOMPILER /opt/vprexocompiler
 RUN set -ex \
     && buildDeps=" \
     bash python2.7 libpython2.7 libpython2.7-dev openjdk-11-jdk \
+    python3 \
     golang build-essential gcc-5 g++-5 gcc-multilib g++-multilib ant  \
     ant-optional make time libboost-all-dev libgmp10 libgmp-dev   \
     zlib1g zlib1g-dev libssl-dev cmake git pkg-config \
@@ -29,7 +30,7 @@ RUN rm /usr/bin/gcc \
 COPY . $VPREXOCOMPILER
 
 RUN cd $VPREXOCOMPILER/viper/silver && sbt compile
-RUN cd $VPREXOCOMPILER/viper/silicon && rm -r silver && ln -s ../silver && sbt compile
+RUN cd $VPREXOCOMPILER/viper/silicon && ln -s ../silver && sbt compile
 
 RUN cd $VPREXOCOMPILER/pequin/thirdparty && ./install_pepper_deps.sh \
     && cd $VPREXOCOMPILER/pequin && ./install_buffet.sh \
@@ -37,6 +38,6 @@ RUN cd $VPREXOCOMPILER/pequin/thirdparty && ./install_pepper_deps.sh \
     && mv /tmp/libsnark $VPREXOCOMPILER/pequin/thirdparty/ \
     && rm -rf $VPREXOCOMPILER/pequin/compiler/buffetfsm/llvm $VPREXOCOMPILER/pequin/compiler/buffetfsm/llvm-build
 
-RUN cd $VPREXOCOMPILER/compiler && mkdir bin && cd ../pequin/pepper && mkdir src && mkdir bin
+RUN cd $VPREXOCOMPILER/compiler && mkdir -p bin && cd ../pequin/pepper && mkdir -p src && mkdir -p bin
 
-RUN cd $VPREXOCOMPILER && bash unifier.sh find_min
+RUN cd $VPREXOCOMPILER && mkdir -p graphs && bash unifier.sh find_min

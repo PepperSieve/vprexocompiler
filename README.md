@@ -19,6 +19,7 @@ To generate the constraints for each benchmark and the graph, enter command:
 ```bash
 cd $VPREXOCOMPILER && ./grapher.sh
 ```
+Generated graphs can be found in `$VPREXOCOMPILER/graphs/`.
 
 ## Generating Proofs ##
 To automatically produce a refinement proof and verify its correctness, enter command:
