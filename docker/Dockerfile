@@ -4,7 +4,7 @@ ENV VPREXOCOMPILER /opt/vprexocompiler
 
 RUN set -ex \
     && buildDeps=" \
-    bash python2.7 libpython2.7 libpython2.7-dev openjdk-11-jdk \
+    bash python2.7 libpython2.7 libpython2.7-dev openjdk-8-jdk \
     python3 \
     golang build-essential gcc-5 g++-5 gcc-multilib g++-multilib ant  \
     ant-optional make time libboost-all-dev libgmp10 libgmp-dev   \
@@ -30,7 +30,7 @@ RUN rm /usr/bin/gcc \
 COPY . $VPREXOCOMPILER
 
 RUN cd $VPREXOCOMPILER/viper/silver && sbt compile
-RUN cd $VPREXOCOMPILER/viper/silicon && ln -s ../silver && sbt compile
+RUN cd $VPREXOCOMPILER/viper/silicon && rm -r silver && ln -s ../silver && sbt compile
 
 RUN cd $VPREXOCOMPILER/pequin/thirdparty && ./install_pepper_deps.sh \
     && cd $VPREXOCOMPILER/pequin && ./install_buffet.sh \
