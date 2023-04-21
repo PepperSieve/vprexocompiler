@@ -1,59 +1,38 @@
 #define MAX_N 10
-#define MAX_L 2
+#define MAX_L 14
 #include <stdint.h>
-
-#define Arr(i, k) input->A[i * MAX_N + k]
-#define Ind(i, k) input->ind_in_b[i * MAX_N + k]
-
+#define slot(A, i) A[i]
+#define mat_slot(A, n, i, j) A[i * n + j]
 struct In {
-    uint32_t L;
-    uint32_t N[MAX_L];
-    uint32_t A[MAX_L * MAX_N];
-    // Merged list B and its length provided by the prover
-    uint32_t B[MAX_L * MAX_N];
-    uint32_t b_len;
-    // forall i, B[i] == A[k[i], j[i]]
-    uint32_t k[MAX_L * MAX_N];
-    uint32_t j[MAX_L * MAX_N];
-    // forall p, q, A[p, q] == B[ind_in_b[p, q]]
-    uint32_t ind_in_b[MAX_L * MAX_N];
+  int A[MAX_L * MAX_N];
+  int L[1];
+  int N[MAX_L];
 };
-
 struct Out {
-    uint32_t C[MAX_L * MAX_N];
+  int B[MAX_L*MAX_N];
 };
-
+typedef struct ghost_s {
+	int values[MAX_N*MAX_L + MAX_N*MAX_L + MAX_N*MAX_L];
+} ghost_t;
 void compute(struct In *input, struct Out *output) {
-    uint32_t L = input->L;
-    uint32_t b_len = input->b_len;
-    int i, nk, akj, ki, ji, nki;
-    // B is increasing and forall i, B[i] in A
-    for (i = 0; i < MAX_L * MAX_N; i++) {
-        if (i < b_len) {
-            ki = input->k[i];
-            ji = input->j[i];
-            nki = input->N[ki];
-            // Assert B is increasing
-            assert_zero(i != 0 && input->B[i - 1] >= input->B[i]);
-            // 0 <= k_i < L
-            assert_zero(0 > ki); assert_zero(ki >= L);
-            // 0 <= j_i < A[k_i].len
-            assert_zero(0 > ji); assert_zero(ji >= nki);
-            // B[i] == A[k_i, j_i]
-            assert_zero(input->B[i] != Arr(ki, ji));
-        }
-    }
-    int i1, i2, ind12;
-    // forall i1, i2, A[i1, i2] in B
-    for (i1 = 0; i1 < MAX_L; i1++) {
-        if (i1 < L) {
-            for (i2 = 0; i2 < MAX_N; i2++) {
-                if (i2 < input->N[i1]) {
-                    ind12 = Ind(i1, i2);
-                    assert_zero(0 > ind12); assert_zero(ind12 >= b_len);
-                    assert_zero(Arr(i1, i2) != input->B[ind12]);
-                }
-            }
-        }
-    }
+	int ITER1; int ITER2;
+	int *public_info[3] = {input->A, input->L, input->N};
+	ghost_t ghost[1];
+	int len[3] = {MAX_L * MAX_N, 1, MAX_L};
+	exo_compute(public_info, len, ghost, 1);
+	uint32_t J_i[MAX_N*MAX_L];
+	for (ITER1 = 0; ITER1 < MAX_N*MAX_L; ITER1++) {
+		J_i[ITER1] = ghost[0].values[0 + ITER1];
+	}
+	uint32_t B[MAX_N*MAX_L];
+	for (ITER1 = 0; ITER1 < MAX_N*MAX_L; ITER1++) {
+		B[ITER1] = ghost[0].values[0 + MAX_N*MAX_L + ITER1];
+	}
+	uint32_t K_i[MAX_N*MAX_L];
+	for (ITER1 = 0; ITER1 < MAX_N*MAX_L; ITER1++) {
+		K_i[ITER1] = ghost[0].values[0 + MAX_N*MAX_L + MAX_N*MAX_L + ITER1];
+	}
+	uint32_t L = input->L[0];
+	int accumErr = 0;
+	assert_zero(accumErr);
 }

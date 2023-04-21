@@ -1,5 +1,5 @@
-#define MAX_R 10
-#define MAX_K 1
+#define MAX_R 20
+#define MAX_K 4
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
@@ -20,8 +20,8 @@ struct In {
 };
 struct Out {
   int out_size;
-  int y[MAX_R+1];
   int x[MAX_R+1];
+  int y[MAX_R+1];
 };
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
@@ -31,7 +31,7 @@ void compute(struct In *input, struct Out *output) {
 	int cur_y = 0;
 	int x[MAX_R+1];
 	int y[MAX_R+1];
-	int tmp1; for(tmp1 = 0; tmp1 < MAX_R; tmp1++){
+	int k1; for(k1 = 0; k1 < MAX_R; k1++){
 		if(pow(cur_x, k) + pow(cur_x, k) < r) {
 			cur_x = cur_x + 1;
 			cur_x = cur_x + 1;
@@ -57,9 +57,9 @@ void compute(struct In *input, struct Out *output) {
 	int out_size = i;
 	output->out_size = out_size;
 	for(ITER1 = 0; ITER1 < MAX_R+1; ITER1++) {
-		output->y[ITER1] = y[ITER1];
+		output->x[ITER1] = x[ITER1];
 	}
 	for(ITER1 = 0; ITER1 < MAX_R+1; ITER1++) {
-		output->x[ITER1] = x[ITER1];
+		output->y[ITER1] = y[ITER1];
 	}
 }

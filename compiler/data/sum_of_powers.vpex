@@ -3,8 +3,30 @@ PREAMBLE
 #define MAX_K 4
 
 PRE-TiTe
+import "IArray.vpr"
+function pow(x: Int, k: Int): Int
+    requires k >= 0
+    ensures x >= 0 ==> pow(x, k) >= 0
+    ensures x > 0 ==> pow(x, k) > 0
+    ensures x == 0 ==> pow(x, k) == 0
+    ensures x < 0 && k % 2 == 0 ==> pow(x, k) > 0
+    ensures x < 0 && k % 2 == 1 ==> pow(x, k) < 0
+{
+    k == 0 ? 1 : k == 1 ? x : x * pow(x, k-1)
+}
 
 PRE-TeTs
+import "IArray.vpr"
+function pow(x: Int, k: Int): Int
+    requires k >= 0
+    ensures x >= 0 ==> pow(x, k) >= 0
+    ensures x > 0 ==> pow(x, k) > 0
+    ensures x == 0 ==> pow(x, k) == 0
+    ensures x < 0 && k % 2 == 0 ==> pow(x, k) > 0
+    ensures x < 0 && k % 2 == 1 ==> pow(x, k) < 0
+{
+    k == 0 ? 1 : k == 1 ? x : x * pow(x, k-1)
+}
 
 HELPER
 int pow(int x, int k) {
@@ -39,7 +61,7 @@ TI
     ghostArr y MAX_R+1
     %exo ghostArr cor_y MAX_R+1
 
-    loop tmp1 MAX_R
+    loop k1 MAX_R
         if pow(cur_x, k) + pow(cur_x, k) < r 
             cur_x = cur_x + 1
             cur_x = cur_x + 1
@@ -65,7 +87,7 @@ TI
         end
     endloop
     %exo ghostInt x2 = cur_x - 1
-    int out_size = i
+    ghostInt out_size = i
 
 TE
     assert_zero x1 < 0
@@ -76,24 +98,42 @@ TE
     assert_zero pow(x2, k) > r
     assert_zero pow(x2 + 1, k) <= r
 
-    int count = 0
+    int count_te = 0
     loop j MAX_R+1
         if x1 + j <= x2
-            int tmp1 = pow(x1 + j, k)
-            int tmp2 = pow( slot(cor_y, j).val , k)
+            int tmp1_te = pow(x1 + j, k)
+            int tmp2_te = pow( slot(cor_y, j).val , k)
 
-            assert_zero tmp1 + tmp2 > r
-            assert_zero tmp1 + pow( slot(cor_y, j).val + 1, k) <= r
+            assert_zero tmp1_te + tmp2_te > r
+            assert_zero tmp1_te + pow( slot(cor_y, j).val + 1, k) <= r
 
-            if tmp1 + tmp2 == r
-                assert_zero slot(x, count).val != x1 + j
-                assert_zero slot(y, count).val != slot(cor_y, j).val
-                count = count + 1
+            if tmp1_te + tmp2_te == r
+                assert_zero slot(x, count_te).val != x1 + j
+                assert_zero slot(y, count_te).val != slot(cor_y, j).val
+                count_te = count_te + 1
             end
         end
     endloop
+    assert_zero out_size - count_te
 
-    int out_size = count
 TS
+    int count_ts = 0
+    loop k2 MAX_R+1
+        if k2 <= r
+            loop k3 MAX_R+1
+                if k3 <= k2
+                    int tmp1_ts = pow(k2, k)
+                    int tmp2_ts = pow(k3, k)
+
+                    if tmp1_ts + tmp2_ts == r
+                        assert_zero slot( output->x, count_ts).val - k2
+                        assert_zero slot( output->y, count_ts).val - k3
+                        count_ts = count_ts + 1
+                    end
+                end
+            endloop
+        end
+    endloop
+    assert_zero out_size - count_ts
 
 INP
