@@ -29,4 +29,4 @@ To automatically produce a refinement proof and verify its correctness, enter co
 cd $VPREXOCOMPILER && ./unifier.sh <benchmark>
 ```
 Currently, fully supported benchmarks are `find_min` and `binary_search`.
-Partially supported benchmarks that can generate C codes and Viper codes without annotation are `merging`, `sum_of_powers`, and `td_convex_hull`.
+Partially supported benchmarks that can generate C codes and Viper codes without annotation are `merging`, `rr_sequence_find`, `sum_of_powers`, and `td_convex_hull`.

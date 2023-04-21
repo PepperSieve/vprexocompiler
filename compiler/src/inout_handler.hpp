@@ -319,7 +319,9 @@ void write_ghost_havocs(std::ofstream& file, State& state) {
       file << "inhale access(" << var.first << "); ";
       file << "assume len(" << var.first << ") == " << var.second.rows << std::endl;
     }
-    // TO DO: add support for matrices
+    if (var.second.type == MAT) {
+      file << "\tvar " << var.first << ": Seq[IArray] := Seq();" << std::endl;
+    }
   }
 }
 
