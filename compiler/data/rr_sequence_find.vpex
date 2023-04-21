@@ -1,6 +1,8 @@
 UFLAG on
 
 PREAMBLE
+#define MAX_N 10
+#define M 4
 
 PRE-TiTe
 

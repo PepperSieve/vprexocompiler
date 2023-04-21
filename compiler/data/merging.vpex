@@ -1,6 +1,8 @@
 UFLAG on
 
 PREAMBLE
+#define MAX_N 10
+#define MAX_L 14
 
 PRE-TiTe
 import "IArray.vpr"

@@ -1,4 +1,5 @@
 PREAMBLE
+#define MAX_N 20
 
 PRE-TiTe
 

@@ -28,4 +28,5 @@ To automatically produce a refinement proof and verify its correctness, enter co
 ```bash
 cd $VPREXOCOMPILER && ./unifier.sh <benchmark>
 ```
-Currently supported benchmarks are `find_min` and `binary_search`.
+Currently, fully supported benchmarks are `find_min` and `binary_search`.
+Partially supported benchmarks that can generate C codes and Viper codes without annotation are `td_convex_hull`.

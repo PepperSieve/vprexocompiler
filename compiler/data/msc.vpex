@@ -1,4 +1,6 @@
 PREAMBLE
+#define MAX_V 5
+#define MAX_E 10
 
 PRE-TiTe
 

@@ -33,11 +33,14 @@ std::string strip_arrow(const std::string& str) {
     return str;
   }
 }
-// Convert - to != (for asserts in viper)
-// !!! THIS DOES NOT WORK !!! NEED A SOLUTION TO FIX IT !!!
-std::string sub_to_neq(const std::string& str) {
-  // return str == "-" ? "!=" : str;
-  return str == "!=" ? "!=" : str;
+// Detect if "==" , "!=", "<", "<=", ">", ">=" ever appears in a sequence of strings
+// If not, we need to append "!= 0" at the end of the assertion
+bool is_comparison(std::vector<std::string>& tokens) {
+  for (int i = 0; i < tokens.size(); i++) {
+    if (tokens[i] == "==" || tokens[i] == "!=" || tokens[i] == "<" || tokens[i] == "<=" || tokens[i] == ">" || tokens[i] == ">=")
+      return true;
+  }
+  return false;
 }
 
 std::vector<std::string> tokens_viper_preprocess(std::vector<std::string>& old_tokens) {
@@ -435,10 +438,10 @@ void compile_Te(Files& files, State& state, bool aFlag) {
         files.vie << "assert !(";
         files.ves << "assume !(";
         for (int i = 1; i < v_tokens.size(); i++) {
-          files.vie << sub_to_neq(strip_arrow(v_tokens[i])) << (i + 1 == v_tokens.size() ? "" : " ");
-          files.ves << sub_to_neq(strip_arrow(v_tokens[i])) << (i + 1 == v_tokens.size() ? "" : " ");
+          files.vie << strip_arrow(v_tokens[i]) << (i + 1 == v_tokens.size() ? "" : " ");
+          files.ves << strip_arrow(v_tokens[i]) << (i + 1 == v_tokens.size() ? "" : " ");
         }
-        if (v_tokens.size() == 2) {
+        if (!is_comparison(v_tokens)) {
           files.vie << " != 0";
           files.ves << " != 0";
         }
@@ -608,9 +611,9 @@ void compile_Ts(Files& files, State& state, bool aFlag) {
         // handle ves
         files.ves << "assert !(";
         for (int i = 1; i < v_tokens.size(); i++) {
-          files.ves << sub_to_neq(strip_arrow(v_tokens[i])) << (i + 1 == v_tokens.size() ? "" : " ");
+          files.ves << strip_arrow(v_tokens[i]) << (i + 1 == v_tokens.size() ? "" : " ");
         }
-        if (v_tokens.size() == 2) {
+        if (!is_comparison(v_tokens)) {
           files.ves << " != 0";
         }
         files.ves << ")" << std::endl;

@@ -1,8 +1,13 @@
 PREAMBLE
+#define MAX_N 20
 
 PRE-TiTe
+import "IArray.vpr"
+define X_PROD(x1, y1, x2, y2, x3, y3) (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1)
 
 PRE-TeTs
+import "IArray.vpr"
+define X_PROD(x1, y1, x2, y2, x3, y3) (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1)
 
 HELPER
 #define X_PROD(x1, y1, x2, y2, x3, y3) (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1)
@@ -35,84 +40,135 @@ TI
     int ss = 2
     int i = 2
 
-    int next_x = slot( input->X, i).val
-    int next_y = slot( input->Y, i).val
+    int next_x_ti = slot( input->X, i).val
+    int next_y_ti = slot( input->Y, i).val
 
     %exo ghostArr NX MAX_N
     %exo ghostArr NY MAX_N
+    %exo ghostArr in_c MAX_N
 
-    int prod = X_PROD(x1, y1, x2, y2, next_x, next_y)
-    slot( stack_x, ss).val = next_x
-    slot( stack_y, ss).val = next_y
+    int prod_ti = X_PROD(x1, y1, x2, y2, next_x_ti, next_y_ti)
+    slot( stack_x, ss).val = next_x_ti
+    slot( stack_y, ss).val = next_y_ti
     ss = ss + 1
     x1 = x2
     y1 = y2
-    x2 = next_x
-    y2 = next_y
+    x2 = next_x_ti
+    y2 = next_y_ti
     i = i + 1
 
     buffet 2*MAX_N
     while i < n
-        next_x = slot( input->X, i).val
-        next_y = slot( input->Y, i).val
-        prod = X_PROD(x1, y1, x2, y2, next_x, next_y)
-        while prod < 0
+        next_x_ti = slot( input->X, i).val
+        next_y_ti = slot( input->Y, i).val
+        prod_ti = X_PROD(x1, y1, x2, y2, next_x_ti, next_y_ti)
+        while prod_ti < 0
             ss = ss - 1
             x2 = x1
             y2 = y1
             x1 = slot( stack_x, ss-2).val
             y1 = slot( stack_y, ss-2).val
-            prod = X_PROD(x1, y1, x2, y2, next_x, next_y)
+            prod_ti = X_PROD(x1, y1, x2, y2, next_x_ti, next_y_ti)
         end
-        slot( stack_x, ss).val = next_x
-        slot( stack_y, ss).val = next_y
+        slot( stack_x, ss).val = next_x_ti
+        slot( stack_y, ss).val = next_y_ti
         ss = ss + 1
         x1 = x2
         y1 = y2
-        x2 = next_x
-        y2 = next_y
+        x2 = next_x_ti
+        y2 = next_y_ti
         i = i + 1
     end
 
 TE
-    int x0 = slot( input->X, 0).val
-    int y0 = slot( input->Y, 0).val
-    int next_x = slot(NX, 0).val
-    int next_y = slot(NY, 0).val
-    int last_x = x0
-    int last_y = y0
+    int x0_te = slot( input->X, 0).val
+    int y0_te = slot( input->Y, 0).val
+    int next_x_te = slot(NX, 0).val
+    int next_y_te = slot(NY, 0).val
+    int last_x_te = x0_te
+    int last_y_te = y0_te
 
-    assert_zero x0 - slot(stack_x, 0).val
-    assert_zero y0 - slot(stack_y, 0).val
+    assert_zero x0_te - slot(stack_x, 0).val
+    assert_zero y0_te - slot(stack_y, 0).val
 
-    int count = 0
+    int count_te = 0
     
     loop k1 MAX_N-1
         if k1+1 < n
             int xi = slot( input->X, k1+1).val
             int yi = slot( input->Y, k1+1).val
 
-            if xi == next_x
-                count = count + 1
-                assert_zero slot(stack_x, count).val - xi
-                assert_zero slot(stack_y, count).val - yi
-                assert_zero yi - next_y
-                next_x = slot(NX, k1+1).val
-                next_y = slot(NY, k1+1).val
-                int prod = X_PROD(last_x, last_y, xi, yi, next_x, next_y)
-                assert_zero prod <= 0
-                last_x = xi
-                last_y = yi
+            if xi == next_x_te
+                count_te = count_te + 1
+                assert_zero slot(stack_x, count_te).val - xi
+                assert_zero slot(stack_y, count_te).val - yi
+                assert_zero yi - next_y_te
+                next_x_te = slot(NX, k1+1).val
+                next_y_te = slot(NY, k1+1).val
+                int prod_te = X_PROD(last_x_te, last_y_te, xi, yi, next_x_te, next_y_te)
+                assert_zero prod_te <= 0
+                last_x_te = xi
+                last_y_te = yi
             else
-                int prod = X_PROD(last_x, last_y, xi, yi, next_x, next_y)
-                assert_zero prod >= 0
+                int prod_te = X_PROD(last_x_te, last_y_te, xi, yi, next_x_te, next_y_te)
+                assert_zero prod_te >= 0
             end
         end
     endloop
 
-    assert_zero x0 - next_x
-    assert_zero y0 - next_y
+    assert_zero x0_te - next_x_te
+    assert_zero y0_te - next_y_te
 
 TS
+    int x0_ts = slot( input->X, 0).val
+    int y0_ts = slot( input->Y, 0).val
+
+    assert_zero x0_ts - slot(stack_x, 0).val
+    assert_zero y0_ts - slot(stack_y, 0).val
+
+    int count_ts = 0;
+
+    loop k2 MAX_N-1
+        if k2+1 < n
+            int xi = slot( input->X, k2+1).val
+            int yi = slot( input->Y, k2+1).val
+
+            int last = k2
+            int next = k2 + 2;
+            if next == MAX_N
+                next = 0
+            end
+
+            loop k3 MAX_N
+                if slot(in_c, last).val != 1
+                    last = last - 1
+                end
+                if next < n && slot(in_c, next).val != 1
+                    next = next + 1
+                end
+            endloop
+
+            if next == n
+                next = 0
+            end
+
+            int last_x_ts = slot( input->X, last).val
+            int last_y_ts = slot( input->Y, last).val
+            int next_x_ts = slot( input->X, next).val
+            int next_y_ts = slot( input->Y, next).val
+            int prod_ts = X_PROD(last_x_ts, last_y_ts, xi, yi, next_x_ts, next_y_ts)
+
+            if slot(in_c, k2+1).val == 1
+                count_ts = count_ts + 1
+                assert_zero slot(stack_x, count_ts).val - xi
+                assert_zero slot(stack_y, count_ts).val - yi
+                assert_zero prod_ts <= 0
+            else
+                assert_zero prod_ts >= 0
+            end
+        end
+    endloop
+
+    int ss = count_ts + 1
 
 INP
