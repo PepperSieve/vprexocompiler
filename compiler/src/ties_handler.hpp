@@ -555,6 +555,18 @@ void compile_Ts(Files& files, State& state, bool aFlag) {
           files.tsc << strip_dotval(tokens[i]) << (i + 1 == tokens.size() ? "" : " ");
         }
         files.tsc << ";" << std::endl;
+      } else if (tokens[0] == "arr") {
+        // handle ves
+        files.ves << "var " << tokens[1] << ": IArray; ";
+        files.ves << "inhale access(" << tokens[1] << "); ";
+        files.ves << "assume len(" << tokens[1] << ") == " << tokens[2] << std::endl;
+        // handle tsc
+        if (state.uflag) {
+          files.tsc << "uint32_t ";
+        } else {
+          files.tsc << "int ";
+        }
+        files.tsc << tokens[1] << "[" << tokens[2] << "];" << std::endl;
       } else if (tokens[0] == "havoc") {
         // handle ves
         files.ves << "var " << tokens[1] << ": Int" << std::endl;

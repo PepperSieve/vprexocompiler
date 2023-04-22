@@ -1,9 +1,12 @@
 PREAMBLE
-#define MAX_N 20
+#define MAX_N 10
+#define MAX_FAC 3628800
 
 PRE-TiTe
+import "IArray.vpr"
 
 PRE-TeTs
+import "IArray.vpr"
 
 HELPER
 
@@ -126,5 +129,67 @@ TE
     endloop
 
 TS
+    int is_permutation = 0
+    arr st MAX_N
+    arr cc MAX_N
+    loop k8 MAX_N
+        slot( st, k8).val = 0
+        slot( cc, k8).val = slot( input->C, k8).val
+    endloop
+
+    k8 = 1
+    loop k9 MAX_FAC
+        if k8 < n
+            if slot( st, k8).val < k8
+                if k8 % 2 == 0
+                    int tmp = slot( cc, 0).val
+                    slot( cc, 0).val = slot( cc, k8).val
+                    slot( cc, k8).val = tmp
+                else
+                    int tmp = slot( cc, slot( st, k8).val ).val
+                    slot( cc, slot( st, k8).val ).val = slot( cc, k8).val
+                    slot(cc, k8).val = tmp
+                end
+
+                int lte_c = -1
+                int ts_j = 0
+                loop k10 MAX_N
+                    if lte_c == -1 && k10 < n && slot( cc, k10).val == slot( input->C, k10).val
+                        ts_j = ts_j + 1
+                    else
+                        lte_c = 0
+                    end
+                endloop
+                if ts_j == n || slot( cc, ts_j).val < slot( input->C, ts_j).val
+                    lte_c = 1
+                end
+
+                int gte_d = -1
+                ts_j = 0
+                loop k11 MAX_N
+                    if gte_d == -1 && k11 < n && slot( cc, k11).val == slot( D, k11).val
+                        ts_j = ts_j + 1
+                    else
+                        gte_d = 0
+                    end
+                endloop
+                if ts_j == n
+                    is_permutation = 1
+                end
+                if ts_j == n || slot( cc, j).val > slot( D, j).val
+                    gte_d = 1
+                end
+
+                assert_zero lte_c + gte_d - 1
+                slot( st, k8).val = slot( st, k8).val + 1
+                i = 1
+            else
+                slot( st, k8).val =  0
+                i = i + 1
+            end
+        end
+    endloop
+
+    assert_zero is_permutation - 1
 
 INP
