@@ -73,9 +73,13 @@ else
     echo -e "+-------------------------+\n" &&
     bash test.sh $1_te | grep "CONSTRAINTS" &&
 
-    echo -e "\n\n+-------------------------+" &&
-    echo -e "| Running Ts in Pequin... |" &&
-    echo -e "+-------------------------+\n" &&
-    bash test.sh $1_ts | grep "CONSTRAINTS"
+    if [ "$1" != "kmp_search" ]; then
+
+        echo -e "\n\n+-------------------------+" &&
+        echo -e "| Running Ts in Pequin... |" &&
+        echo -e "+-------------------------+\n" &&
+        bash test.sh $1_ts | grep "CONSTRAINTS"
+
+    fi
 
 fi

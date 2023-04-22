@@ -3,8 +3,10 @@ PREAMBLE
 #define MAX_M 4
 
 PRE-TiTe
+import "IArray.vpr"
 
 PRE-TeTs
+import "IArray.vpr"
 
 HELPER
 
@@ -24,20 +26,20 @@ REQ-TeTs
 TI
     arr lps MAX_M
 
-    int len = 0
+    int l = 0
     slot(lps, 0).val = 0
 
     int i = 1
     ghostInt ind = 0
     loop k1 MAX_M*2
         if i < M
-            if slot( input->PAT, i).val == slot( input->PAT, len).val
-                len = len + 1
-                slot(lps, i).val = len
+            if slot( input->PAT, i).val == slot( input->PAT, l).val
+                l = l + 1
+                slot(lps, i).val = l
                 i = i + 1
             else
-                if len != 0
-                    len = slot(lps, len-1).val
+                if l != 0
+                    l = slot(lps, l-1).val
                 else
                     slot( lps, i).val = 0
                     i = i + 1

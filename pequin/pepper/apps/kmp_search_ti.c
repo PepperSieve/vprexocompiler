@@ -17,19 +17,19 @@ void compute(struct In *input, struct Out *output) {
 	int M = input->M;
 	int N = input->N;
 	int lps[MAX_M];
-	int len = 0;
+	int l = 0;
 	slot(lps, 0) = 0;
 	int i = 1;
 	int ind = 0;
 	int k1; for(k1 = 0; k1 < MAX_M*2; k1++){
 		if(i < M) {
-			if(slot( input->PAT, i) == slot( input->PAT, len)) {
-				len = len + 1;
-				slot(lps, i) = len;
+			if(slot( input->PAT, i) == slot( input->PAT, l)) {
+				l = l + 1;
+				slot(lps, i) = l;
 				i = i + 1;
 			} else {
-				if(len != 0) {
-					len = slot(lps, len-1);
+				if(l != 0) {
+					l = slot(lps, l-1);
 				} else {
 					slot( lps, i) = 0;
 					i = i + 1;

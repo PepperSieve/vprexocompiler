@@ -3,8 +3,10 @@ PREAMBLE
 #define MAX_E 10
 
 PRE-TiTe
+import "IArray.vpr"
 
 PRE-TeTs
+import "IArray.vpr"
 
 HELPER
 #define tv_push(x) tv[tv_sp] = x; tv_sp++;
