@@ -454,6 +454,9 @@ void compile_Te(Files& files, State& state, bool aFlag) {
           for (int i = 1; i < tokens.size(); i++) {
             files.tec << strip_dotval(tokens[i]) << (i + 1 == tokens.size() ? "" : " ");
           }
+          if (!is_comparison(v_tokens)) {
+            files.tec << " != 0";
+          }
           files.tec << ") { accumErr++; }" << std::endl;
         } else {
           files.tec << "assert_zero(";
@@ -630,11 +633,13 @@ void compile_Ts(Files& files, State& state, bool aFlag) {
         }
         files.ves << ")" << std::endl;
         // handle tsc
-        // AccumErr disabled for now for compatibility with old tests
         if (aFlag) {
           files.tsc << "if(";
           for (int i = 1; i < tokens.size(); i++) {
             files.tsc << strip_dotval(tokens[i]) << (i + 1 == tokens.size() ? "" : " ");
+          }
+          if (!is_comparison(v_tokens)) {
+            files.tsc << " != 0";
           }
           files.tsc << ") { accumErr++; }" << std::endl;
         } else {

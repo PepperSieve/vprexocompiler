@@ -1,22 +1,15 @@
 #define MAX_V 5
 #define MAX_E 10
+#define MAX_EXP 32
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
-#define tv_push(x) tv[tv_sp] = x; tv_sp++;
-#define tv_pop(x)  tv_sp--; x = tv[tv_sp];
-#define cc_push(x) cc[cc_sp] = x; cc_sp++;
-#define cc_pop(x)  cc_sp--; x = cc[cc_sp];
-#define tvb_push(x) tvb[tvb_sp] = x; tvb_sp++;
-#define tvb_pop(x) tvb_sp--; x = tvb[tvb_sp];
-#define stack_push(level, head, next, remn) level_s[sp] = level; head_s[sp] = head; next_s[sp] = next; remn_s[sp] = remn; sp++;
-#define stack_pop(level, head, next, remn) sp--; level = level_s[sp]; head = head_s[sp]; next = next_s[sp]; remn = remn_s[sp];
 struct In {
   int edges[MAX_E];
-  int edgeV[MAX_E];
   int edgeB[MAX_V+1];
-  int NE;
   int NV;
+  int edgeV[MAX_E];
+  int NE;
 };
 struct Out {
   int MSC[MAX_V];
@@ -24,8 +17,8 @@ struct Out {
 };
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
-	int NE = input->NE;
 	int NV = input->NV;
+	int NE = input->NE;
 	int MSCnum = -1;
 	int rank[MAX_V];
 	int cc[MAX_V];
@@ -50,16 +43,20 @@ void compute(struct In *input, struct Out *output) {
 		int nvc = 1;
 		slot(rank, v) = 1;
 		slot(knar, 1) = v;
-		cc_push(1);
-		tvb_push(0);
+		slot( cc, cc_sp) = 1;
+		cc_sp = cc_sp + 1;
+		slot( tvb, tvb_sp) = 0;
+		tvb_sp = tvb_sp + 1;
 		int j = slot( input->edgeB, v+1);
 		while(j > slot( input->edgeB, v)){
 			j = j - 1;
-			tv_push( slot( input->edges, j) );
+			slot( tv, tv_sp) = slot( input->edges, j);
+			tv_sp = tv_sp + 1;
 		}
 		while(cc_sp > 0){
 			while(tv_sp > slot(tvb, tvb_sp-1)){
-				tv_pop(v);
+				tv_sp = tv_sp - 1;
+				v = slot( tv, tv_sp);
 				while(slot(rank, v) > 0 && slot(cc, cc_sp-1) > slot(rank, v)){
 					cc_sp = cc_sp - 1;
 					tvb_sp = tvb_sp - 1;
@@ -69,13 +66,16 @@ void compute(struct In *input, struct Out *output) {
 					nvc = nvc + 1;
 					slot(rank, v) = nvc;
 					slot(knar, nvc) = v;
-					cc_push(nvc);
-					tvb_push(tv_sp);
+					slot( cc, cc_sp) = nvc;
+					cc_sp = cc_sp + 1;
+					slot( tvb, tvb_sp) = tv_sp;
+					tvb_sp = tvb_sp + 1;
 					j = slot( input->edgeB, v+1);
 				}
 				while(in_inner_loop == 1 && j > slot( input->edgeB, v)){
 					j = j - 1;
-					tv_push( slot( input->edges, j) );
+					slot( tv, tv_sp) = slot( input->edges, j);
+					tv_sp = tv_sp + 1;
 				}
 				in_inner_loop = 0;
 			}

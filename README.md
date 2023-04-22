@@ -45,5 +45,5 @@ Dutch Flag        | Y | Y | N | N | N
 RR Sequence       | Y | Y | Y | A | A
 Sum of Powers     | Y | Y | Y | A | A
 2D Convex HUll    | Y | Y | Y | A | A
-MSC               | Y | Y | N | N | N
+MSC               | Y | Y | Y | A | A
 MST               | N | N | N | N | N

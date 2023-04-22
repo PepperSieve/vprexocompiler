@@ -2,110 +2,122 @@
 #define MAX_E 10
 #define MAX_EXP 32
 #include <stdint.h>
-
-#define stack_push(level, head, next, remn) level_s[sp] = level; head_s[sp] = head; next_s[sp] = next; remn_s[sp] = remn; sp++;
-#define stack_pop(level, head, next, remn) sp--; level = level_s[sp]; head = head_s[sp]; next = next_s[sp]; remn = remn_s[sp];
-
+#define slot(A, i) A[i]
+#define mat_slot(A, n, i, j) A[i * n + j]
 struct In {
-    int NV;
-    // Number of edges provided by the USER
-    int NE;
-    // Record down the number of edges in the extra slot of edgeB
-    int edgeB[MAX_V + 1];
-    // Starting vertex of each edge, provided by the USER
-    int edgeV[MAX_E];
-    int edges[MAX_E];
-
-    // New_Cycl[i] = 0 ==> T[i] is the beginning of a circular path to verify a new MSC
-    int cycl[MAX_EXP]; 
-    // Array record circular paths to prove each MSC
-    int T[MAX_EXP];
-    // Edge array to supplement the proof for T
-    int E[MAX_EXP];
+  int edges[MAX_E];
+  int edgeB[MAX_V+1];
+  int NV[1];
+  int edgeV[MAX_E];
+  int NE[1];
 };
-
 struct Out {
-    // We expect the value of MSC already provided by the prover
-    int MSCnum;
-    int MSC[MAX_V];
+  int MSC[MAX_V];
+  int MSCnum;
 };
-
+typedef struct ghost_s {
+	int values[MAX_EXP + 2*MAX_V-1 + MAX_V + MAX_EXP + MAX_EXP + 2*MAX_V-1 + 1 + 2*MAX_V-1 + 2*MAX_V-1];
+} ghost_t;
 void compute(struct In *input, struct Out *output) {
-    int NV = input->NV;
-    int NE = input->NE;
-    int MSCnum = output->MSCnum;
-
-    int i, j, v;
-
-    // ----
-    // EnsureDisjoint()
-    // Part of it is incorporated into EnsureStrong()
-    // occ is used to verify that every vertex indeed appeared
-    int occ[MAX_V];
-    for (i = 0; i < MAX_V; i++) occ[i] = 0;
-    // ----
-
-    // ----
-    // EnsureStrong()
-    
-    // which MSC are we currently in? initialize to 0
-    int cur_msc = 0;
-    // Verify the first node in T is in MSC 0
-    int cur_head = input->T[0];
-    assert_zero(output->MSC[0]);
-    // First edge starts from node 0
-    assert_zero(input->edgeV[0]);
-
-    for (i = 1; i < MAX_EXP; i++) {
-        if (cur_msc < MSCnum) {
-            v = input->T[i];
-            occ[v] = 1;
-            // A new MSC is formed
-            if (input->cycl[i] == 0) {
-                // Make a new MSC
-                cur_msc++;
-                // Last edge ends at head
-                assert_zero(input->edgeB[i-1] - cur_head);
-                // Reset head
-                cur_head = v;
-            } else {
-                // Last edge ends at current node
-                assert_zero(input->edgeB[i-1] - v);
-            }
-            // Current edge starts from current node
-            if (cur_msc != MSCnum) {
-                assert_zero(input->edgeV[i] - v);
-            }
-        }
-    }
-    // ----
-
-    // Verify that every vertex appears
-    for (i = 0; i < MAX_V; i++) {
-        if (i < NV) assert_zero(occ[i] == 1);
-    }
-
-    // ----
-    // EnsureOutGoingToOlder
-    cur_msc = output->MSC[0];
-    i = 0; j = 0;
-    int tmp;
-    int ebi0 = input->edgeB[0];
-    int ebi1 = input->edgeB[1];
-    for (tmp = 0; tmp < MAX_E + MAX_V; tmp++) {
-        if (i < NV) {
-            if (j == ebi1) {
-                i++;
-                cur_msc = output->MSC[i];
-                ebi0 = ebi1;
-                if (i < NV) ebi1 = input->edgeB[i + 1];
-            } else {
-                assert_zero(output->MSC[input->edges[j]] > cur_msc);
-                j++;
-            }
-        }
-    }
-    // ----
-    output->MSCnum = MSCnum;
-
+	int ITER1; int ITER2;
+	int *public_info[5] = {input->edges, input->edgeB, input->NV, input->edgeV, input->NE};
+	ghost_t ghost[1];
+	int len[5] = {MAX_E, MAX_V+1, 1, MAX_E, 1};
+	exo_compute(public_info, len, ghost, 1);
+	int cycl[MAX_EXP];
+	for (ITER1 = 0; ITER1 < MAX_EXP; ITER1++) {
+		cycl[ITER1] = ghost[0].values[0 + ITER1];
+	}
+	int next_T[2*MAX_V-1];
+	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
+		next_T[ITER1] = ghost[0].values[0 + MAX_EXP + ITER1];
+	}
+	int MSC[MAX_V];
+	for (ITER1 = 0; ITER1 < MAX_V; ITER1++) {
+		MSC[ITER1] = ghost[0].values[0 + MAX_EXP + 2*MAX_V-1 + ITER1];
+	}
+	int T[MAX_EXP];
+	for (ITER1 = 0; ITER1 < MAX_EXP; ITER1++) {
+		T[ITER1] = ghost[0].values[0 + MAX_EXP + 2*MAX_V-1 + MAX_V + ITER1];
+	}
+	int E[MAX_EXP];
+	for (ITER1 = 0; ITER1 < MAX_EXP; ITER1++) {
+		E[ITER1] = ghost[0].values[0 + MAX_EXP + 2*MAX_V-1 + MAX_V + MAX_EXP + ITER1];
+	}
+	int P_remn[2*MAX_V-1];
+	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
+		P_remn[ITER1] = ghost[0].values[0 + MAX_EXP + 2*MAX_V-1 + MAX_V + MAX_EXP + MAX_EXP + ITER1];
+	}
+	int MSCnum = ghost[0].values[0 + MAX_EXP + 2*MAX_V-1 + MAX_V + MAX_EXP + MAX_EXP + 2*MAX_V-1];
+	int P_recv[2*MAX_V-1];
+	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
+		P_recv[ITER1] = ghost[0].values[0 + MAX_EXP + 2*MAX_V-1 + MAX_V + MAX_EXP + MAX_EXP + 2*MAX_V-1 + 1 + ITER1];
+	}
+	int P_outg[2*MAX_V-1];
+	for (ITER1 = 0; ITER1 < 2*MAX_V-1; ITER1++) {
+		P_outg[ITER1] = ghost[0].values[0 + MAX_EXP + 2*MAX_V-1 + MAX_V + MAX_EXP + MAX_EXP + 2*MAX_V-1 + 1 + 2*MAX_V-1 + ITER1];
+	}
+	int NV = input->NV[0];
+	int NE = input->NE[0];
+	int accumErr = 0;
+	int occ_ts[MAX_V];
+	int k7; for(k7 = 0; k7 < MAX_V; k7++){
+		slot( occ_ts, k7) = 0;
+	}
+	int cur_msc_ts = 0;
+	int cur_head = slot( T, 0);
+	if(slot( output->MSC, 0) != 0) { accumErr++; }
+	if(slot( input->edgeV, 0) != 0) { accumErr++; }
+	int e_ts = slot( E, cur_head);
+	if(e_ts < 0) { accumErr++; }
+	if(e_ts >= NE) { accumErr++; }
+	if(slot( input->edgeV, e_ts) - cur_head != 0) { accumErr++; }
+	int k8; for(k8 = 0; k8 < MAX_EXP-1; k8++){
+		if(cur_msc_ts < MSCnum) {
+			int v = slot( T, k8+1);
+			slot( occ_ts, v) = 1;
+			if(slot( cycl, k8+1) == 0) {
+				cur_msc_ts = cur_msc_ts + 1;
+				if(slot( input->edges, e_ts) - cur_head != 0) { accumErr++; }
+				cur_head = v;
+			} else {
+				if(slot( input->edges, e_ts) - v != 0) { accumErr++; }
+			}
+			e_ts = slot( E, v);
+			if(e_ts < 0) { accumErr++; }
+			if(e_ts >= NE) { accumErr++; }
+			if(cur_msc_ts != MSCnum) {
+				if(slot( input->edgeV, e_ts) - v != 0) { accumErr++; }
+			}
+		}
+	}
+	int count_ts = 0;
+	int k9; for(k9 = 0; k9 < MAX_V; k9++){
+		if(k9 < NV && slot(occ_ts, k9) == 1) {
+			count_ts = count_ts + 1;
+		}
+	}
+	if(count_ts != 0) { accumErr++; }
+	output->MSCnum = cur_msc_ts + 1;
+	cur_msc_ts = slot( output->MSC, 0);
+	int i_ts = 0;
+	int j_ts = 0;
+	int ebi0_ts = slot( input->edgeB, 0);
+	int ebi1_ts = slot( input->edgeB, 1);
+	int k10; for(k10 = 0; k10 < MAX_E+MAX_V; k10++){
+		if(i_ts < NV) {
+			if(j_ts == ebi1_ts) {
+				i_ts = i_ts + 1;
+				cur_msc_ts = slot( output->MSC, i_ts);
+				ebi0_ts = ebi1_ts;
+				if(i_ts < NV) {
+					ebi1_ts = slot( input->edgeB, i_ts+1);
+				}
+			} else {
+				if(slot( output->MSC, slot( input->edges, j_ts) ) > cur_msc_ts) { accumErr++; }
+				j_ts = j_ts + 1;
+			}
+		}
+	}
+	assert_zero(accumErr);
 }

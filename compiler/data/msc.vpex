@@ -1,6 +1,7 @@
 PREAMBLE
 #define MAX_V 5
 #define MAX_E 10
+#define MAX_EXP 32
 
 PRE-TiTe
 import "IArray.vpr"
@@ -9,17 +10,6 @@ PRE-TeTs
 import "IArray.vpr"
 
 HELPER
-#define tv_push(x) tv[tv_sp] = x; tv_sp++;
-#define tv_pop(x)  tv_sp--; x = tv[tv_sp];
-
-#define cc_push(x) cc[cc_sp] = x; cc_sp++;
-#define cc_pop(x)  cc_sp--; x = cc[cc_sp];
-
-#define tvb_push(x) tvb[tvb_sp] = x; tvb_sp++;
-#define tvb_pop(x) tvb_sp--; x = tvb[tvb_sp];
-
-#define stack_push(level, head, next, remn) level_s[sp] = level; head_s[sp] = head; next_s[sp] = next; remn_s[sp] = remn; sp++;
-#define stack_pop(level, head, next, remn) sp--; level = level_s[sp]; head = head_s[sp]; next = next_s[sp]; remn = remn_s[sp];
 
 IN
 int NV
@@ -37,7 +27,7 @@ REQ-TiTe
 REQ-TeTs
 
 TI
-    int MSCnum = -1
+    ghostInt MSCnum = -1
 
     arr rank MAX_V
     arr cc MAX_V
@@ -65,18 +55,22 @@ TI
         int nvc = 1
         slot(rank, v).val = 1
         slot(knar, 1).val = v
-        cc_push(1)
-        tvb_push(0)
+        slot( cc, cc_sp).val = 1
+        cc_sp = cc_sp + 1
+        slot( tvb, tvb_sp).val = 0
+        tvb_sp = tvb_sp + 1
 
         int j = slot( input->edgeB, v+1).val
         while j > slot( input->edgeB, v).val
             j = j - 1
-            tv_push( slot( input->edges, j).val )
+            slot( tv, tv_sp).val = slot( input->edges, j).val
+            tv_sp = tv_sp + 1
         end
 
         while cc_sp > 0
             while tv_sp > slot(tvb, tvb_sp-1).val
-                tv_pop(v)
+                tv_sp = tv_sp - 1
+                v = slot( tv, tv_sp).val
                 while slot(rank, v).val > 0 && slot(cc, cc_sp-1).val > slot(rank, v).val
                     cc_sp = cc_sp - 1
                     tvb_sp = tvb_sp - 1
@@ -86,13 +80,16 @@ TI
                     nvc = nvc + 1
                     slot(rank, v).val = nvc
                     slot(knar, nvc).val = v
-                    cc_push(nvc)
-                    tvb_push(tv_sp)
+                    slot( cc, cc_sp).val = nvc
+                    cc_sp = cc_sp + 1
+                    slot( tvb, tvb_sp).val = tv_sp
+                    tvb_sp = tvb_sp + 1
                     j = slot( input->edgeB, v+1).val
                 end
                 while in_inner_loop == 1 && j > slot( input->edgeB, v).val
                     j = j - 1
-                    tv_push( slot( input->edges, j).val )
+                    slot( tv, tv_sp).val = slot( input->edges, j).val
+                    tv_sp = tv_sp + 1
                 end
                 in_inner_loop = 0
             end
@@ -110,19 +107,20 @@ TI
     end
 
     MSCnum = MSCnum + 1
-    arr MSC MAX_V
+    ghostArr MSC MAX_V
     loop k2 MAX_V
         if k2 < NV
             slot(MSC, k2).val = slot(rank, k2).val - NV
         end
     endloop
 
-    %exo ghostArr T 2*MAX_V-1
+    %exo ghostArr T MAX_EXP
     %exo ghostArr P_remn 2*MAX_V-1
     %exo ghostArr P_recv 2*MAX_V-1
     %exo ghostArr P_outg 2*MAX_V-1
     %exo ghostArr next_T 2*MAX_V-1
-    %exo ghostArr E 2*MAX_V-1
+    %exo ghostArr E MAX_EXP
+    %exo ghostArr cycl MAX_EXP
 
 TE
     arr level_s MAX_V
@@ -132,22 +130,22 @@ TE
     int sp = 0
     int level = 0
 
-    arr occ MAX_V
+    arr occ_te MAX_V
     loop k3 MAX_V
-        occ[k3] = 0
+        slot( occ_te, k3).val = 0
     endloop
 
 
     int head = -1
     int next = -1
     int remn = -1
-    int cur_msc = -1
+    int cur_msc_te = -1
 
     loop k4 2*MAX_V-1
         if slot(T, k4).val < NV
 
             if level == 0
-                cur_msc = cur_msc + 1
+                cur_msc_te = cur_msc_te + 1
             end
             
             int v_recv = -1
@@ -167,8 +165,8 @@ TE
                 v_outg = slot(T, outg).val
             else
                 int v = slot(T, k4).val
-                assert_zero slot( output->MSC, v).val - cur_msc
-                slot(occ, v).val = 1
+                assert_zero slot( output->MSC, v).val - cur_msc_te
+                slot(occ_te, v).val = 1
                 v_recv = v
                 v_outg = v
                 remn = remn - 1
@@ -187,16 +185,20 @@ TE
                 else
                     next = slot(next_T, k4).val
                 end
-                int e = slot(E, k4).val
-                assert_zero e < 0
-                assert_zero e >= NE
-                assert_zero slot( input->edgeV, e).val - v_outg
-                assert_zero slot( input->edges, e).val - next
+                int e_te = slot(E, k4).val
+                assert_zero e_te < 0
+                assert_zero e_te >= NE
+                assert_zero slot( input->edgeV, e_te).val - v_outg
+                assert_zero slot( input->edges, e_te).val - next
             end
             
             if slot(T, k4).val < 0
                 if remn_last != 0
-                    stack_push(level, head, next, remn_last)
+                    slot( level_s, sp).val = level
+                    slot( head_s, sp).val = head
+                    slot( next_s, sp).val = next
+                    slot( remn_s, sp).val = remn_last
+                    sp = sp + 1
                 end
                 level = level + 1
                 head = -1
@@ -204,43 +206,112 @@ TE
             end
          
             if level != 0 && remn == 0
-                stack_pop(level, head, next, remn)
+                sp = sp - 1
+                level = slot( level_s, sp).val
+                head = slot( head_s, sp).val
+                next = slot( next_s, sp).val
+                remn = slot( remn_s, sp).val
             end
         end
     endloop
 
     assert_zero level
-    int count = 0
+    int count_te = 0
     loop k5 MAX_V
-        if k5 < NV && slot(occ, k5) == 1
-            count = count + 1
+        if k5 < NV && slot(occ_te, k5).val == 1
+            count_te = count_te + 1
         end
     endloop
-    assert_zero count
+    assert_zero count_te
 
 
-    output->MSCnum = cur_msc + 1
-    cur_msc = slot( output->MSC, 0).val
-    int i = 0
-    int j = 0
-    int ebi0 = slot( input->edgeB, 0).val
-    int ebi1 = slot( input->edgeB, 1).val
+    output->MSCnum = cur_msc_te + 1
+    cur_msc_te = slot( output->MSC, 0).val
+    int i_te = 0
+    int j_te = 0
+    int ebi0_te = slot( input->edgeB, 0).val
+    int ebi1_te = slot( input->edgeB, 1).val
     loop k6 MAX_E+MAX_V
-        if i < NV
-            if j == ebi1
-                i = i + 1
-                cur_msc = slot( output->MSC, i).val
-                ebi0 = ebi1
-                if i < NV
-                    ebi1 = slot( input->edgeB, i+1).val
+        if i_te < NV
+            if j_te == ebi1_te
+                i_te = i_te + 1
+                cur_msc_te = slot( output->MSC, i_te).val
+                ebi0_te = ebi1_te
+                if i_te < NV
+                    ebi1_te = slot( input->edgeB, i_te+1).val
                 end
             else
-                assert_zero slot( output->MSC, slot( input->edges, j).val ).val > cur_msc
-                j = j + 1
+                assert_zero slot( output->MSC, slot( input->edges, j_te).val ).val > cur_msc_te
+                j_te = j_te + 1
             end
         end
     endloop
 
 TS
+
+    arr occ_ts MAX_V
+    loop k7 MAX_V
+        slot( occ_ts, k7).val = 0
+    endloop
+
+    int cur_msc_ts = 0
+    int cur_head = slot( T, 0).val
+    assert_zero slot( output->MSC, 0).val
+    assert_zero slot( input->edgeV, 0).val
+    int e_ts = slot( E, 0).val
+    assert_zero e_ts < 0
+    assert_zero e_ts >= NE
+    assert_zero slot( input->edgeV, e_ts).val - cur_head
+
+    loop k8 MAX_EXP-1
+        if cur_msc_ts < MSCnum
+            int v = slot( T, k8+1).val
+            slot( occ_ts, v).val = 1
+
+            if slot( cycl, k8+1).val == 0
+                cur_msc_ts = cur_msc_ts + 1
+                assert_zero slot( input->edges, e_ts).val - cur_head
+                cur_head = v
+            else
+                assert_zero slot( input->edges, e_ts).val - v
+            end
+            e_ts = slot( E, v).val
+            assert_zero e_ts < 0
+            assert_zero e_ts >= NE
+            if cur_msc_ts != MSCnum
+                assert_zero slot( input->edgeV, e_ts).val - v
+            end
+        end
+    endloop
+
+    int count_ts = 0
+    loop k9 MAX_V
+        if k9 < NV && slot(occ_ts, k9).val == 1
+            count_ts = count_ts + 1
+        end
+    endloop
+    assert_zero count_ts
+
+    output->MSCnum = cur_msc_ts + 1
+    cur_msc_ts = slot( output->MSC, 0).val
+    int i_ts = 0
+    int j_ts = 0
+    int ebi0_ts = slot( input->edgeB, 0).val
+    int ebi1_ts = slot( input->edgeB, 1).val
+    loop k10 MAX_E+MAX_V
+        if i_ts < NV
+            if j_ts == ebi1_ts
+                i_ts = i_ts + 1
+                cur_msc_ts = slot( output->MSC, i_ts).val
+                ebi0_ts = ebi1_ts
+                if i_ts < NV
+                    ebi1_ts = slot( input->edgeB, i_ts+1).val
+                end
+            else
+                assert_zero slot( output->MSC, slot( input->edges, j_ts).val ).val > cur_msc_ts
+                j_ts = j_ts + 1
+            end
+        end
+    endloop
 
 INP
