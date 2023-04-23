@@ -16,7 +16,7 @@ echo -e "--\nCompiling kmp_search:"
 ./bin/compiler -p ./data/kmp_search &&
 echo -e "--\nCompiling next_permutation:"
 ./bin/compiler -p ./data/next_permutation &&
-echo -e "--\nCompiling dutch_flag:"
+echo -e "--\nCompiling dutch_flag_struct:"
 ./bin/compiler -p ./data/dutch_flag &&
 echo -e "--\nCompiling rr_sequence_find:"
 ./bin/compiler -p ./data/rr_sequence_find &&
@@ -26,6 +26,10 @@ echo -e "--\nCompiling 2d_convex_hull:"
 ./bin/compiler -p ./data/td_convex_hull &&
 echo -e "--\nCompiling msc:"
 ./bin/compiler -p ./data/msc &&
+rm -f ./data/dutch_flag_ti.c &&
+rm -f ./data/dutch_flag_te.c &&
+mv ./data/dutch_flag_struct_ti.c ./data/dutch_flag_ti.c &&
+mv ./data/dutch_flag_struct_te.c ./data/dutch_flag_te.c &&
 cd .. &&
 cp compiler/data/*_ti.c pequin/pepper/skeletons/ &&
 cp compiler/data/*_te.c pequin/pepper/skeletons/ &&
