@@ -41,7 +41,7 @@ Merging           | Y | Y | Y | A | A
 Binary Search     | Y | Y | Y | Y | Y
 KMP Search        | Y | Y | \ | A | \
 Next Permutation  | Y | Y | Y | A | A
-Dutch Flag        | Y | Y | N | N | N
+Dutch Flag        | Y | Y | Y | A | A
 RR Sequence       | Y | Y | Y | A | A
 Sum of Powers     | Y | Y | Y | A | A
 2D Convex HUll    | Y | Y | Y | A | A

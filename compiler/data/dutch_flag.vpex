@@ -31,10 +31,14 @@ TI
     int k = n - 1
     ghostArr b_color MAX_N
     ghostArr b_content MAX_N
+    %exo ghostArr ord_in_A MAX_N
+    %exo ghostArr ord_in_B MAX_N
     loop it1 MAX_N
         if it1 < n
             slot( b_color, it1).val = slot( input->a_color, it1).val
             slot( b_content, it1).val = slot( input->a_content, it1).val
+            %exo slot( ord_in_A, it1).val = it1
+            %exo slot( ord_in_B, it1).val = it1
         end
     endloop
     int i = 0
@@ -49,6 +53,12 @@ TI
                 slot( b_content, i).val = bj_content
                 slot( b_color, j).val = tmp_color
                 slot( b_content, j).val = tmp_content
+                %exo int tmp_ord = slot( ord_in_A, i).val
+                %exo slot( ord_in_A, i).val = slot( ord_in_A, j).val
+                %exo slot( ord_in_A, j).val = tmp_ord
+                %exo tmp_ord = slot( ord_in_B, slot( ord_in_A, i).val ).val
+                %exo slot( ord_in_B, slot( ord_in_A, i).val ).val = slot( ord_in_B, slot( ord_in_A, j).val ).val
+                %exo slot( ord_in_B, slot( ord_in_A, j).val ).val = tmp_ord
                 i = i + 1
                 j = j + 1
             else 
@@ -57,6 +67,12 @@ TI
                     slot( b_content, j).val = slot( b_content, k).val
                     slot( b_color, k).val = bj_color
                     slot( b_content, k).val = bj_content
+                    %exo int tmp_ord = slot( ord_in_A, j).val
+                    %exo slot( ord_in_A, j).val = slot( ord_in_A, k).val
+                    %exo slot( ord_in_A, k).val = tmp_ord
+                    %exo tmp_ord = slot( ord_in_B, slot( ord_in_A, j).val ).val
+                    %exo slot( ord_in_B, slot( ord_in_A, j).val ).val = slot( ord_in_B, slot( ord_in_A, k).val ).val
+                    %exo slot( ord_in_B, slot( ord_in_A, k).val ).val = tmp_ord
                     k = k - 1
                 else
                     j = j + 1
@@ -65,10 +81,8 @@ TI
         end
     endloop
 
-    %exo ghostInt k1 = 0
-    %exo ghostInt k2 = 0
-    %exo ghostArr ord_in_A MAX_N
-    %exo ghostArr ord_in_B MAX_N
+    %exo ghostInt k1 = i - 1
+    %exo ghostInt k2 = j - 1
 
 TE
     int cur_color = 0
@@ -90,7 +104,7 @@ TE
         end
         if it5 < n
             assert_zero ord_j >= n
-            slot(count, ord_j).val = 1
+            slot( count, ord_j).val = 1
             assert_zero slot( b_color, it5).val != slot( input->a_color, ord_j).val
             assert_zero slot( b_content, it5).val != slot( input->a_content, ord_j).val
 

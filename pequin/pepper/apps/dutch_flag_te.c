@@ -16,7 +16,7 @@ struct Out {
   int b_color[MAX_N];
 };
 typedef struct ghost_s {
-	int values[MAX_N + 1 + 1 + MAX_N + MAX_N + MAX_N];
+	int values[1 + 1 + MAX_N + MAX_N + MAX_N + MAX_N];
 } ghost_t;
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
@@ -24,23 +24,23 @@ void compute(struct In *input, struct Out *output) {
 	ghost_t ghost[1];
 	int len[3] = {MAX_N, 1, MAX_N};
 	exo_compute(public_info, len, ghost, 1);
+	int k2 = ghost[0].values[0];
+	int k1 = ghost[0].values[0 + 1];
 	int ord_in_B[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		ord_in_B[ITER1] = ghost[0].values[0 + ITER1];
+		ord_in_B[ITER1] = ghost[0].values[0 + 1 + 1 + ITER1];
 	}
-	int k2 = ghost[0].values[0 + MAX_N];
-	int k1 = ghost[0].values[0 + MAX_N + 1];
 	int ord_in_A[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		ord_in_A[ITER1] = ghost[0].values[0 + MAX_N + 1 + 1 + ITER1];
+		ord_in_A[ITER1] = ghost[0].values[0 + 1 + 1 + MAX_N + ITER1];
 	}
 	int b_color[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		b_color[ITER1] = ghost[0].values[0 + MAX_N + 1 + 1 + MAX_N + ITER1];
+		b_color[ITER1] = ghost[0].values[0 + 1 + 1 + MAX_N + MAX_N + ITER1];
 	}
 	int b_content[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		b_content[ITER1] = ghost[0].values[0 + MAX_N + 1 + 1 + MAX_N + MAX_N + ITER1];
+		b_content[ITER1] = ghost[0].values[0 + 1 + 1 + MAX_N + MAX_N + MAX_N + ITER1];
 	}
 	int n = input->n[0];
 	int accumErr = 0;
@@ -62,7 +62,7 @@ void compute(struct In *input, struct Out *output) {
 		}
 		if(it5 < n) {
 			if(ord_j >= n) { accumErr++; }
-			slot(count, ord_j) = 1;
+			slot( count, ord_j) = 1;
 			if(slot( b_color, it5) != slot( input->a_color, ord_j)) { accumErr++; }
 			if(slot( b_content, it5) != slot( input->a_content, ord_j)) { accumErr++; }
 			int tmp_color = slot( b_color, it5);
