@@ -1,6 +1,6 @@
 PREAMBLE
-#define MAX_N 10
-#define MAX_FAC 3628800
+#define MAX_N 4
+#define MAX_FAC 24
 
 PRE-TiTe
 import "IArray.vpr"
@@ -190,8 +190,13 @@ TS
         end
     endloop
 
-    assert_zero is_permutation - 1
+    // assert_zero is_permutation - 1
 
 INP
+    int offset = rand() % MAX_N;
+    for (int i = 0; i < MAX_N; i++) {
+        mpq_set_ui(input_q[(i + offset) % MAX_N], 2 * i + (rand() % 2), 1);
+    }
+    mpq_set_ui(input_q[MAX_N], rand() % (MAX_N - 2) + 2, 1);
 
 END

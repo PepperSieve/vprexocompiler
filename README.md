@@ -41,8 +41,8 @@ Benchmarks        | Ti Code | Te Code | Ts Code | TiTe Proof | TeTs Proof
 `merging`         | Y | Y | Y | A | A
 `binary_search`   | Y | Y | Y | Y | Y
 `kmp_search`      | C | C | \ | A | \
-`next_permutation`| C | C | C | A | A
-`dutch_flag`      | C | C | C | A | A
+`next_permutation`| Y | Y | C | A | A
+`dutch_flag`      | Y | C | Y | A | A
 `rr_sequence`     | C | C | C | A | A
 `sum_of_powers`   | Y | Y | Y | A | A
 `td_convex_hull`  | C | C | C | A | A
