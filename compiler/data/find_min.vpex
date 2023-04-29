@@ -116,3 +116,8 @@ assert_zero p >= n
 assert_zero slot( input->A, p).val != min
 
 INP
+    for (int i = 0; i < num_inputs; i++) {
+        mpq_set_ui(input_q[i], rand(), 1);
+    }
+
+END

@@ -2,7 +2,7 @@ UFLAG on
 
 PREAMBLE
 #define MAX_N 10
-#define MAX_L 14
+#define MAX_L 4
 
 PRE-TiTe
 import "IArray.vpr"
@@ -301,6 +301,7 @@ TI
 
     %exo ghostArr K_i MAX_N*MAX_L
     %exo ghostArr J_i MAX_N*MAX_L
+    %exo ghostMat IND MAX_N*MAX_L
 
     loop k2 MAX_L*MAX_N
         if k2 < B_len_ti
@@ -316,6 +317,7 @@ TI
             slot(B, k2).val = min
             %exo slot(K_i, k2).val = kstar
             %exo slot(J_i, k2).val = slot(curr, kstar).val
+            %exo mat_slot( IND, MAX_N, kstar, slot(curr, kstar).val ).val = k2;
             slot(curr, kstar).val = slot(curr, kstar).val + 1
         end
     endloop
@@ -342,4 +344,50 @@ TE
 
 TS
 
+    int B_len_ts = 0
+    loop k6 MAX_L
+        if k6 < L
+          B_len_ts = B_len_ts + slot( input->N, k6).val
+        end
+    endloop
+
+    loop k7 MAX_L*MAX_N
+        if k7 < B_len_ts
+            assert_zero k7 != 0 && slot( B, k7-1).val >= slot( B, k7).val
+            int ki = slot(K_i, k7).val
+            assert_zero ki >= L
+            int ji = slot(J_i, k7).val
+            int ni = slot( input->N, ki).val
+            assert_zero ji >= ni
+            int bi = slot( B, k7).val
+            assert_zero bi != mat_slot( input->A, MAX_N, ki, ji ).val
+        end
+    endloop
+
+    loop k8 MAX_L
+        if k8 < L
+            loop k9 MAX_N
+                if k9 < slot( input->N, k8).val
+                    int ind = mat_slot( IND, MAX_N, k8, k9 ).val
+                    assert_zero 0 > ind
+                    assert_zero ind >= B_len_ts
+                    assert_zero mat_slot( input->A, MAX_N, k8, k9 ).val != slot( B, ind).val
+                end
+            endloop
+        end 
+    endloop
+
+
 INP
+
+    for (int i = 0; i < MAX_L; i++) {
+        for (int j = 0; j < MAX_N; j++) {
+            mpq_set_ui(input_q[i * MAX_N + j], (2 * j + (rand() % 2)) * MAX_L + i, 1); // A
+        }
+    }
+    mpq_set_ui(input_q[MAX_L * MAX_N], rand() % MAX_L, 1); // L
+    for (int i = 1; i <= MAX_L; i++) {
+        mpq_set_ui(input_q[MAX_L * MAX_N + i], rand() % MAX_N, 1); // N
+    }
+
+END

@@ -193,3 +193,5 @@ TS
     assert_zero is_permutation - 1
 
 INP
+
+END

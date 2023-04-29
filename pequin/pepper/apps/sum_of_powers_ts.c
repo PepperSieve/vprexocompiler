@@ -58,14 +58,14 @@ void compute(struct In *input, struct Out *output) {
 					int tmp1_ts = pow(k2, k);
 					int tmp2_ts = pow(k3, k);
 					if(tmp1_ts + tmp2_ts == r) {
-						if(slot( output->x, count_ts) - k2) { accumErr++; }
-						if(slot( output->y, count_ts) - k3) { accumErr++; }
+						if(slot( output->x, count_ts) - k2 != 0) { accumErr++; }
+						if(slot( output->y, count_ts) - k3 != 0) { accumErr++; }
 						count_ts = count_ts + 1;
 					}
 				}
 			}
 		}
 	}
-	if(out_size - count_ts) { accumErr++; }
+	if(out_size - count_ts != 0) { accumErr++; }
 	assert_zero(accumErr);
 }

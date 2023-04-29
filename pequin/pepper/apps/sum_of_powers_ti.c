@@ -32,9 +32,9 @@ void compute(struct In *input, struct Out *output) {
 	int x[MAX_R+1];
 	int y[MAX_R+1];
 	int k1; for(k1 = 0; k1 < MAX_R; k1++){
-		if(pow(cur_x, k) + pow(cur_x, k) < r) {
+		if(pow(cur_x, k) + pow(cur_y, k) < r) {
 			cur_x = cur_x + 1;
-			cur_x = cur_x + 1;
+			cur_y = cur_y + 1;
 		}
 	}
 	int i = 0;

@@ -666,4 +666,20 @@ void compile_Ts(Files& files, State& state, bool aFlag) {
   if (aFlag) { files.tsc << "\tassert_zero(accumErr);" << std::endl; }
 }
 
+void compile_Inp(Files& files) {
+  std::cout << "Compiling INP..." << std::endl;
+  // read the INP section line by line
+  std::string line;
+  while (std::getline(files.src, line)) {
+    // if we hit next section then exit
+    if (line == "END") { break; }
+    // otherwise if the line is not empty then we break it into tokens and handle it based on the first token
+    else if (!isWhitespace(line)) {
+      files.inp_ti << line << std::endl;
+      files.inp_te << line << std::endl;
+      files.inp_ts << line << std::endl;
+    }
+  }
+}
+
 #endif

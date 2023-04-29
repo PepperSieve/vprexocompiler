@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
   write_headers(files);
   // compile all the sections
   compile_preamble(files);
-  compile_input(files, state);
+  compile_input(files, state, file_name);
   compile_output(files, state);
   compile_reqs(files);
   compile_Ti(files, state);
@@ -50,6 +50,7 @@ int main(int argc, char* argv[]) {
   compile_Te(files, state, aFlag);
   write_exo_emissions(files.exo, state);
   compile_Ts(files, state, aFlag);
+  compile_Inp(files);
   // TO DO, compile input generation code
   compile_inp(files, state);
   // map local variables to output variables in pequin c files

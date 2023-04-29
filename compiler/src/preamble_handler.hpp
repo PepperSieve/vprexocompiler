@@ -37,7 +37,9 @@ void scan_for_preamble(Files& files, State& state, bool pFlag) {
       if (!pFlag) { files.tic << line << std::endl; }
       if (!pFlag) { files.tec << line << std::endl; }
       files.exo << line << std::endl;
-      files.inp << line << std::endl;
+      files.inp_ti << line << std::endl;
+      files.inp_te << line << std::endl;
+      files.inp_ts << line << std::endl;
       // interpret define as a mapping an update state for viper files
       std::vector<std::string> tokens = tokenize(line);
       if (tokens[0] == "#define") {

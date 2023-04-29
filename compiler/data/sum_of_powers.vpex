@@ -62,9 +62,9 @@ TI
     %exo ghostArr cor_y MAX_R+1
 
     loop k1 MAX_R
-        if pow(cur_x, k) + pow(cur_x, k) < r 
+        if pow(cur_x, k) + pow(cur_y, k) < r 
             cur_x = cur_x + 1
-            cur_x = cur_x + 1
+            cur_y = cur_y + 1
         end
     endloop
     %exo ghostInt x1 = cur_x
@@ -72,7 +72,7 @@ TI
     loop tmp2 2*(MAX_R+1)
         if pow(cur_x, k) <= r
             if pow(cur_x, k) + pow(cur_y, k) > r 
-                cur_y = cur_y - 1
+               cur_y = cur_y - 1
             else
                 %exo slot(cor_y, cur_x-x1).val = cur_y
                 if pow(cur_x, k) + pow(cur_y, k) == r
@@ -137,3 +137,8 @@ TS
     assert_zero out_size - count_ts
 
 INP
+
+    mpq_set_ui(input_q[0], rand() % MAX_K, 1);
+    mpq_set_ui(input_q[1], rand() % MAX_R, 1);
+
+END

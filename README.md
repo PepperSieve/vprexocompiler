@@ -31,19 +31,20 @@ cd $VPREXOCOMPILER && ./unifier.sh <benchmark>
 Benchmark Breakdown:
 - Y - File can be generated automatically
 - A - (For viper) file can be generated automatically without annotations
+- C - (For C) can generate constraints, but not verification (lacking exo & inp_gen)
 - N - File cannot be generated automatically
 - \ - Not applicable (e.g. Te file and TeTs Proof does not exist when Te = Ts)
 
 Benchmarks        | Ti Code | Te Code | Ts Code | TiTe Proof | TeTs Proof
 ------------------|---------|---------|---------|------------|------------
-Find Min          | Y | Y | Y | Y | Y
-Merging           | Y | Y | Y | A | A
-Binary Search     | Y | Y | Y | Y | Y
-KMP Search        | Y | Y | \ | A | \
-Next Permutation  | Y | Y | Y | A | A
-Dutch Flag        | Y | Y | Y | A | A
-RR Sequence       | Y | Y | Y | A | A
-Sum of Powers     | Y | Y | Y | A | A
-2D Convex HUll    | Y | Y | Y | A | A
-MSC               | Y | Y | Y | A | A
-MST               | N | N | N | N | N
+`find_min`        | Y | Y | Y | Y | Y
+`merging`         | Y | Y | Y | A | A
+`binary_search`   | Y | Y | Y | Y | Y
+`kmp_search`      | C | C | \ | A | \
+`next_permutation`| C | C | C | A | A
+`dutch_flag`      | C | C | C | A | A
+`rr_sequence`     | C | C | C | A | A
+`sum_of_powers`   | Y | Y | Y | A | A
+`td_convex_hull`  | C | C | C | A | A
+`msc`             | C | C | C | A | A
+`mst`             | N | N | N | N | N

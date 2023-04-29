@@ -71,6 +71,6 @@ void compute(struct In *input, struct Out *output) {
 			}
 		}
 	}
-	if(out_size - count_te) { accumErr++; }
+	if(out_size - count_te != 0) { accumErr++; }
 	assert_zero(accumErr);
 }

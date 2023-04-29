@@ -136,3 +136,12 @@ else
 end
 
 INP
+    for (int i = 0; i < MAX_N; i++) {
+        mpq_set_ui(input_q[i], 2 * i + (rand() % 2), 1);
+    }
+    mpq_set_ui(input_q[MAX_N], rand() % (2 * MAX_N + 2), 1); // x
+    int MAX_L = rand() % (MAX_N / 2 - 1);
+    mpq_set_ui(input_q[MAX_N + 1], MAX_L, 1); // l
+    mpq_set_ui(input_q[MAX_N + 2], MAX_N - MAX_L, 1); // r
+
+END

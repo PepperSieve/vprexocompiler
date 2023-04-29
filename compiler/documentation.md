@@ -67,7 +67,18 @@ Syntax of this section largely follows Syntax & Tokens section, with two special
 * Ghost variables are **not** allowed.
 * Assertions are allowed (and likely required).
 
-### INP (Zach is this a mark for termination?)
+### INP
+Begins with a single line: `INP`. Content of this section will appear in generated `input_generation` header files and are used to generate random inputs in Pequin for verification.
+
+Default syntax in this section is:
+```
+    for (int i = 0; i < num_inputs; i++) {
+        mpq_set_ui(input_q[i], rand(), 1);
+    }
+```
+
+### END
+`vpex` files terminates with a single line: `END`.
 
 ## Line Prefixes
 In all of Ti, Exo, Te, and Ts sections, we can add prefixes to lines so that they only appear in certain locations. The prefixes are:

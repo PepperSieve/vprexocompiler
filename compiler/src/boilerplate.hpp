@@ -28,7 +28,7 @@ void write_headers(Files& files) {
   files.tic << "#define mat_slot(A, n, i, j) A[i * n + j]" << std::endl;
   files.tec << "#define mat_slot(A, n, i, j) A[i * n + j]" << std::endl;
   files.tsc << "#define mat_slot(A, n, i, j) A[i * n + j]" << std::endl;
-  files.exo << "#define mat_slot(A, n, i, j) A[i][j]" << std::endl;
+  files.exo << "#define mat_slot(A, n, i, j) A[i * n + j]" << std::endl;
 }
 
 // write boilerplate footers to all files

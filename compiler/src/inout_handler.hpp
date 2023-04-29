@@ -81,7 +81,7 @@ void write_exo_input(Files& files, State& state) {
     } else if (var.second.type == MAT) {
       files.exo << "\tfor (ITER1 = 0; ITER1 < " << var.second.rows << "; ITER1++) {" << std::endl;
       files.exo << "\t\tfor (ITER2 = 0; ITER2 < " << var.second.cols << "; ITER2++) {" << std::endl;
-      files.exo << "\t\t\tfscanf(fp, \"%d\", &input->" << var.first << "[ITER1][ITER2]);" << std::endl;
+      files.exo << "\t\t\tfscanf(fp, \"%d\", &input->" << var.first << "[ITER1 * " << var.second.cols << " + " << "ITER2]);" << std::endl;
       files.exo << "\t\t}" << std::endl;
       files.exo << "\t}" << std::endl;
     }
@@ -99,6 +99,12 @@ void write_exo_input(Files& files, State& state) {
         files.exo << "\tint " << var.first << " = input->" << var.first << ";" << std::endl;
       }
     }
+}
+
+void write_inp_input(Files& files, State& state, std::string& name) {
+  files.inp_ti << "void " << name << "_ti_input_gen (mpq_t * input_q, int num_inputs, char *argv[]) {" << std::endl;
+  files.inp_te << "void " << name << "_te_input_gen (mpq_t * input_q, int num_inputs, char *argv[]) {" << std::endl;
+  files.inp_ts << "void " << name << "_ts_input_gen (mpq_t * input_q, int num_inputs, char *argv[]) {" << std::endl;
 }
 
 void write_viper_input_output(std::ofstream& file, State& state) {
@@ -168,12 +174,17 @@ void write_pequin_input_output(std::ofstream& file, State& state, bool all_arr) 
   }
 }
 
-void compile_input(Files& files, State& state) {
+void compile_input(Files& files, State& state, std::string& name) {
   std::cout << "Parsing Inputs..." << std::endl;
   // parse inputs
   load_vars(files, state.in_vars, "OUT");
   // write input variables to key locations in all files
   write_exo_input(files, state);
+  // Strip XXX/ in file name
+  while (name.find("/") != std::string::npos) {
+    name = name.substr(name.find("/") + 1, name.size());
+  }
+  write_inp_input(files, state, name);
 }
 
 void compile_output(Files& files, State& state) {
@@ -346,6 +357,9 @@ void write_output(Files& files, State& state) {
     }
     // TO DO handle matrices if needed
   }
+  files.inp_ti << "}" << std::endl;
+  files.inp_te << "}" << std::endl;
+  files.inp_ts << "}" << std::endl;
 }
 
 #endif

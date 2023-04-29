@@ -27,3 +27,5 @@ binary_search_ts.c
 binary_search_exo.c  
 binary_search_v_inp_gen.h  
 ```
+
+Please refer to `documentation.md` for more details on formats of `vpex` files.

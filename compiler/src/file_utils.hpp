@@ -52,7 +52,7 @@ struct Files {
   // inp = pequin input (h with gmp)
   // vie = viper TiTe proof
   // ves = viper TeTs proof
-  std::ofstream tsc, tic, tec, exo, inp, vie, ves;
+  std::ofstream tsc, tic, tec, exo, inp_ti, inp_te, inp_ts, vie, ves;
   // open all required files
   Files (std::string filename) {
     std::cout << "Opening Files..." << std::endl;
@@ -61,7 +61,9 @@ struct Files {
     open_file_w(filename + "_ti.c", tic);
     open_file_w(filename + "_te.c", tec);
     open_file_w(filename + "_exo.c", exo);
-    open_file_w(filename + "_v_inp_gen.h", inp);
+    open_file_w(filename + "_ti_v_inp_gen.h", inp_ti);
+    open_file_w(filename + "_te_v_inp_gen.h", inp_te);
+    open_file_w(filename + "_ts_v_inp_gen.h", inp_ts);
     open_file_w(filename + "_TiTe.vpr", vie);
     open_file_w(filename + "_TeTs.vpr", ves);
   }
@@ -72,7 +74,9 @@ struct Files {
     tic.close();
     tec.close();
     exo.close();
-    inp.close();
+    inp_ti.close();
+    inp_te.close();
+    inp_ts.close();
     vie.close();
     ves.close();
   }
