@@ -1,5 +1,5 @@
-#define MAX_N 10
-#define MAX_FAC 3628800
+#define MAX_N 4
+#define MAX_FAC 24
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
@@ -82,7 +82,7 @@ void compute(struct In *input, struct Out *output) {
 				if(ts_j == n || slot( cc, j) > slot( D, j)) {
 					gte_d = 1;
 				}
-				if(lte_c + gte_d - 1) { accumErr++; }
+				if(lte_c + gte_d - 1 != 0) { accumErr++; }
 				slot( st, k8) = slot( st, k8) + 1;
 				i = 1;
 			} else {
@@ -91,6 +91,6 @@ void compute(struct In *input, struct Out *output) {
 			}
 		}
 	}
-	if(is_permutation - 1) { accumErr++; }
+	if(is_permutation - 1 != 0) { accumErr++; }
 	assert_zero(accumErr);
 }

@@ -12,7 +12,7 @@ struct Out {
   int seq[MAX_N];
 };
 typedef struct ghost_s {
-	int values[1 + M * MAX_N + MAX_N + MAX_N + MAX_N];
+	int values[1 + M * MAX_N*M + MAX_N + MAX_N + MAX_N];
 } ghost_t;
 void compute(struct In *input, struct Out *output) {
 	int ITER1; int ITER2;
@@ -21,21 +21,21 @@ void compute(struct In *input, struct Out *output) {
 	int len[2] = {1, 1};
 	exo_compute(public_info, len, ghost, 1);
 	uint32_t seq_last = ghost[0].values[0];
-	uint32_t fseq[M * MAX_N];
-	for (ITER1 = 0; ITER1 < M * MAX_N; ITER1++) {
+	uint32_t fseq[M * MAX_N*M];
+	for (ITER1 = 0; ITER1 < M * MAX_N*M; ITER1++) {
 		fseq[ITER1] = ghost[0].values[0 + 1 + ITER1];
 	}
 	uint32_t prev_j[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		prev_j[ITER1] = ghost[0].values[0 + 1 + M * MAX_N + ITER1];
+		prev_j[ITER1] = ghost[0].values[0 + 1 + M * MAX_N*M + ITER1];
 	}
 	uint32_t seq[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		seq[ITER1] = ghost[0].values[0 + 1 + M * MAX_N + MAX_N + ITER1];
+		seq[ITER1] = ghost[0].values[0 + 1 + M * MAX_N*M + MAX_N + ITER1];
 	}
 	uint32_t prev_k[MAX_N];
 	for (ITER1 = 0; ITER1 < MAX_N; ITER1++) {
-		prev_k[ITER1] = ghost[0].values[0 + 1 + M * MAX_N + MAX_N + MAX_N + ITER1];
+		prev_k[ITER1] = ghost[0].values[0 + 1 + M * MAX_N*M + MAX_N + MAX_N + ITER1];
 	}
 	uint32_t n = input->n[0];
 	uint32_t seq_0 = input->seq_0[0];

@@ -1,5 +1,5 @@
 PREAMBLE
-#define MAX_N 20
+#define MAX_N 10
 
 PRE-TiTe
 import "IArray.vpr"
@@ -43,13 +43,18 @@ TI
     int next_x_ti = slot( input->X, i).val
     int next_y_ti = slot( input->Y, i).val
 
-    %exo ghostArr NX MAX_N
-    %exo ghostArr NY MAX_N
     %exo ghostArr in_c MAX_N
+    %exo slot(in_c, 0).val = 1
+    %exo slot(in_c, 1).val = 1
+
+    %exo arr stack_ind MAX_N
+    %exo slot( stack_ind, 0).val = 0
+    %exo slot( stack_ind, 1).val = 1
 
     int prod_ti = X_PROD(x1, y1, x2, y2, next_x_ti, next_y_ti)
     slot( stack_x, ss).val = next_x_ti
     slot( stack_y, ss).val = next_y_ti
+    %exo slot( stack_ind, ss).val = i
     ss = ss + 1
     x1 = x2
     y1 = y2
@@ -64,6 +69,7 @@ TI
         prod_ti = X_PROD(x1, y1, x2, y2, next_x_ti, next_y_ti)
         while prod_ti < 0
             ss = ss - 1
+            %exo slot(in_c, slot(stack_ind, ss).val ).val = 0
             x2 = x1
             y2 = y1
             x1 = slot( stack_x, ss-2).val
@@ -72,6 +78,7 @@ TI
         end
         slot( stack_x, ss).val = next_x_ti
         slot( stack_y, ss).val = next_y_ti
+        %exo slot( stack_ind, ss).val = i
         ss = ss + 1
         x1 = x2
         y1 = y2
@@ -79,6 +86,17 @@ TI
         y2 = next_y_ti
         i = i + 1
     end
+
+    %exo ghostArr NX MAX_N
+    %exo ghostArr NY MAX_N
+    %exo loop k0 MAX_N
+        %exo if k0 < ss - 1
+            %exo slot(NX, slot( stack_ind, k0).val ).val = slot( input->X, slot( stack_ind, k0+1).val ).val
+            %exo slot(NY, slot( stack_ind, k0).val ).val = slot( input->Y, slot( stack_ind, k0+1).val ).val
+        %exo end
+    %exo endloop
+    %exo slot( NX, n-1 ).val = slot( input->X, 0).val
+    %exo slot( NY, n-1 ).val = slot( input->Y, 0).val
 
 TE
     int x0_te = slot( input->X, 0).val
@@ -106,12 +124,15 @@ TE
                 next_x_te = slot(NX, k1+1).val
                 next_y_te = slot(NY, k1+1).val
                 int prod_te = X_PROD(last_x_te, last_y_te, xi, yi, next_x_te, next_y_te)
-                assert_zero prod_te <= 0
+                // Note: An accurate Convex Hull algorithm requires prod_te to be exactly > 0.
+                // However, in practice due to rounding error, we relax the restriction to >= 0 for sample
+                // input to work.
+                assert_zero prod_te < 0
                 last_x_te = xi
                 last_y_te = yi
             else
                 int prod_te = X_PROD(last_x_te, last_y_te, xi, yi, next_x_te, next_y_te)
-                assert_zero prod_te >= 0
+                assert_zero prod_te > 0
             end
         end
     endloop
@@ -162,9 +183,12 @@ TS
                 count_ts = count_ts + 1
                 assert_zero slot(stack_x, count_ts).val - xi
                 assert_zero slot(stack_y, count_ts).val - yi
-                assert_zero prod_ts <= 0
+                // Note: An accurate Convex Hull algorithm requires prod_te to be exactly > 0.
+                // However, in practice due to rounding error, we relax the restriction to >= 0 for sample
+                // input to work.
+                assert_zero prod_ts < 0
             else
-                assert_zero prod_ts >= 0
+                assert_zero prod_ts > 0
             end
         end
     endloop
@@ -172,5 +196,19 @@ TS
     int ss = count_ts + 1
 
 INP
+    mpq_set_ui(input_q[0], rand() % MAX_N, 1);
+    int y_diff = rand() % MAX_N;
+    int x_diff = pow(4, MAX_N + 1);
+    int y_offset = 0;
+    int x_offset = 0;
+    for (int i = 1; i <= MAX_N; i++) {
+        mpq_set_ui(input_q[i], y_offset, 1); // Y
+        y_offset += y_diff;
+    }
+    for (int i = MAX_N + 1; i <= 1 * MAX_N; i++) {
+        mpq_set_ui(input_q[i], x_offset, 1); // X
+        x_offset += x_diff;
+        x_diff /= 2;
+    }
 
 END

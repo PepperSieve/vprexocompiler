@@ -37,28 +37,36 @@ TI
 
     %exo ghostArr prev_k MAX_N
     %exo ghostArr prev_j MAX_N
-    %exo ghostMat fseq M MAX_N
+    %exo ghostMat fseq M MAX_N*M
 
     slot(seq, 0).val = seq_0
     loop k1 M
         slot(i, k1).val = 0
         slot(x, k1).val = f(k1, slot(seq, 0).val )
+        %exo loop kk1 MAX_N
+            %exo mat_slot( fseq, MAX_N, k1, kk1 ).val = n
+        %exo endloop
     endloop
 
     loop count MAX_N-1
         if count+1 < n
 
             slot(seq, count+1).val = slot(x, 0).val
+            %exo slot(prev_k, count+1).val = slot(i, 0).val
+            %exo slot(prev_j, count+1).val = 0
             loop k2 M
                 if slot(x, k2).val < slot(seq, count+1).val
                     slot(seq, count+1).val = slot(x, k2).val
+                    %exo slot( prev_k, count+1 ).val = slot(i, k2).val
+                    %exo slot( prev_j, count+1 ).val = k2
                 end
             endloop
 
             loop k3 M
                 if slot(x, k3).val == slot(seq, count+1).val
+                    %exo mat_slot( fseq, MAX_N, k3, slot(i, k3).val ).val = count+1
                     slot(i, k3).val = slot(i, k3).val + 1
-                    slot(x, k3).val = f(k3, slot(seq, slot(i, k3).val ).val );
+                    slot(x, k3).val = f(k3, slot(seq, slot(i, k3).val ).val )
                 end
             endloop
         end
@@ -68,6 +76,7 @@ TI
 TE
     int cur_seq_te = slot(seq, 0).val
     assert_zero cur_seq_te != seq_0
+    
     loop k4 M
         assert_zero mat_slot( fseq, MAX_N, k4, 0 ).val < 0
         if mat_slot( fseq, MAX_N, k4, 0 ).val >= n
@@ -118,7 +127,7 @@ TS
             int seq_pk = slot( seq, pk).val
 
             assert_zero pk < 0
-            assert_zero pk >= k6
+            assert_zero pk >= k6+1
             assert_zero pj < 0
             assert_zero pj >= M
             assert_zero f(pj, seq_pk) - cur_seq_ts
@@ -127,7 +136,7 @@ TS
                 loop k8 MAX_N
                     if k8 < k6
                         int fjk8 = f(k7, slot( seq, k8).val )
-                        assert_zero fjk8 > slot(seq, k6-1).val && fjk8 < cur_seq_ts
+                        assert_zero fjk8 > slot(seq, k6).val && fjk8 < cur_seq_ts
                     end
                 endloop
             endloop
@@ -135,5 +144,7 @@ TS
     endloop
 
 INP
+    mpq_set_ui(input_q[0], rand() % MAX_N, 1);
+    mpq_set_ui(input_q[1], rand() % MAX_N + 1, 1);
 
 END

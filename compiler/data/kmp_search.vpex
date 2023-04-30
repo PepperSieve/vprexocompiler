@@ -49,6 +49,7 @@ TI
     endloop
 
     %exo ghostArr B MAX_N
+    %exo int B_ind = 0
 
     i = 0
     int j = 0
@@ -57,7 +58,13 @@ TI
         if i < N
             if j < M
                 if slot( input->PAT, j).val != slot( input->TXT, i).val
+                    %exo slot(B, B_ind).val = j
+                    %exo B_ind = B_ind + 1
                     if j != 0
+                        %exo if j - slot(lps, j-1).val >= 2
+                            %exo int jm1 = j - 1
+                            %exo b = update_b(LM, b, jm1, slot(lps, jm1).val + 1)
+                        %exo end
                         j = slot(lps, j-1).val
                     else
                         i = i + 1

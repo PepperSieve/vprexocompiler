@@ -1,5 +1,5 @@
-#define MAX_N 10
-#define MAX_FAC 3628800
+#define MAX_N 4
+#define MAX_FAC 24
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
@@ -50,18 +50,18 @@ void compute(struct In *input, struct Out *output) {
 	}
 	int k6; for(k6 = 0; k6 < MAX_N-1; k6++) {
 		if(k6+1 == i) {
-			if(slot( input->C, k6+1) - ci) { accumErr++; }
-			if(slot( CC, k6+1) - cj) { accumErr++; }
+			if(slot( input->C, k6+1) - ci != 0) { accumErr++; }
+			if(slot( CC, k6+1) - cj != 0) { accumErr++; }
 		}
 		if(k6+1 == i + 1) {
-			if(slot( input->C, k6+1) - cip1) { accumErr++; }
+			if(slot( input->C, k6+1) - cip1 != 0) { accumErr++; }
 		}
 		if(k6+1 == j) {
-			if(slot( input->C, k6+1) - cj) { accumErr++; }
-			if(slot( CC, k6+1) - ci) { accumErr++; }
+			if(slot( input->C, k6+1) - cj != 0) { accumErr++; }
+			if(slot( CC, k6+1) - ci != 0) { accumErr++; }
 		}
 		if(k6+1 == j + 1 && k6+1 != n) {
-			if(slot( input->C, k6+1) - cjp1) { accumErr++; }
+			if(slot( input->C, k6+1) - cjp1 != 0) { accumErr++; }
 		}
 	}
 	int cor_te = -1;

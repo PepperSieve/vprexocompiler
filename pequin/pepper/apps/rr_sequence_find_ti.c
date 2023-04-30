@@ -34,7 +34,7 @@ void compute(struct In *input, struct Out *output) {
 			int k3; for(k3 = 0; k3 < M; k3++){
 				if(slot(x, k3) == slot(seq, count+1)) {
 					slot(i, k3) = slot(i, k3) + 1;
-					slot(x, k3) = f(k3, slot(seq, slot(i, k3) ) );;
+					slot(x, k3) = f(k3, slot(seq, slot(i, k3) ) );
 				}
 			}
 		}

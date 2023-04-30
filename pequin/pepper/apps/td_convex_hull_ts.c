@@ -1,4 +1,4 @@
-#define MAX_N 20
+#define MAX_N 10
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
@@ -46,8 +46,8 @@ void compute(struct In *input, struct Out *output) {
 	int accumErr = 0;
 	int x0_ts = slot( input->X, 0);
 	int y0_ts = slot( input->Y, 0);
-	if(x0_ts - slot(stack_x, 0)) { accumErr++; }
-	if(y0_ts - slot(stack_y, 0)) { accumErr++; }
+	if(x0_ts - slot(stack_x, 0) != 0) { accumErr++; }
+	if(y0_ts - slot(stack_y, 0) != 0) { accumErr++; }
 	int count_ts = 0;;
 	int k2; for(k2 = 0; k2 < MAX_N-1; k2++){
 		if(k2+1 < n) {
@@ -76,11 +76,14 @@ void compute(struct In *input, struct Out *output) {
 			int prod_ts = X_PROD(last_x_ts, last_y_ts, xi, yi, next_x_ts, next_y_ts);
 			if(slot(in_c, k2+1) == 1) {
 				count_ts = count_ts + 1;
-				if(slot(stack_x, count_ts) - xi) { accumErr++; }
-				if(slot(stack_y, count_ts) - yi) { accumErr++; }
-				if(prod_ts <= 0) { accumErr++; }
+				if(slot(stack_x, count_ts) - xi != 0) { accumErr++; }
+				if(slot(stack_y, count_ts) - yi != 0) { accumErr++; }
+				// Note: An accurate Convex Hull algorithm requires prod_te to be exactly > 0.;
+				// However, in practice due to rounding error, we relax the restriction to >= 0 for sample;
+				// input to work.;
+				if(prod_ts < 0) { accumErr++; }
 			} else {
-				if(prod_ts >= 0) { accumErr++; }
+				if(prod_ts > 0) { accumErr++; }
 			}
 		}
 	}

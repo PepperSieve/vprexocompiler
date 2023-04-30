@@ -190,7 +190,7 @@ TS
         end
     endloop
 
-    // assert_zero is_permutation - 1
+    assert_zero is_permutation - 1
 
 INP
     int offset = rand() % MAX_N;

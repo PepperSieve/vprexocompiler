@@ -1,4 +1,4 @@
-#define MAX_N 20
+#define MAX_N 10
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
@@ -29,6 +29,7 @@ void compute(struct In *input, struct Out *output) {
 		}
 	}
 	int i = 0;
+	/*;
 	int it2; for(it2 = 0; it2 < MAX_N; it2++){
 		if(j <= k) {
 			int bj_color = slot( b_color, j);
@@ -40,6 +41,12 @@ void compute(struct In *input, struct Out *output) {
 				slot( b_content, i) = bj_content;
 				slot( b_color, j) = tmp_color;
 				slot( b_content, j) = tmp_content;
+				// %exo int tmp_ord = slot( ord_in_A, i);
+				// %exo slot( ord_in_A, i) = slot( ord_in_A, j);
+				// %exo slot( ord_in_A, j) = tmp_ord;
+				// %exo tmp_ord = slot( ord_in_B, slot( ord_in_A, i) );
+				// %exo slot( ord_in_B, slot( ord_in_A, i) ) = slot( ord_in_B, slot( ord_in_A, j) );
+				// %exo slot( ord_in_B, slot( ord_in_A, j) ) = tmp_ord;
 				i = i + 1;
 				j = j + 1;
 			} else {
@@ -48,6 +55,12 @@ void compute(struct In *input, struct Out *output) {
 					slot( b_content, j) = slot( b_content, k);
 					slot( b_color, k) = bj_color;
 					slot( b_content, k) = bj_content;
+					// %exo int tmp_ord = slot( ord_in_A, j);
+					// %exo slot( ord_in_A, j) = slot( ord_in_A, k);
+					// %exo slot( ord_in_A, k) = tmp_ord;
+					// %exo tmp_ord = slot( ord_in_B, slot( ord_in_A, j) );
+					// %exo slot( ord_in_B, slot( ord_in_A, j) ) = slot( ord_in_B, slot( ord_in_A, k) );
+					// %exo slot( ord_in_B, slot( ord_in_A, k) ) = tmp_ord;
 					k = k - 1;
 				} else {
 					j = j + 1;
@@ -55,6 +68,7 @@ void compute(struct In *input, struct Out *output) {
 			}
 		}
 	}
+	*/;
 	for(ITER1 = 0; ITER1 < MAX_N; ITER1++) {
 		output->b_content[ITER1] = b_content[ITER1];
 	}
