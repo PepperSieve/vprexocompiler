@@ -1,5 +1,5 @@
 PREAMBLE
-#define MAX_N 20
+#define MAX_N 10
 #define MAX_M 4
 
 PRE-TiTe
@@ -9,6 +9,30 @@ PRE-TeTs
 import "IArray.vpr"
 
 HELPER
+void set_mat(int* LM, int i, int j, int k, int M) {
+    int hit;
+    for (hit = i; hit < M; hit++) {
+        LM[hit * MAX_N + hit - i + j] = k;
+    }
+}
+void copy_lps_mat(int* LM, int i1, int i2, int j1, int j2, int M) {
+    if (j1 == j2) {
+        set_mat(LM, i2, j1, LM[i1 * MAX_N + j1], M);
+    } else {
+        copy_lps_mat(LM, i1, i2, j1 + 1, j2, M);
+        set_mat(LM, i2, j1, LM[i1 * MAX_N + j1], M);
+    }
+}
+int update_b(int* LM, int* B, int B_ind, int j, int lpsj) {
+    if (lpsj == j) {
+        B[B_ind] = LM[j * MAX_N + lpsj];
+        return B_ind + 1;
+    } else {
+        update_b(LM, B, B_ind, j, lpsj + 1);
+        B[B_ind] = LM[j * MAX_N + lpsj];
+        return B_ind + 1;
+    }
+}
 
 IN
 	int M
@@ -31,6 +55,7 @@ TI
 
     int i = 1
     ghostInt ind = 0
+    %exo %c int* LM = malloc(MAX_M * MAX_N * sizeof(int));
     loop k1 MAX_M*2
         if i < M
             if slot( input->PAT, i).val == slot( input->PAT, l).val
@@ -38,7 +63,11 @@ TI
                 slot(lps, i).val = l
                 i = i + 1
             else
+                %exo %c set_mat(LM, i, l+1, l, M);
                 if l != 0
+                    %exo if l - 1 > slot( lps, l-1).val
+                        %exo %c copy_lps_mat(LM, l, i, slot(lps, l-1) + 2, l, M);
+                    %exo end
                     l = slot(lps, l-1).val
                 else
                     slot( lps, i).val = 0
@@ -49,6 +78,7 @@ TI
     endloop
 
     %exo ghostArr B MAX_N
+    %exo %c int* B_ptr = malloc(MAX_N * sizeof(int));
     %exo int B_ind = 0
 
     i = 0
@@ -58,12 +88,12 @@ TI
         if i < N
             if j < M
                 if slot( input->PAT, j).val != slot( input->TXT, i).val
-                    %exo slot(B, B_ind).val = j
+                    %exo %c slot(B_ptr, B_ind) = j;
                     %exo B_ind = B_ind + 1
                     if j != 0
                         %exo if j - slot(lps, j-1).val >= 2
                             %exo int jm1 = j - 1
-                            %exo b = update_b(LM, b, jm1, slot(lps, jm1).val + 1)
+                            %exo %c B_ind = update_b(LM, B_ptr, B_ind, jm1, slot(lps, jm1) + 1);
                         %exo end
                         j = slot(lps, j-1).val
                     else
@@ -84,6 +114,11 @@ TI
     if found == 0
         ind = N
     end
+
+    %exo %c int it;
+    %exo %c for (it = 0; it < MAX_N; it++) {
+        %exo %c B[it] = B_ptr[it];
+    %exo %c }
 
 TE
     assert_zero ind > N - M + 1
@@ -112,5 +147,13 @@ TE
 TS
 
 INP
+    for (int i = 0; i < MAX_M; i++) {
+        mpq_set_ui(input_q[i], rand(), 1);
+    }
+    mpq_set_ui(input_q[MAX_M], rand() % MAX_M, 1);
+    for (int i = MAX_M + 1; i <= MAX_M + MAX_N; i++) {
+        mpq_set_ui(input_q[i], rand(), 1);
+    }
+    mpq_set_ui(input_q[MAX_M + MAX_N + 1], rand() % MAX_N, 1);
 
 END

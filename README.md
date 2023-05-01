@@ -40,7 +40,7 @@ Benchmarks        | Ti Code | Te Code | Ts Code | TiTe Proof | TeTs Proof
 `find_min`        | Y | Y | Y | Y | Y
 `merging`         | Y | Y | Y | A | A
 `binary_search`   | Y | Y | Y | Y | Y
-`kmp_search`      | C | C | \ | A | \
+`kmp_search`      | Y | Y | \ | A | \
 `next_permutation`| Y | Y | C | A | A
 `dutch_flag`      | Y | C | Y | A | A
 `rr_sequence`     | Y | Y | Y | A | A

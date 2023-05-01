@@ -1,8 +1,32 @@
-#define MAX_N 20
+#define MAX_N 10
 #define MAX_M 4
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
+void set_mat(int* LM, int i, int j, int k, int M) {
+    int hit;
+    for (hit = i; hit < M; hit++) {
+        LM[hit * MAX_N + hit - i + j] = k;
+    }
+}
+void copy_lps_mat(int* LM, int i1, int i2, int j1, int j2, int M) {
+    if (j1 == j2) {
+        set_mat(LM, i2, j1, LM[i1 * MAX_N + j1], M);
+    } else {
+        copy_lps_mat(LM, i1, i2, j1 + 1, j2, M);
+        set_mat(LM, i2, j1, LM[i1 * MAX_N + j1], M);
+    }
+}
+int update_b(int* LM, int* B, int B_ind, int j, int lpsj) {
+    if (lpsj == j) {
+        B[B_ind] = LM[j * MAX_N + lpsj];
+        return B_ind + 1;
+    } else {
+        update_b(LM, B, B_ind, j, lpsj + 1);
+        B[B_ind] = LM[j * MAX_N + lpsj];
+        return B_ind + 1;
+    }
+}
 struct In {
   int PAT[MAX_M];
   int M[1];

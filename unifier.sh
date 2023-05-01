@@ -62,7 +62,7 @@ if [ "$1" == "find_min" ] || [ "$1" == "binary_search" ]; then
     bin/pepper_prover_$1_ts prove $1_ts.pkey $1_ts.inputs $1_ts.outputs $1_ts.proof &&
     bin/pepper_verifier_$1_ts verify $1_ts.vkey $1_ts.inputs $1_ts.outputs $1_ts.proof
 
-elif [ "$1" == "merging" ] || [ "$1" == "sum_of_powers" ] || [ "$1" == "next_permutation" ] || [ "$1" == "dutch_flag" ] || [ "$1" == "rr_sequence_find" ] || [ "$1" == "td_convex_hull" ]; then
+elif [ "$1" == "merging" ] || [ "$1" == "kmp_search" ] || [ "$1" == "sum_of_powers" ] || [ "$1" == "next_permutation" ] || [ "$1" == "dutch_flag" ] || [ "$1" == "rr_sequence_find" ] || [ "$1" == "td_convex_hull" ]; then
 
     echo -e "\n----\nPlease view generated Viper codes in compiler/data/\n----" &&
 
@@ -89,13 +89,15 @@ elif [ "$1" == "merging" ] || [ "$1" == "sum_of_powers" ] || [ "$1" == "next_per
     bin/pepper_prover_$1_te prove $1_te.pkey $1_te.inputs $1_te.outputs $1_te.proof &&
     bin/pepper_verifier_$1_te verify $1_te.vkey $1_te.inputs $1_te.outputs $1_te.proof &&
 
-    echo -e "\n\n+-------------------------+" &&
-    echo -e "| Running Ts in Pequin... |" &&
-    echo -e "+-------------------------+\n" &&
-    bash test.sh $1_ts | grep "CONSTRAINTS" &&
-    bin/pepper_verifier_$1_ts gen_input $1_ts.inputs &&
-    bin/pepper_prover_$1_ts prove $1_ts.pkey $1_ts.inputs $1_ts.outputs $1_ts.proof &&
-    bin/pepper_verifier_$1_ts verify $1_ts.vkey $1_ts.inputs $1_ts.outputs $1_ts.proof
+    if [ "$1" != "kmp_search" ]; then
+        echo -e "\n\n+-------------------------+" &&
+        echo -e "| Running Ts in Pequin... |" &&
+        echo -e "+-------------------------+\n" &&
+        bash test.sh $1_ts | grep "CONSTRAINTS" &&
+        bin/pepper_verifier_$1_ts gen_input $1_ts.inputs &&
+        bin/pepper_prover_$1_ts prove $1_ts.pkey $1_ts.inputs $1_ts.outputs $1_ts.proof &&
+        bin/pepper_verifier_$1_ts verify $1_ts.vkey $1_ts.inputs $1_ts.outputs $1_ts.proof
+    fi
 
 else
 
