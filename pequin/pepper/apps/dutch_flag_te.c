@@ -44,35 +44,44 @@ void compute(struct In *input, struct Out *output) {
 	}
 	int n = input->n[0];
 	int accumErr = 0;
+	if(slot(ord_in_A, 0) != 0) { accumErr++; }
+	if(slot(ord_in_A, 1) - 1 != 0) { accumErr++; }
 	int cur_color = 0;
 	int count[MAX_N];
 	int it4; for(it4 = 0; it4 < MAX_N; it4++) {
 		slot(count, it4) = 0;
 	}
-	// assert_zero k1 < -1;
-	// assert_zero k1 > k2;
-	// assert_zero k2 >= n;
+	if(k1 < -1) { accumErr++; }
+	if(k1 > k2) { accumErr++; }
+	if(k2 >= n) { accumErr++; }
+	if(k1 + 1 != 0) { accumErr++; }
+	if(k2 != 0) { accumErr++; }
 	int it5; for(it5 = 0; it5 < MAX_N; it5++) {
 		int ord_j = slot(ord_in_A, it5);
-		if(slot(ord_in_A, it5) - it5 != 0) { accumErr++; }
-		// if it5 - 1 == k1;
-		// cur_color = cur_color + 1;
-		// end;
-		// if it5 - 1 == k2;
-		// cur_color = cur_color + 1;
-		// end;
-		// if it5 < n;
-		// assert_zero ord_j >= n;
-		// slot( count, ord_j) = 1;
-		// assert_zero slot( b_color, it5) != slot( input->a_color, ord_j);
-		// assert_zero slot( b_content, it5) != slot( input->a_content, ord_j);
-		// int tmp_color = slot( b_color, it5);
-		// assert_zero tmp_color - cur_color;
-		// else;
-		// slot(count, it5) = 1;
-		// end;
+		if(it5 - 1 == k1) {
+			cur_color = cur_color + 1;
+		}
+		if(it5 - 1 == k2) {
+			cur_color = cur_color + 1;
+		}
+		if(it5 < n) {
+			if(ord_j >= n) { accumErr++; }
+			slot( count, ord_j) = 1;
+			// There is something fishy going on in pequin;
+			// Verification passes if you uncomment the lines below, but this should be rejected.;
+			// if ord_j == 0;
+			// assert_zero slot( count, 0);
+			// end;
+			if(slot( b_color, it5) != slot( input->a_color, ord_j)) { accumErr++; }
+			if(slot( b_content, it5) != slot( input->a_content, ord_j)) { accumErr++; }
+			int tmp_color = slot( b_color, it5);
+			if(tmp_color - cur_color != 0) { accumErr++; }
+		} else {
+			slot(count, it5) = 1;
+		}
 	}
 	int it6; for(it6 = 0; it6 < MAX_N; it6++) {
+		// Bug prevents the following line from successful verification;
 		// assert_zero slot(count, it6) - 1;
 	}
 	assert_zero(accumErr);

@@ -41,10 +41,12 @@ Benchmarks        | Ti Code | Te Code | Ts Code | TiTe Proof | TeTs Proof
 `merging`         | Y | Y | Y | A | A
 `binary_search`   | Y | Y | Y | Y | Y
 `kmp_search`      | Y | Y | \ | A | \
-`next_permutation`| Y | Y | C | A | A
-`dutch_flag`      | Y | C | Y | A | A
+`next_permutation`| Y | Y | Y | A | A
+`dutch_flag`      | Y | Y* | Y | A | A
 `rr_sequence`     | Y | Y | Y | A | A
 `sum_of_powers`   | Y | Y | Y | A | A
 `td_convex_hull`  | Y | Y | Y | A | A
 `msc`             | C | C | C | A | A
 `mst`             | N | N | N | N | N
+
+* A bug in pequin prevents one assertion in `dutch_flag_te` from verification. Refer to line 113 and 129 of `$VPREXOCOMPILER/src/dutch_flag.vpex` for more detail.

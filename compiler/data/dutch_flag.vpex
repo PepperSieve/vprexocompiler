@@ -42,7 +42,6 @@ TI
         end
     endloop
     int i = 0
-    /*
     loop it2 MAX_N
         if j <= k
             int bj_color = slot( b_color, j).val
@@ -54,12 +53,12 @@ TI
                 slot( b_content, i).val = bj_content
                 slot( b_color, j).val = tmp_color
                 slot( b_content, j).val = tmp_content
-                // %exo int tmp_ord = slot( ord_in_A, i).val
-                // %exo slot( ord_in_A, i).val = slot( ord_in_A, j).val
-                // %exo slot( ord_in_A, j).val = tmp_ord
-                // %exo tmp_ord = slot( ord_in_B, slot( ord_in_A, i).val ).val
-                // %exo slot( ord_in_B, slot( ord_in_A, i).val ).val = slot( ord_in_B, slot( ord_in_A, j).val ).val
-                // %exo slot( ord_in_B, slot( ord_in_A, j).val ).val = tmp_ord
+                %exo int tmp_ord = slot( ord_in_A, i).val
+                %exo slot( ord_in_A, i).val = slot( ord_in_A, j).val
+                %exo slot( ord_in_A, j).val = tmp_ord
+                %exo tmp_ord = slot( ord_in_B, slot( ord_in_A, i).val ).val
+                %exo slot( ord_in_B, slot( ord_in_A, i).val ).val = slot( ord_in_B, slot( ord_in_A, j).val ).val
+                %exo slot( ord_in_B, slot( ord_in_A, j).val ).val = tmp_ord
                 i = i + 1
                 j = j + 1
             else 
@@ -68,12 +67,12 @@ TI
                     slot( b_content, j).val = slot( b_content, k).val
                     slot( b_color, k).val = bj_color
                     slot( b_content, k).val = bj_content
-                    // %exo int tmp_ord = slot( ord_in_A, j).val
-                    // %exo slot( ord_in_A, j).val = slot( ord_in_A, k).val
-                    // %exo slot( ord_in_A, k).val = tmp_ord
-                    // %exo tmp_ord = slot( ord_in_B, slot( ord_in_A, j).val ).val
-                    // %exo slot( ord_in_B, slot( ord_in_A, j).val ).val = slot( ord_in_B, slot( ord_in_A, k).val ).val
-                    // %exo slot( ord_in_B, slot( ord_in_A, k).val ).val = tmp_ord
+                    %exo int tmp_ord = slot( ord_in_A, j).val
+                    %exo slot( ord_in_A, j).val = slot( ord_in_A, k).val
+                    %exo slot( ord_in_A, k).val = tmp_ord
+                    %exo tmp_ord = slot( ord_in_B, slot( ord_in_A, j).val ).val
+                    %exo slot( ord_in_B, slot( ord_in_A, j).val ).val = slot( ord_in_B, slot( ord_in_A, k).val ).val
+                    %exo slot( ord_in_B, slot( ord_in_A, k).val ).val = tmp_ord
                     k = k - 1
                 else
                     j = j + 1
@@ -81,43 +80,53 @@ TI
             end
         end
     endloop
-    */
 
     %exo ghostInt k1 = i - 1
     %exo ghostInt k2 = j - 1
 
 TE
+    assert_zero slot(ord_in_A, 0).val
+    assert_zero slot(ord_in_A, 1).val - 1
+
     int cur_color = 0
 
     arr count MAX_N
     loop it4 MAX_N
         slot(count, it4).val = 0
     endloop
-    // assert_zero k1 < -1
-    // assert_zero k1 > k2
-    // assert_zero k2 >= n
+    assert_zero k1 < -1
+    assert_zero k1 > k2
+    assert_zero k2 >= n
+    assert_zero k1 + 1
+    assert_zero k2
     loop it5 MAX_N
         int ord_j = slot(ord_in_A, it5).val
-        assert_zero slot(ord_in_A, it5).val - it5
-        // if it5 - 1 == k1
-            // cur_color = cur_color + 1
-        // end
-        // if it5 - 1 == k2
-            // cur_color = cur_color + 1
-        // end
-        // if it5 < n
-            // assert_zero ord_j >= n
-            // slot( count, ord_j).val = 1
-            // assert_zero slot( b_color, it5).val != slot( input->a_color, ord_j).val
-            // assert_zero slot( b_content, it5).val != slot( input->a_content, ord_j).val
+        if it5 - 1 == k1
+            cur_color = cur_color + 1
+        end
+        if it5 - 1 == k2
+            cur_color = cur_color + 1
+        end
+        if it5 < n
+            assert_zero ord_j >= n
+            slot( count, ord_j).val = 1
+            // There is something fishy going on in pequin
+            // Verification passes if you uncomment the lines below, but this should be rejected.
+            // if ord_j == 0
+                // assert_zero slot( count, 0).val
+            // end
+            
+            assert_zero slot( b_color, it5).val != slot( input->a_color, ord_j).val
+            assert_zero slot( b_content, it5).val != slot( input->a_content, ord_j).val
 
-            // int tmp_color = slot( b_color, it5).val
-            // assert_zero tmp_color - cur_color
-        // else
-            // slot(count, it5).val = 1
-        // end
+            int tmp_color = slot( b_color, it5).val
+            assert_zero tmp_color - cur_color
+        else
+            slot(count, it5).val = 1
+        end
     endloop
     loop it6 MAX_N
+        // Bug prevents the following line from successful verification
         // assert_zero slot(count, it6).val - 1
     endloop
 
@@ -157,7 +166,7 @@ INP
     }
     mpq_set_ui(input_q[MAX_N], rand() % MAX_N, 1); // n
     for (int i = MAX_N + 1; i < 2 * MAX_N + 1; i++) {
-        mpq_set_ui(input_q[i], rand() % 2, 1); // color
+        mpq_set_ui(input_q[i], rand() % 3, 1); // color
     }
 
 END

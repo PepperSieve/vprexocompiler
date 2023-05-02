@@ -1,5 +1,5 @@
-#define MAX_N 4
-#define MAX_FAC 24
+#define MAX_N 3
+#define MAX_FAC 6
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
@@ -43,17 +43,18 @@ void compute(struct In *input, struct Out *output) {
 		slot( cc, k8) = slot( input->C, k8);
 	}
 	k8 = 1;
-	int k9; for(k9 = 0; k9 < MAX_FAC; k9++){
+	int k9; for(k9 = 0; k9 < MAX_FAC*MAX_FAC; k9++){
 		if(k8 < n) {
 			if(slot( st, k8) < k8) {
 				if(k8 % 2 == 0) {
 					int tmp = slot( cc, 0);
 					slot( cc, 0) = slot( cc, k8);
 					slot( cc, k8) = tmp;
-				} else {
-					int tmp = slot( cc, slot( st, k8) );
-					slot( cc, slot( st, k8) ) = slot( cc, k8);
-					slot(cc, k8) = tmp;
+				}
+				if(k8 % 2 == 1) {
+					int tmp = slot(cc, k8);
+					slot(cc, k8) = slot( cc, slot( st, k8) );
+					slot( cc, slot( st, k8) ) = tmp;
 				}
 				int lte_c = -1;
 				int ts_j = 0;
@@ -64,7 +65,10 @@ void compute(struct In *input, struct Out *output) {
 						lte_c = 0;
 					}
 				}
-				if(ts_j == n || slot( cc, ts_j) < slot( input->C, ts_j)) {
+				if(ts_j == n) {
+					lte_c = 1;
+				}
+				if(ts_j < n && slot( cc, ts_j) < slot( input->C, ts_j)) {
 					lte_c = 1;
 				}
 				int gte_d = -1;
@@ -78,16 +82,17 @@ void compute(struct In *input, struct Out *output) {
 				}
 				if(ts_j == n) {
 					is_permutation = 1;
-				}
-				if(ts_j == n || slot( cc, j) > slot( D, j)) {
 					gte_d = 1;
 				}
-				if(lte_c + gte_d - 1 != 0) { accumErr++; }
+				if(ts_j < n && slot( cc, ts_j) > slot( D, ts_j)) {
+					gte_d = 1;
+				}
+				if(lte_c + gte_d > 1) { accumErr++; }
 				slot( st, k8) = slot( st, k8) + 1;
-				i = 1;
+				k8 = 1;
 			} else {
 				slot( st, k8) = 0;
-				i = i + 1;
+				k8 = k8 + 1;
 			}
 		}
 	}

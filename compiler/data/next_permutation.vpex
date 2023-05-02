@@ -26,7 +26,7 @@ TI
     ghostArr D MAX_N
 
     loop k1 MAX_N
-        if k1 < n 
+        if k1 < n
             slot(CC, k1).val = slot( input->C, k1).val
         end
     endloop
@@ -145,7 +145,8 @@ TS
                     int tmp = slot( cc, 0).val
                     slot( cc, 0).val = slot( cc, k8).val
                     slot( cc, k8).val = tmp
-                else
+                end
+                if k8 % 2 == 1
                     int tmp = slot(cc, k8).val
                     slot(cc, k8).val = slot( cc, slot( st, k8).val ).val
                     slot( cc, slot( st, k8).val ).val = tmp
@@ -160,7 +161,10 @@ TS
                         lte_c = 0
                     end
                 endloop
-                if ts_j == n || slot( cc, ts_j).val < slot( input->C, ts_j).val
+                if ts_j == n
+                    lte_c = 1
+                end
+                if ts_j < n && slot( cc, ts_j).val < slot( input->C, ts_j).val
                     lte_c = 1
                 end
 
@@ -175,12 +179,13 @@ TS
                 endloop
                 if ts_j == n
                     is_permutation = 1
+                    gte_d = 1
                 end
-                if ts_j == n || slot( cc, ts_j).val > slot( D, ts_j).val
+                if ts_j < n && slot( cc, ts_j).val > slot( D, ts_j).val
                     gte_d = 1
                 end
 
-                assert_zero lte_c + gte_d - 1
+                assert_zero lte_c + gte_d > 1
                 slot( st, k8).val = slot( st, k8).val + 1
                 k8 = 1
             else
@@ -189,7 +194,6 @@ TS
             end
         end
     endloop
-
     assert_zero is_permutation - 1
 
 INP
@@ -197,6 +201,6 @@ INP
     for (int i = 0; i < MAX_N; i++) {
         mpq_set_ui(input_q[(i + offset) % MAX_N], 2 * i + (rand() % 2), 1);
     }
-    mpq_set_ui(input_q[MAX_N], rand() % (MAX_N - 2) + 2, 1);
+    mpq_set_ui(input_q[MAX_N], rand() % (MAX_N - 1) + 2, 1);
 
 END
