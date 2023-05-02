@@ -1,6 +1,6 @@
 PREAMBLE
-#define MAX_N 4
-#define MAX_FAC 24
+#define MAX_N 3
+#define MAX_FAC 6
 
 PRE-TiTe
 import "IArray.vpr"
@@ -138,7 +138,7 @@ TS
     endloop
 
     k8 = 1
-    loop k9 MAX_FAC
+    loop k9 MAX_FAC*MAX_FAC
         if k8 < n
             if slot( st, k8).val < k8
                 if k8 % 2 == 0
@@ -146,9 +146,9 @@ TS
                     slot( cc, 0).val = slot( cc, k8).val
                     slot( cc, k8).val = tmp
                 else
-                    int tmp = slot( cc, slot( st, k8).val ).val
-                    slot( cc, slot( st, k8).val ).val = slot( cc, k8).val
-                    slot(cc, k8).val = tmp
+                    int tmp = slot(cc, k8).val
+                    slot(cc, k8).val = slot( cc, slot( st, k8).val ).val
+                    slot( cc, slot( st, k8).val ).val = tmp
                 end
 
                 int lte_c = -1
@@ -176,16 +176,16 @@ TS
                 if ts_j == n
                     is_permutation = 1
                 end
-                if ts_j == n || slot( cc, j).val > slot( D, j).val
+                if ts_j == n || slot( cc, ts_j).val > slot( D, ts_j).val
                     gte_d = 1
                 end
 
                 assert_zero lte_c + gte_d - 1
                 slot( st, k8).val = slot( st, k8).val + 1
-                i = 1
+                k8 = 1
             else
                 slot( st, k8).val =  0
-                i = i + 1
+                k8 = k8 + 1
             end
         end
     endloop
