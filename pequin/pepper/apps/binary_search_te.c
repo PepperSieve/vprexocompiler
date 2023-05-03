@@ -1,5 +1,4 @@
-#define MAX_N 20
-#define MAX_LOG 5
+#define MAX_N 5120
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
@@ -26,22 +25,20 @@ void compute(struct In *input, struct Out *output) {
 	int x = input->x[0];
 	int l = input->l[0];
 	int r = input->r[0];
-	int accumErr = 0;
 	if(l == r || x < slot( input->A, l) || slot( input->A, r - 1) < x) {
-		if(ind != -1) { accumErr++; }
+		assert_zero(ind != -1);
 	} else {
 		if(ind == -1) {
-			if(sup < l) { accumErr++; }
-			if(sup >= r - 1) { accumErr++; }
+			assert_zero(sup < l);
+			assert_zero(sup >= r - 1);
 			int tmp1 = slot( input->A, sup);
-			if(tmp1 >= x) { accumErr++; }
+			assert_zero(tmp1 >= x);
 			int tmp2 = slot( input->A, sup + 1);
-			if(x >= tmp2) { accumErr++; }
+			assert_zero(x >= tmp2);
 		} else {
-			if(ind < l) { accumErr++; }
-			if(ind >= r) { accumErr++; }
-			if(x != slot( input->A, ind)) { accumErr++; }
+			assert_zero(ind < l);
+			assert_zero(ind >= r);
+			assert_zero(x != slot( input->A, ind));
 		}
 	}
-	assert_zero(accumErr);
 }

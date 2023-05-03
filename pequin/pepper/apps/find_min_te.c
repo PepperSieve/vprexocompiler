@@ -1,4 +1,4 @@
-#define MAX_N 10
+#define MAX_N 5120
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
@@ -26,19 +26,17 @@ void compute(struct In *input, struct Out *output) {
 	}
 	int p = ghost[0].values[0 + 1 + MAX_N];
 	int n = input->n[0];
-	int accumErr = 0;
 	int found = 0;
 	int i3; for(i3 = 0; i3 < MAX_N; i3++) {
 		if(i3 < n) {
-			if(min > slot( input->A, i3)) { accumErr++; }
+			assert_zero(min > slot( input->A, i3));
 			if(slot( input->A, i3) == min) {
-				if(slot(B, i3) != 1) { accumErr++; }
+				assert_zero(slot(B, i3) != 1);
 				found = 1;
 			} else {
-				if(slot(B, i3) != 0) { accumErr++; }
+				assert_zero(slot(B, i3) != 0);
 			}
 		}
 	}
-	if(found == 0) { accumErr++; }
-	assert_zero(accumErr);
+	assert_zero(found == 0);
 }

@@ -1,5 +1,5 @@
-#define MAX_N 10
-#define MAX_M 4
+#define MAX_N 320
+#define MAX_M 128
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]

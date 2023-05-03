@@ -1,5 +1,5 @@
-#define MAX_N 10
-#define MAX_LOG 4
+#define MAX_N 160
+#define MAX_LOG 8
 #include <stdint.h>
 
 struct In {

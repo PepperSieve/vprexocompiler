@@ -17,7 +17,7 @@ echo -e "--\nCompiling kmp_search:"
 echo -e "--\nCompiling next_permutation:"
 ./bin/compiler -p ./data/next_permutation &&
 echo -e "--\nCompiling dutch_flag_struct:"
-./bin/compiler -p ./data/dutch_flag &&
+./bin/compiler -p ./data/dutch_flag_struct &&
 echo -e "--\nCompiling rr_sequence_find:"
 ./bin/compiler -p ./data/rr_sequence_find &&
 echo -e "--\nCompiling sum_of_powers:"

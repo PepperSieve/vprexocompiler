@@ -1,5 +1,5 @@
 #define MAX_N 10
-#define MAX_L 4
+#define MAX_L 14
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
@@ -37,7 +37,6 @@ void compute(struct In *input, struct Out *output) {
 		K_i[ITER1] = ghost[0].values[0 + MAX_N*MAX_L * MAX_N*MAX_L + MAX_N*MAX_L + MAX_N*MAX_L + ITER1];
 	}
 	uint32_t L = input->L[0];
-	int accumErr = 0;
 	uint32_t B_len_te = 0;
 	int k4; for(k4 = 0; k4 < MAX_L; k4++) {
 		if(k4 < L) {
@@ -46,15 +45,14 @@ void compute(struct In *input, struct Out *output) {
 	}
 	int k5; for(k5 = 0; k5 < MAX_L*MAX_N; k5++) {
 		if(k5 < B_len_te) {
-			if(k5 != 0 && slot( B, k5-1) >= slot( B, k5)) { accumErr++; }
+			assert_zero(k5 != 0 && slot( B, k5-1) >= slot( B, k5));
 			uint32_t ki = slot(K_i, k5);
-			if(ki >= L) { accumErr++; }
+			assert_zero(ki >= L);
 			uint32_t ji = slot(J_i, k5);
 			uint32_t ni = slot( input->N, ki);
-			if(ji >= ni) { accumErr++; }
+			assert_zero(ji >= ni);
 			uint32_t bi = slot( B, k5);
-			if(bi != mat_slot( input->A, MAX_N, ki, ji )) { accumErr++; }
+			assert_zero(bi != mat_slot( input->A, MAX_N, ki, ji ));
 		}
 	}
-	assert_zero(accumErr);
 }
