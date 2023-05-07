@@ -1,3 +1,5 @@
+TODO: Convert T into a pointer so we can apply chain->T recursively.
+
 PREAMBLE
 #define MAX_V 5
 #define MAX_E 10
@@ -46,6 +48,32 @@ TI
     int cand = 0
     int in_inner_loop = 0
 
+    %exo ghostArr T MAX_EXP
+    %exo int T_sp = 0
+    %exo ghostArr P_remn 2*MAX_V-1
+    %exo ghostArr P_recv 2*MAX_V-1
+    %exo ghostArr P_outg 2*MAX_V-1
+    %exo ghostArr next_T 2*MAX_V-1
+    %exo ghostArr E MAX_EXP
+    %exo ghostArr cycl MAX_EXP
+
+    %exo // Use comps to record all the cycles we have detected. Leave entry 0 empty
+    %exo // comps has size **comps_sp + 1**, each entry X has size comps_ind[X]
+    %exo mat comps MAX_V MAX_V
+    %exo int comps_sp = 0
+    %exo arr comps_ind MAX_V
+    %exo // Use reverse_comps to figure out which comp each vertex belongs to, -1 if DNE
+    %exo arr rev_comps MAX_V
+    %exo loop EXO_IT0 MAX_V
+        %exo slot(rev_comps, EXO_IT0).val = -1
+    %exo end
+    %exo // Use chain to record the current chain of processed comps
+    %exo // A positive value X refers to vertex X, a negative value -X refers to the cycle at entry X of comps
+    %exo arr chain MAX_V
+    %exo int chain_sp = 0
+    %exo slot(chain, chain_sp).val = v
+    %exo chain_sp = chain_sp + 1
+
     buffet 2*MAX_V+MAX_E
     while sv1count < NV
         while slot(rank, cand).val != 0
@@ -60,6 +88,10 @@ TI
         slot( tvb, tvb_sp).val = 0
         tvb_sp = tvb_sp + 1
 
+        %exo chain_sp = 0
+        %exo slot(chain, chain_sp).val = v
+        %exo chain_sp = chain_sp + 1
+
         int j = slot( input->edgeB, v+1).val
         while j > slot( input->edgeB, v).val
             j = j - 1
@@ -69,8 +101,38 @@ TI
 
         while cc_sp > 0
             while tv_sp > slot(tvb, tvb_sp-1).val
+                // pop(tv)
                 tv_sp = tv_sp - 1
                 v = slot( tv, tv_sp).val
+
+                %exo slot(chain, chain_sp).val = v
+                %exo chain_sp = chain_sp + 1
+
+                %exo if slot(rank, v).val > 0 && slot(cc, cc_sp-1).val > slot(rank, v).val
+                    %exo comps_sp = comps_sp + 1
+                    
+                    %exo // push TARGET and everything after TARGET in chain onto a new comp
+                    %exo target = v
+                    %exo if slot(rev_comps, v).val != -1
+                        %exo target = -1 * slot(rev_comps, v).val
+                    %exo end
+                    %exo target_ind = chain_sp - 1
+                    %exo while slot(chain, target_ind).val != target
+                        %exo target_ind = target_ind - 1
+                    %exo end
+                    %exo slot(comps_ind, comps_sp).val = chain_sp-target_ind
+                    %exo while chain_sp > target_ind
+                        %exo mat_slot(comps, comps_sp, MAX_V, chain_sp-1-target_ind).val = slot(chain, chain_sp-1).val
+                        %exo chain_sp = chain_sp - 1
+                    %exo end
+                    
+                    %exo // replace everything with the comp index
+                    %exo slot(chain, chain_sp).val = -1 * comps_sp
+                    %exo chain_sp = chain_sp + 1
+
+                    %exo // set rev_comps[v] to comps_sp
+                    %exo slot(rev_comps, v).val = comps_sp
+                %exo end
                 while slot(rank, v).val > 0 && slot(cc, cc_sp-1).val > slot(rank, v).val
                     cc_sp = cc_sp - 1
                     tvb_sp = tvb_sp - 1
@@ -85,6 +147,9 @@ TI
                     slot( tvb, tvb_sp).val = tv_sp
                     tvb_sp = tvb_sp + 1
                     j = slot( input->edgeB, v+1).val
+                    
+                    %exo slot(chain, chain_sp).val = v
+                    %exo chain_sp = chain_sp + 1
                 end
                 while in_inner_loop == 1 && j > slot( input->edgeB, v).val
                     j = j - 1
@@ -101,6 +166,14 @@ TI
                 slot( rank, slot( knar, nvc+1).val ).val = NV + MSCnum
                 sv1count = sv1count + 1
             end
+            %exo // pop the last element in the chain out
+            %exo chain_sp = chain_sp - 1
+            %exo if slot(chain, chain_sp).val >= 0
+                %exo slot(T, T_sp).val = slot(chain, chain_sp).val
+                %exo T_sp = T_sp + 1
+            %exo else
+                %exo 
+            %exo end
             cc_sp = cc_sp - 1
             tvb_sp = tvb_sp - 1
         end
@@ -113,14 +186,6 @@ TI
             slot(MSC, k2).val = slot(rank, k2).val - NV
         end
     endloop
-
-    %exo ghostArr T MAX_EXP
-    %exo ghostArr P_remn 2*MAX_V-1
-    %exo ghostArr P_recv 2*MAX_V-1
-    %exo ghostArr P_outg 2*MAX_V-1
-    %exo ghostArr next_T 2*MAX_V-1
-    %exo ghostArr E MAX_EXP
-    %exo ghostArr cycl MAX_EXP
 
 TE
     arr level_s MAX_V
