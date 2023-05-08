@@ -4,6 +4,32 @@
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
+struct T_struct {
+    int val;
+    int remn;
+    int outg;
+    int recv;
+    int next;
+    int edge;
+};
+// Append everything in cur_comp to T
+int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int comps_sp, int comps_ind[MAX_V], int cur_comp) {
+    int T_head = T_sp;
+    T_ptr[T_head].val = -1;
+    T_sp++;
+    int i;
+    for (i = 0; i < comps_ind[cur_comp]; i++) {
+        int target = comps[cur_comp * MAX_V + i];
+        if (target >= 0) {
+            T_ptr[T_head].val = target;
+            T_sp++;
+        } else {
+            T_sp = chain_to_T(T_ptr, T_sp, comps, comps_sp, comps_ind, -1 * target);
+        }
+    }
+    T_ptr[T_head].remn = T_sp - T_head - 1;
+    return T_sp;
+}
 struct In {
   int edges[MAX_E];
   int edgeB[MAX_V+1];
@@ -55,6 +81,7 @@ void compute(struct In *input, struct Out *output) {
 		}
 		while(cc_sp > 0){
 			while(tv_sp > slot(tvb, tvb_sp-1)){
+				// pop(tv);
 				tv_sp = tv_sp - 1;
 				v = slot( tv, tv_sp);
 				while(slot(rank, v) > 0 && slot(cc, cc_sp-1) > slot(rank, v)){

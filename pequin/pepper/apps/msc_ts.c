@@ -4,6 +4,32 @@
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
+struct T_struct {
+    int val;
+    int remn;
+    int outg;
+    int recv;
+    int next;
+    int edge;
+};
+// Append everything in cur_comp to T
+int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int comps_sp, int comps_ind[MAX_V], int cur_comp) {
+    int T_head = T_sp;
+    T_ptr[T_head].val = -1;
+    T_sp++;
+    int i;
+    for (i = 0; i < comps_ind[cur_comp]; i++) {
+        int target = comps[cur_comp * MAX_V + i];
+        if (target >= 0) {
+            T_ptr[T_head].val = target;
+            T_sp++;
+        } else {
+            T_sp = chain_to_T(T_ptr, T_sp, comps, comps_sp, comps_ind, -1 * target);
+        }
+    }
+    T_ptr[T_head].remn = T_sp - T_head - 1;
+    return T_sp;
+}
 struct In {
   int edges[MAX_E];
   int edgeB[MAX_V+1];
@@ -66,9 +92,9 @@ void compute(struct In *input, struct Out *output) {
 	}
 	int cur_msc_ts = 0;
 	int cur_head = slot( T, 0);
-	if(slot( output->MSC, 0) != 0) { accumErr++; }
+	if(slot( MSC, 0) != 0) { accumErr++; }
 	if(slot( input->edgeV, 0) != 0) { accumErr++; }
-	int e_ts = slot( E, cur_head);
+	int e_ts = slot( E, 0);
 	if(e_ts < 0) { accumErr++; }
 	if(e_ts >= NE) { accumErr++; }
 	if(slot( input->edgeV, e_ts) - cur_head != 0) { accumErr++; }
@@ -98,8 +124,8 @@ void compute(struct In *input, struct Out *output) {
 		}
 	}
 	if(count_ts != 0) { accumErr++; }
-	output->MSCnum = cur_msc_ts + 1;
-	cur_msc_ts = slot( output->MSC, 0);
+	MSCnum = cur_msc_ts + 1;
+	cur_msc_ts = slot( MSC, 0);
 	int i_ts = 0;
 	int j_ts = 0;
 	int ebi0_ts = slot( input->edgeB, 0);
@@ -108,13 +134,13 @@ void compute(struct In *input, struct Out *output) {
 		if(i_ts < NV) {
 			if(j_ts == ebi1_ts) {
 				i_ts = i_ts + 1;
-				cur_msc_ts = slot( output->MSC, i_ts);
+				cur_msc_ts = slot( MSC, i_ts);
 				ebi0_ts = ebi1_ts;
 				if(i_ts < NV) {
 					ebi1_ts = slot( input->edgeB, i_ts+1);
 				}
 			} else {
-				if(slot( output->MSC, slot( input->edges, j_ts) ) > cur_msc_ts) { accumErr++; }
+				if(slot( MSC, slot( input->edges, j_ts) ) > cur_msc_ts) { accumErr++; }
 				j_ts = j_ts + 1;
 			}
 		}

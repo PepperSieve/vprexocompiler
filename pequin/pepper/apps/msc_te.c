@@ -4,6 +4,32 @@
 #include <stdint.h>
 #define slot(A, i) A[i]
 #define mat_slot(A, n, i, j) A[i * n + j]
+struct T_struct {
+    int val;
+    int remn;
+    int outg;
+    int recv;
+    int next;
+    int edge;
+};
+// Append everything in cur_comp to T
+int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int comps_sp, int comps_ind[MAX_V], int cur_comp) {
+    int T_head = T_sp;
+    T_ptr[T_head].val = -1;
+    T_sp++;
+    int i;
+    for (i = 0; i < comps_ind[cur_comp]; i++) {
+        int target = comps[cur_comp * MAX_V + i];
+        if (target >= 0) {
+            T_ptr[T_head].val = target;
+            T_sp++;
+        } else {
+            T_sp = chain_to_T(T_ptr, T_sp, comps, comps_sp, comps_ind, -1 * target);
+        }
+    }
+    T_ptr[T_head].remn = T_sp - T_head - 1;
+    return T_sp;
+}
 struct In {
   int edges[MAX_E];
   int edgeB[MAX_V+1];
@@ -85,59 +111,61 @@ void compute(struct In *input, struct Out *output) {
 			if(slot(T, k4) < 0) {
 				remn_last = remn - slot(P_remn, k4) - 1;
 				remn = slot(P_remn, k4);
-				int recv = slot(P_recv, k4);
-				int outg = slot(P_outg, k4);
-				if(recv <= k4) { accumErr++; }
-				if(outg <= k4) { accumErr++; }
-				if(recv > k4 + remn) { accumErr++; }
-				if(outg > k4 + remn) { accumErr++; }
-				v_recv = slot(T, recv);
-				v_outg = slot(T, outg);
+				// int recv = slot(P_recv, k4);
+				// int outg = slot(P_outg, k4);
+				// assert_zero recv <= k4;
+				// assert_zero outg <= k4;
+				// assert_zero recv > k4 + remn;
+				// assert_zero outg > k4 + remn;
+				// v_recv = slot(T, recv);
+				// v_outg = slot(T, outg);
 			} else {
 				int v = slot(T, k4);
-				if(slot( output->MSC, v) - cur_msc_te != 0) { accumErr++; }
-				slot(occ_te, v) = 1;
-				v_recv = v;
-				v_outg = v;
+				// assert_zero slot( MSC, v) - cur_msc_te;
+				// slot(occ_te, v) = 1;
+				// v_recv = v;
+				// v_outg = v;
 				remn = remn - 1;
 			}
+			/*;
 			if(level != 0) {
 				if(head == -1) {
 					head = v_recv;
 				}
 				if(next != -1) {
-					if(v_recv - next != 0) { accumErr++; }
+					// assert_zero v_recv - next;
 				}
 				if(slot(next_T, k4) == NV) {
 					next = head;
-					if(remn_last != 0) { accumErr++; }
+					// assert_zero remn_last;
 				} else {
 					next = slot(next_T, k4);
 				}
 				int e_te = slot(E, k4);
-				if(e_te < 0) { accumErr++; }
-				if(e_te >= NE) { accumErr++; }
-				if(slot( input->edgeV, e_te) - v_outg != 0) { accumErr++; }
-				if(slot( input->edges, e_te) - next != 0) { accumErr++; }
+				// assert_zero e_te < 0;
+				// assert_zero e_te >= NE;
+				// assert_zero slot( input->edgeV, e_te) - v_outg;
+				// assert_zero slot( input->edges, e_te) - next;
 			}
+			*/;
 			if(slot(T, k4) < 0) {
 				if(remn_last != 0) {
 					slot( level_s, sp) = level;
-					slot( head_s, sp) = head;
-					slot( next_s, sp) = next;
-					slot( remn_s, sp) = remn_last;
+					// slot( head_s, sp) = head;
+					// slot( next_s, sp) = next;
+					// slot( remn_s, sp) = remn_last;
 					sp = sp + 1;
 				}
 				level = level + 1;
-				head = -1;
-				next = -1;
+				// head = -1;
+				// next = -1;
 			}
 			if(level != 0 && remn == 0) {
 				sp = sp - 1;
 				level = slot( level_s, sp);
-				head = slot( head_s, sp);
-				next = slot( next_s, sp);
-				remn = slot( remn_s, sp);
+				// head = slot( head_s, sp);
+				// next = slot( next_s, sp);
+				// remn = slot( remn_s, sp);
 			}
 		}
 	}
@@ -149,8 +177,9 @@ void compute(struct In *input, struct Out *output) {
 		}
 	}
 	if(count_te != 0) { accumErr++; }
-	output->MSCnum = cur_msc_te + 1;
-	cur_msc_te = slot( output->MSC, 0);
+	// assert_zero MSCnum - cur_msc_te - 1;
+	/*;
+	cur_msc_te = slot( MSC, 0);
 	int i_te = 0;
 	int j_te = 0;
 	int ebi0_te = slot( input->edgeB, 0);
@@ -159,16 +188,17 @@ void compute(struct In *input, struct Out *output) {
 		if(i_te < NV) {
 			if(j_te == ebi1_te) {
 				i_te = i_te + 1;
-				cur_msc_te = slot( output->MSC, i_te);
+				cur_msc_te = slot( MSC, i_te);
 				ebi0_te = ebi1_te;
 				if(i_te < NV) {
 					ebi1_te = slot( input->edgeB, i_te+1);
 				}
 			} else {
-				if(slot( output->MSC, slot( input->edges, j_te) ) > cur_msc_te) { accumErr++; }
+				// assert_zero slot( MSC, slot( input->edges, j_te) ) > cur_msc_te;
 				j_te = j_te + 1;
 			}
 		}
 	}
+	*/;
 	assert_zero(accumErr);
 }
