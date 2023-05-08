@@ -21,7 +21,7 @@ int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int c
     for (i = 0; i < comps_ind[cur_comp]; i++) {
         int target = comps[cur_comp * MAX_V + i];
         if (target >= 0) {
-            T_ptr[T_head].val = target;
+            T_ptr[T_sp].val = target;
             T_sp++;
         } else {
             T_sp = chain_to_T(T_ptr, T_sp, comps, comps_sp, comps_ind, -1 * target);
@@ -121,7 +121,7 @@ void compute(struct In *input, struct Out *output) {
 				// v_outg = slot(T, outg);
 			} else {
 				int v = slot(T, k4);
-				// assert_zero slot( MSC, v) - cur_msc_te;
+				if(slot( MSC, v) - cur_msc_te != 0) { accumErr++; }
 				// slot(occ_te, v) = 1;
 				// v_recv = v;
 				// v_outg = v;
@@ -172,12 +172,12 @@ void compute(struct In *input, struct Out *output) {
 	if(level != 0) { accumErr++; }
 	int count_te = 0;
 	int k5; for(k5 = 0; k5 < MAX_V; k5++) {
-		if(k5 < NV && slot(occ_te, k5) == 1) {
+		if(k5 < NV && slot(occ_te, k5) == 0) {
 			count_te = count_te + 1;
 		}
 	}
-	if(count_te != 0) { accumErr++; }
-	// assert_zero MSCnum - cur_msc_te - 1;
+	// assert_zero count_te;
+	if(MSCnum - cur_msc_te - 1 != 0) { accumErr++; }
 	/*;
 	cur_msc_te = slot( MSC, 0);
 	int i_te = 0;

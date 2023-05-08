@@ -21,7 +21,7 @@ int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int c
     for (i = 0; i < comps_ind[cur_comp]; i++) {
         int target = comps[cur_comp * MAX_V + i];
         if (target >= 0) {
-            T_ptr[T_head].val = target;
+            T_ptr[T_sp].val = target;
             T_sp++;
         } else {
             T_sp = chain_to_T(T_ptr, T_sp, comps, comps_sp, comps_ind, -1 * target);

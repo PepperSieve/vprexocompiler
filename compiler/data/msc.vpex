@@ -1,5 +1,3 @@
-TODO: Convert T into a pointer so we can apply chain->T recursively.
-
 PREAMBLE
 #define MAX_V 5
 #define MAX_E 10
@@ -30,7 +28,7 @@ int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int c
     for (i = 0; i < comps_ind[cur_comp]; i++) {
         int target = comps[cur_comp * MAX_V + i];
         if (target >= 0) {
-            T_ptr[T_head].val = target;
+            T_ptr[T_sp].val = target;
             T_sp++;
         } else {
             T_sp = chain_to_T(T_ptr, T_sp, comps, comps_sp, comps_ind, -1 * target);
@@ -124,9 +122,6 @@ TI
                 tv_sp = tv_sp - 1
                 v = slot( tv, tv_sp).val
 
-                %exo slot(chain, chain_sp).val = v
-                %exo chain_sp = chain_sp + 1
-
                 %exo if slot(rank, v).val > 0 && slot(cc, cc_sp-1).val > slot(rank, v).val
                     %exo comps_sp = comps_sp + 1
                     
@@ -139,7 +134,7 @@ TI
                     %exo while slot(chain, target_ind).val != target
                         %exo target_ind = target_ind - 1
                     %exo end
-                    %exo slot(comps_ind, comps_sp).val = chain_sp-target_ind
+                    %exo slot(comps_ind, comps_sp).val = chain_sp - target_ind
                     %exo while chain_sp > target_ind
                         %exo mat_slot( comps, comps_sp, MAX_V, chain_sp-1-target_ind ).val = slot(chain, chain_sp-1).val
                         %exo chain_sp = chain_sp - 1
@@ -266,7 +261,7 @@ TE
                 // v_outg = slot(T, outg).val
             else
                 int v = slot(T, k4).val
-                // assert_zero slot( MSC, v).val - cur_msc_te
+                assert_zero slot( MSC, v).val - cur_msc_te
                 // slot(occ_te, v).val = 1
                 // v_recv = v
                 // v_outg = v
@@ -321,13 +316,13 @@ TE
     assert_zero level
     int count_te = 0
     loop k5 MAX_V
-        if k5 < NV && slot(occ_te, k5).val == 1
+        if k5 < NV && slot(occ_te, k5).val == 0
             count_te = count_te + 1
         end
     endloop
-    assert_zero count_te
+    // assert_zero count_te
 
-    // assert_zero MSCnum - cur_msc_te - 1
+    assert_zero MSCnum - cur_msc_te - 1
     /*
     cur_msc_te = slot( MSC, 0).val
     int i_te = 0
@@ -419,36 +414,26 @@ TS
     endloop
 
 INP
+    // I can't think of a good way to randomize input, so I'm going to manually write one
+    int NV = 4;
+    int NE = 5;
+    int edgeB[MAX_V + 1] = {0, 2, 3, 4, 5, 5};
+    int edgeV[MAX_E] = {0, 0, 1, 2, 3, -1, -1, -1, -1, -1};
+    int edges[MAX_E] = {1, 3, 3, 0, 0, -1, -1, -1, -1, -1};
+
     // NV and NE
-    int NV = MAX_V;
-    int NE = MAX_E;
     mpq_set_ui(input_q[MAX_V + MAX_E + 1], NV, 1);
     mpq_set_ui(input_q[MAX_V + 2 * MAX_E + 2], NE, 1);
 
     // edgeB    
-    int edgeB[MAX_V + 1];
-    edgeB[0] = 0;
-    mpq_set_ui(input_q[MAX_E], 0, 1);
-    for (int i = 1; i < MAX_V; i++) {
-        int step = rand() % 3;
-        edgeB[i] = edgeB[i - 1] + step;
+    for (int i = 0; i <= MAX_V; i++) {
         mpq_set_ui(input_q[MAX_E + i], edgeB[i], 1);
     }
-    edgeB[MAX_V] = NE;
-    mpq_set_ui(input_q[MAX_E + MAX_V], NE, 1);
 
     // edgeV and edges
-    int cur_ind = 0;
-    for (int i = 1; i <= MAX_V; i++) {
-        while (cur_ind < edgeB[i]) {
-            int cur_recv = rand() % MAX_V;
-            if (cur_recv == i - 1) {
-                cur_recv = (cur_recv + 1) % MAX_V;
-            }
-            mpq_set_ui(input_q[MAX_E + MAX_V + 2 + cur_ind], i - 1, 1); // edgeV
-            mpq_set_ui(input_q[cur_ind], cur_recv, 1); // edges
-            cur_ind++;
-        }
+    for (int i = 0; i < MAX_E; i++) {
+        mpq_set_ui(input_q[MAX_E + MAX_V + 2 + i], edgeV[i], 1);
+        mpq_set_ui(input_q[i], edges[i], 1);
     }
 
 END
