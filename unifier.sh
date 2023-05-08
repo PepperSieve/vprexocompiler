@@ -73,13 +73,13 @@ elif [ "$1" == "merging" ] || [ "$1" == "kmp_search" ] || [ "$1" == "sum_of_powe
     gcc src/$1_exo.c -o bin/exo1 &&
     echo -e "EXO file successfully compiled" &&
 
-    # echo -e "\n\n+-------------------------+" &&
-    # echo -e "| Running Ti in Pequin... |" &&
-    # echo -e "+-------------------------+\n" &&
-    # bash test.sh $1_ti | grep "CONSTRAINTS" &&
-    # bin/pepper_verifier_$1_ti gen_input $1_ti.inputs &&
-    # bin/pepper_prover_$1_ti prove $1_ti.pkey $1_ti.inputs $1_ti.outputs $1_ti.proof &&
-    # bin/pepper_verifier_$1_ti verify $1_ti.vkey $1_ti.inputs $1_ti.outputs $1_ti.proof &&
+    echo -e "\n\n+-------------------------+" &&
+    echo -e "| Running Ti in Pequin... |" &&
+    echo -e "+-------------------------+\n" &&
+    bash test.sh $1_ti | grep "CONSTRAINTS" &&
+    bin/pepper_verifier_$1_ti gen_input $1_ti.inputs &&
+    bin/pepper_prover_$1_ti prove $1_ti.pkey $1_ti.inputs $1_ti.outputs $1_ti.proof &&
+    bin/pepper_verifier_$1_ti verify $1_ti.vkey $1_ti.inputs $1_ti.outputs $1_ti.proof &&
 
     echo -e "\n\n+-------------------------+" &&
     echo -e "| Running Te in Pequin... |" &&

@@ -13,21 +13,26 @@ struct T_struct {
     int edge;
 };
 // Append everything in cur_comp to T
-int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int comps_sp, int comps_ind[MAX_V], int cur_comp) {
+int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int comps_E[MAX_V * MAX_V], int comps_outg[MAX_V], int comps_sp, int comps_ind[MAX_V], int cur_comp) {
     int T_head = T_sp;
     T_ptr[T_head].val = -1;
     T_sp++;
     int i;
     for (i = 0; i < comps_ind[cur_comp]; i++) {
         int target = comps[cur_comp * MAX_V + i];
+        int next = i == comps_ind[cur_comp] - 1 ? comps[cur_comp * MAX_V] : comps[cur_comp * MAX_V + i + 1];
         if (target >= 0) {
             T_ptr[T_sp].val = target;
+            T_ptr[T_sp].edge = comps_E[cur_comp * MAX_V + i];
+            T_ptr[T_sp].next = next;
             T_sp++;
         } else {
-            T_sp = chain_to_T(T_ptr, T_sp, comps, comps_sp, comps_ind, -1 * target);
+            T_sp = chain_to_T(T_ptr, T_sp, comps, comps_E, comps_outg, comps_sp, comps_ind, -1 * target);
         }
     }
     T_ptr[T_head].remn = T_sp - T_head - 1;
+    T_ptr[T_head].recv = T_head + 1;
+    T_ptr[T_head].outg = T_head + comps_outg[cur_comp] + 1;
     return T_sp;
 }
 struct In {

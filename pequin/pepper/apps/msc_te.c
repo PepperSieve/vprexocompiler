@@ -13,21 +13,26 @@ struct T_struct {
     int edge;
 };
 // Append everything in cur_comp to T
-int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int comps_sp, int comps_ind[MAX_V], int cur_comp) {
+int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int comps_E[MAX_V * MAX_V], int comps_outg[MAX_V], int comps_sp, int comps_ind[MAX_V], int cur_comp) {
     int T_head = T_sp;
     T_ptr[T_head].val = -1;
     T_sp++;
     int i;
     for (i = 0; i < comps_ind[cur_comp]; i++) {
         int target = comps[cur_comp * MAX_V + i];
+        int next = i == comps_ind[cur_comp] - 1 ? comps[cur_comp * MAX_V] : comps[cur_comp * MAX_V + i + 1];
         if (target >= 0) {
             T_ptr[T_sp].val = target;
+            T_ptr[T_sp].edge = comps_E[cur_comp * MAX_V + i];
+            T_ptr[T_sp].next = next;
             T_sp++;
         } else {
-            T_sp = chain_to_T(T_ptr, T_sp, comps, comps_sp, comps_ind, -1 * target);
+            T_sp = chain_to_T(T_ptr, T_sp, comps, comps_E, comps_outg, comps_sp, comps_ind, -1 * target);
         }
     }
     T_ptr[T_head].remn = T_sp - T_head - 1;
+    T_ptr[T_head].recv = T_head + 1;
+    T_ptr[T_head].outg = T_head + comps_outg[cur_comp] + 1;
     return T_sp;
 }
 struct In {
@@ -111,74 +116,72 @@ void compute(struct In *input, struct Out *output) {
 			if(slot(T, k4) < 0) {
 				remn_last = remn - slot(P_remn, k4) - 1;
 				remn = slot(P_remn, k4);
-				// int recv = slot(P_recv, k4);
-				// int outg = slot(P_outg, k4);
-				// assert_zero recv <= k4;
-				// assert_zero outg <= k4;
-				// assert_zero recv > k4 + remn;
-				// assert_zero outg > k4 + remn;
-				// v_recv = slot(T, recv);
-				// v_outg = slot(T, outg);
+				int recv = slot(P_recv, k4);
+				int outg = slot(P_outg, k4);
+				if(recv <= k4) { accumErr++; }
+				if(outg <= k4) { accumErr++; }
+				if(recv > k4 + remn) { accumErr++; }
+				if(outg > k4 + remn) { accumErr++; }
+				v_recv = slot(T, recv);
+				v_outg = slot(T, outg);
 			} else {
 				int v = slot(T, k4);
 				if(slot( MSC, v) - cur_msc_te != 0) { accumErr++; }
+				// Bug prevents the following line from successful verification;
 				// slot(occ_te, v) = 1;
-				// v_recv = v;
-				// v_outg = v;
+				v_recv = v;
+				v_outg = v;
 				remn = remn - 1;
 			}
-			/*;
 			if(level != 0) {
 				if(head == -1) {
 					head = v_recv;
 				}
 				if(next != -1) {
-					// assert_zero v_recv - next;
+					if(v_recv - next != 0) { accumErr++; }
 				}
 				if(slot(next_T, k4) == NV) {
 					next = head;
-					// assert_zero remn_last;
+					if(remn_last != 0) { accumErr++; }
 				} else {
 					next = slot(next_T, k4);
 				}
 				int e_te = slot(E, k4);
-				// assert_zero e_te < 0;
-				// assert_zero e_te >= NE;
-				// assert_zero slot( input->edgeV, e_te) - v_outg;
-				// assert_zero slot( input->edges, e_te) - next;
+				if(e_te < 0) { accumErr++; }
+				if(e_te >= NE) { accumErr++; }
+				if(slot( input->edgeV, e_te) - v_outg != 0) { accumErr++; }
+				if(slot( input->edges, e_te) - next != 0) { accumErr++; }
 			}
-			*/;
 			if(slot(T, k4) < 0) {
 				if(remn_last != 0) {
 					slot( level_s, sp) = level;
-					// slot( head_s, sp) = head;
-					// slot( next_s, sp) = next;
-					// slot( remn_s, sp) = remn_last;
+					slot( head_s, sp) = head;
+					slot( next_s, sp) = next;
+					slot( remn_s, sp) = remn_last;
 					sp = sp + 1;
 				}
 				level = level + 1;
-				// head = -1;
-				// next = -1;
+				head = -1;
+				next = -1;
 			}
 			if(level != 0 && remn == 0) {
 				sp = sp - 1;
 				level = slot( level_s, sp);
-				// head = slot( head_s, sp);
-				// next = slot( next_s, sp);
-				// remn = slot( remn_s, sp);
+				head = slot( head_s, sp);
+				next = slot( next_s, sp);
+				remn = slot( remn_s, sp);
 			}
 		}
 	}
 	if(level != 0) { accumErr++; }
 	int count_te = 0;
 	int k5; for(k5 = 0; k5 < MAX_V; k5++) {
-		if(k5 < NV && slot(occ_te, k5) == 0) {
+		if(k5 < NV && slot(occ_te, k5) != 0) {
 			count_te = count_te + 1;
 		}
 	}
-	// assert_zero count_te;
+	if(count_te != 0) { accumErr++; }
 	if(MSCnum - cur_msc_te - 1 != 0) { accumErr++; }
-	/*;
 	cur_msc_te = slot( MSC, 0);
 	int i_te = 0;
 	int j_te = 0;
@@ -194,11 +197,10 @@ void compute(struct In *input, struct Out *output) {
 					ebi1_te = slot( input->edgeB, i_te+1);
 				}
 			} else {
-				// assert_zero slot( MSC, slot( input->edges, j_te) ) > cur_msc_te;
+				if(slot( MSC, slot( input->edges, j_te) ) > cur_msc_te) { accumErr++; }
 				j_te = j_te + 1;
 			}
 		}
 	}
-	*/;
 	assert_zero(accumErr);
 }
