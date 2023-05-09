@@ -12,6 +12,10 @@ struct T_struct {
     int next;
     int edge;
 };
+struct cycl_struct {
+    int val;
+    int edge;
+};
 // Append everything in cur_comp to T
 int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int comps_E[MAX_V * MAX_V], int comps_outg[MAX_V], int comps_sp, int comps_ind[MAX_V], int cur_comp) {
     int T_head = T_sp;
@@ -27,13 +31,55 @@ int chain_to_T(struct T_struct* T_ptr, int T_sp, int comps[MAX_V * MAX_V], int c
             T_ptr[T_sp].next = next;
             T_sp++;
         } else {
+            T_ptr[T_sp].next = next;
+            T_ptr[T_sp].edge = comps_E[cur_comp * MAX_V + i];
             T_sp = chain_to_T(T_ptr, T_sp, comps, comps_E, comps_outg, comps_sp, comps_ind, -1 * target);
         }
     }
     T_ptr[T_head].remn = T_sp - T_head - 1;
     T_ptr[T_head].recv = T_head + 1;
-    T_ptr[T_head].outg = T_head + comps_outg[cur_comp] + 1;
+    // Find where is outg
+    for (i = T_head; i < T_sp; i++) {
+        if (T_ptr[i].val == comps_outg[cur_comp]) {
+            T_ptr[T_head].outg = i;
+        }
+    }
     return T_sp;
+}
+int chain_to_cycl(struct cycl_struct* cycl_ptr, int cycl_sp, int comps[MAX_V * MAX_V], int comps_E[MAX_V * MAX_V], int comps_outg[MAX_V], int comps_sp, int comps_ind[MAX_V], int cur_comp) {
+    // Copy everything in comps to cycl
+    int i;
+    for (i = 0; i < comps_ind[cur_comp]; i++) {
+        int target = comps[cur_comp * MAX_V + i];
+        int next = i == comps_ind[cur_comp] - 1 ? comps[cur_comp * MAX_V] : comps[cur_comp * MAX_V + i + 1];
+        if (target >= 0) {
+            cycl_ptr[cycl_sp].val = target;
+            cycl_ptr[cycl_sp].edge = comps_E[cur_comp * MAX_V + i];
+            cycl_sp++;
+        } else {
+            cycl_sp = chain_to_cycl(cycl_ptr, cycl_sp, comps, comps_E, comps_outg, comps_sp, comps_ind, -1 * target);
+        }
+    }
+    int cycl_head = cycl_sp;
+    // Copy everything in comps to cycl, again
+    for (i = 0; i < comps_ind[cur_comp]; i++) {
+        int target = comps[cur_comp * MAX_V + i];
+        int next = i == comps_ind[cur_comp] - 1 ? comps[cur_comp * MAX_V] : comps[cur_comp * MAX_V + i + 1];
+        if (target >= 0) {
+            cycl_ptr[cycl_sp].val = target;
+            cycl_ptr[cycl_sp].edge = comps_E[cur_comp * MAX_V + i];
+            cycl_sp++;
+        } else {
+            cycl_sp = chain_to_cycl(cycl_ptr, cycl_sp, comps, comps_E, comps_outg, comps_sp, comps_ind, -1 * target);
+        }
+    }
+    // Remove everything after outg in the second copy
+    for (i = cycl_head; i < cycl_sp; i++) {
+        if (cycl_ptr[i].val == comps_outg[cur_comp]) {
+            cycl_sp = i + 1;
+        }
+    }
+    return cycl_sp;
 }
 struct In {
   int edges[MAX_E];
