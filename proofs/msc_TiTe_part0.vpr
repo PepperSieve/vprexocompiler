@@ -1,0 +1,345 @@
+// Dijkstra's Maximal Strongly Connected (MSC) Algorithm
+
+import "msc_comp.vpr"
+
+// Pairs of source node / target node set (representing the edges of a node in the graph)
+domain Edges {
+  function edges(src: Node, trgs: Set[Node]) : Edges
+
+  function edges_src(e: Edges) : Node
+  function edges_trgs(e: Edges) : Set[Node]
+
+  axiom edgesInjective {
+    forall src: Node, trgs: Set[Node] :: 
+      {edges(src, trgs)} 
+        edges_src(edges(src, trgs)) == src && 
+        edges_trgs(edges(src, trgs)) == trgs  
+  }
+
+  axiom edgesSurjective {
+    forall e: Edges :: {edges_src(e)} {edges_trgs(e)} 
+      edges(edges_src(e), edges_trgs(e)) == e
+  }
+
+}
+
+// Compute the union of all target node sets of the sequence of edge sets es
+function edges_adj(es: Seq[Edges]) : Set[Node] {
+  |es| > 0 ? edges_trgs(es[|es|-1]) union edges_adj(es[..|es|-1]) : Set()
+}
+
+// Lemma relating two edge sequences es1 and es2 with their concatenation es1 ++ es2
+method lem_edges_concat(es1: Seq[Edges], es2: Seq[Edges])
+  ensures edges_adj(es1 ++ es2) == edges_adj(es1) union edges_adj(es2)
+{
+  if (|es2| > 0) {
+    assert edges_adj(es2) == edges_trgs(es2[|es2|-1]) union edges_adj(es2[..|es2|-1])
+    lem_edges_concat(es1, es2[..|es2|-1])
+
+    assert es1 ++ es2 == (es1 ++ es2[..|es2|-1]) ++ Seq(es2[|es2|-1])
+    assert es1 ++ es2[..|es2|-1] == (es1 ++ es2)[..|es1 ++ es2|-1]
+    assert edges_adj(es1 ++ es2) == edges_trgs(es2[|es2|-1]) union edges_adj(es1 ++ es2[..|es2|-1])
+  } 
+}
+
+
+// The elements of the chains constructed by the MSC algorithm. These are pairs (c, es) where 
+// * c encodes non-empty cycle. That is, c witnesses that the nodes in c form a strong component
+// * es are the edge sets for the nodes in c that still need to be processed
+domain Elem {
+  function elem(inn: Node, outn: Node, c: Comp, es: Seq[Edges]) : Elem
+  function elem_inn(e: Elem) : Node
+  function elem_outn(e: Elem) : Node
+  function elem_sc(e: Elem) : Comp
+  function elem_adj(e: Elem) : Seq[Edges]
+
+  axiom elemInjective {
+    forall inn: Node, outn: Node, c: Comp, es: Seq[Edges] :: 
+      {elem(inn, outn, c, es)} 
+        elem_inn(elem(inn, outn, c, es)) == inn && 
+        elem_outn(elem(inn, outn, c, es)) == outn && 
+        elem_sc(elem(inn, outn, c, es)) == c && 
+        elem_adj(elem(inn, outn, c, es)) == es 
+  }
+
+  axiom elemSurjective {
+    forall e: Elem :: {elem_inn(e)} {elem_outn(e)} {elem_sc(e)} {elem_adj(e)} 
+      elem(elem_inn(e), elem_outn(e), elem_sc(e), elem_adj(e)) == e
+  }
+}
+
+// Expresses that e is a valid element of the chain of strong components constructed by the MSC algorithm
+// succ is the node in the next younger component preceeding e in the chain to which e connects via an edge
+// vs1 is the set of nodes already identified as MSCs, 
+// vs2 is the set of nodes of the subchain starting in e (i.e. all nodes that are in e or components older than e)
+// if b is true then e is a strong component, otherwise e is just a path in g.
+define valid_elem(g, e, succ, vs1, vs2, b)
+  elem_inn(e) in comp_nodes(elem_sc(e)) 
+  && elem_outn(e) in comp_nodes(elem_sc(e)) 
+  && edges_adj(elem_adj(e)) subset comp_adj(g, elem_sc(e))
+  && (forall i: Int :: 0 <= i && i < |elem_adj(e)| ==> edges_trgs(elem_adj(e)[i]) subset adj(g, edges_src(elem_adj(e)[i])))
+  && (forall i: Int :: 0 <= i && i < |elem_adj(e)| ==> edges_src(elem_adj(e)[i]) in comp_nodes(elem_sc(e)))
+  && msc_comp(g, elem_sc(e), Set(succ) union edges_adj(elem_adj(e)), vs1, vs2, b)
+
+
+// Expresses that scs is a valid (sub)chain.
+predicate chain_rec(g: Graph, scs: Seq[Elem], succ: Node, vs1: Set[Node], vs2: Set[Node])
+{
+  wf_graph(g) &&
+  |scs| > 0 ? valid_elem(g, scs[|scs|-1], succ, vs1, vs2, true)
+              && succ in adj(g, elem_outn(scs[|scs|-1]))
+              && chain_rec(g, scs[..|scs|-1], elem_inn(scs[|scs|-1]), vs1, vs2 setminus comp_nodes(elem_sc(scs[|scs|-1])))
+            : vs2 == Set()
+}
+
+
+// The key invariant of the chain scs in the MSC algorithm
+// The set vs1 contains the nodes that are already covered by MSCs
+// The set vs2 is the union of all the nodes in the components of scs 
+define chain(g, scs, vs1, vs2)
+  |scs| > 0 ? valid_elem(g, scs[|scs|-1], elem_inn(scs[|scs|-1]), vs1, vs2, true)
+              && chain_rec(g, scs[..|scs|-1], elem_inn(scs[|scs|-1]), vs1, vs2 setminus comp_nodes(elem_sc(scs[|scs|-1]))) 
+             : vs2 == Set[Node]()
+
+// Lemma stating that the chain_rec predicate is monotone in vs1
+method lem_chain_rec_mono_v1(g: Graph, scs: Seq[Elem], succ: Node, vs1: Set[Node], vs2: Set[Node], vs11: Set[Node])
+  requires wf_graph(g)
+  requires chain_rec(g, scs, succ, vs1, vs2) && vs1 subset vs11
+  ensures chain_rec(g, scs, succ, vs11, vs2)
+{
+  unfold chain_rec(g, scs, succ, vs1, vs2)
+  if (|scs| > 0) {    
+    lem_chain_rec_mono_v1(g, scs[..|scs|-1], elem_inn(scs[|scs|-1]), vs1, vs2 setminus comp_nodes(elem_sc(scs[|scs|-1])), vs11)
+  }
+  fold chain_rec(g, scs, succ, vs11, vs2)
+}
+
+// Choose an element from the set vs if non-empty
+function select(vs: Set[Node]) : Node
+  ensures result in vs || vs == Set()
+
+// Dijkstra's MSC algorithm
+method msc(grep: Ref)
+  returns (mscs: Seq[Seq[Node]])
+  requires acc(graph_rep(grep), wildcard)
+  ensures acc(graph_rep(grep), wildcard)
+  ensures msc_seq(graph(grep), mscs)
+{
+  var g: Graph := graph(grep)
+  fold msc_comp_seq(g, Seq(), Set())
+  var mscs1: Seq[Comp]
+  mscs1 := msc_outer(grep, Seq(), Set(), V(g))
+  assert graph(grep) == g
+  mscs := thm_msc_comp_seq_implies_msc_seq(g, mscs1)
+}
+
+// Outer loop of MSC algorithm
+// * mscs is the sequence of MSCs that have already been found. The set of its nodes is vs1.
+// * vs3 is the set of nodes that have not yet been added to a component.
+method msc_outer(grep: Ref, mscs: Seq[Comp], vs1: Set[Node], vs3: Set[Node])
+  returns (mscs1: Seq[Comp])
+  requires acc(graph_rep(grep), wildcard)
+  requires msc_comp_seq(graph(grep), mscs, vs1)
+  requires V(graph(grep)) == vs1 union vs3 && vs1 intersection vs3 == Set()
+  ensures acc(graph_rep(grep), wildcard)
+  ensures msc_comp_seq(graph(grep), mscs1, V(graph(grep)))
+{
+  var g: Graph := graph(grep)
+  var v: Node
+  v := select(vs3)
+
+  if (v in vs3) {
+    var c : Comp
+    c := ncomp(v)
+    var e : Elem
+    e := elem(v, v, c, Seq(edges(v, adj(g, v))))
+    
+    var vs11 : Set[Node]
+    var vs31 : Set[Node]
+    fold chain_rec(g, Seq[Elem](), elem_inn(e), vs1, Set())
+    assert edges_adj(Seq(edges(v, adj(g, v)))) == adj(g, v) union edges_adj(Seq(edges(v, adj(g, v)))[1..])
+    assert (Set(v) setminus comp_nodes(elem_sc(e))) == Set()
+    mscs1, vs11, vs31 :=  msc_inner(grep, mscs, Seq(e), vs1, Set(v), vs3 setminus Set(v))
+    mscs1 := msc_outer(grep, mscs1, vs11, vs31)
+  } else {
+    mscs1 := mscs
+    assert V(g) == vs1
+  }
+}
+
+// Inner loop of MSC algorithm
+// * mscs is the sequence of MSCs that have already been found. The set of its nodes is vs1.
+// * scs is the chain of components currently being processed. The set of its nodes is vs2.
+// * vs3 is the set of nodes that have not yet been added to a component.
+method msc_inner(grep: Ref, mscs: Seq[Comp], scs: Seq[Elem], vs1: Set[Node], vs2: Set[Node], vs3: Set[Node])
+  returns (mscs1: Seq[Comp], vs11: Set[Node], vs31: Set[Node])
+  requires acc(graph_rep(grep), wildcard)
+  requires msc_comp_seq(graph(grep), mscs, vs1)
+  requires chain(graph(grep), scs, vs1, vs2)
+  requires V(graph(grep)) == vs1 union vs3 union vs2 
+  requires vs1 intersection (vs2 union vs3) == Set()
+  requires vs2 intersection vs3 == Set()
+  ensures acc(graph_rep(grep), wildcard)
+  ensures msc_comp_seq(graph(grep), mscs1, vs11)
+  ensures V(graph(grep)) == vs11 union vs31
+  ensures vs11 intersection vs31 == Set()
+ { 
+  var g: Graph := graph(grep)
+
+  if (|scs| > 0) {
+    // Chain is nonempty: extract the last element e = (c, cadj) from the chain.
+    var e: Elem
+    e := scs[|scs| - 1]
+    var c: Comp
+    c := elem_sc(e)
+
+    var es: Seq[Edges]
+    es := elem_adj(e)
+    
+    if (|es| > 0) {
+      var trgs: Set[Node]
+      trgs := edges_trgs(es[|es|-1])
+      var v: Node
+      v := edges_src(es[|es|-1])
+
+      var w: Node
+      w := select(trgs)
+
+      if (w in trgs) {
+        // There is an unprocessed edge (v,w) for v in c.
+
+        // Update e by removing w from cadj
+        var es1: Seq[Edges] := es[..|es|-1] ++ Seq(edges(v, trgs setminus Set(w)))
+        var e1: Elem := elem(elem_inn(e), v, c, es1)
+
+        assert es1[..|es1|-1] == es[..|es|-1]
+        assert edges_adj(es) == edges_trgs(es[|es|-1]) union edges_adj(es[..|es|-1])
+        assert edges_adj(es1) == edges_trgs(es1[|es1|-1]) union edges_adj(es1[..|es1|-1])
+        
+        if (w in vs1) {
+          // w is already in an MSC: skip
+          var new_scs: Seq[Elem] := scs[..|scs|-1] ++ Seq(e1)
+          assert scs[..|scs|-1] == new_scs[..|new_scs|-1] 
+          mscs1, vs11, vs31 := msc_inner(grep, mscs, new_scs, vs1, vs2, vs3)
+        } else {
+          if (w in vs2) {
+            // w is in a component of the chain: compact
+            var new_scs: Seq[Elem]
+            if (w in comp_nodes(c)) {
+              new_scs := scs[..|scs|-1] ++ Seq(e1)
+              assert scs[..|scs|-1] == new_scs[..|new_scs|-1] 
+              mscs1, vs11, vs31 := msc_inner(grep, mscs, new_scs, vs1, vs2, vs3)
+            } else {
+              var c1: Comp
+              c1 := pcomp(elem_inn(e), c, v)
+              new_scs := compact(grep, w, scs[..|scs|-1], c1, es, vs1, vs2)
+              mscs1, vs11, vs31 := msc_inner(grep, mscs, new_scs, vs1, vs2, vs3)
+            }
+          } else {
+            // w is in vs3: extend the chain with a new component ew containing w.
+            var cw : Comp := ncomp(w)
+            var ew : Elem := elem(w, w, cw, Seq(edges(w, adj(g, w))))
+            var new_scs: Seq[Elem] := scs[..|scs|-1] ++ Seq(e1)
+          
+            assert edges_adj(Seq(edges(w, adj(g, w)))) == adj(g, w) union edges_adj(Seq(edges(w, adj(g, w)))[1..])
+            assert scs[..|scs|-1] == new_scs[..|new_scs|-1] 
+            fold chain_rec(g, new_scs, w, vs1, vs2)
+            assert (new_scs ++ Seq(ew))[..|(new_scs ++ Seq(ew))| - 1] == new_scs
+            assert ((vs2 union Set(w)) setminus comp_nodes(elem_sc(ew))) == vs2
+            mscs1, vs11, vs31 := msc_inner(grep, mscs, new_scs ++ Seq(ew), vs1, vs2 union Set(w), vs3 setminus Set(w))
+          }
+        } 
+      } else {
+        // No edges left to process for node v in c.
+        // Update e by removing the last edge set
+        var e1: Elem
+        var es1: Seq[Edges]
+        es1 := es[..|es|-1]
+        e1 := elem(elem_inn(e), v, c, es1)
+        assert (scs[..|scs| - 1] ++ Seq(e1))[..|scs[..|scs| - 1] ++ Seq(e1)| - 1] == scs[..|scs| - 1]
+        mscs1, vs11, vs31 := msc_inner(grep, mscs, scs[..|scs|-1] ++ Seq(e1), vs1, vs2, vs3)
+      }
+    } else {
+      // There are no unprocessed edges left for c: move c from scs to mscs
+      vs11 := vs1 union comp_nodes(c)
+      var vs21 : Set[Node]
+      vs21 := vs2 setminus comp_nodes(c)
+      mscs1 := mscs ++ Seq(c)
+      assert mscs1[..|mscs1|-1] == mscs
+      assert vs11 setminus comp_nodes(c) == vs1
+      fold msc_comp_seq(g, mscs1, vs11)
+      lem_chain_rec_mono_v1(g, scs[..|scs|-1], elem_inn(e), vs1, vs2 setminus comp_nodes(c), vs11)
+      unfold chain_rec(g, scs[..|scs|-1], elem_inn(e), vs11, vs2 setminus comp_nodes(c))
+      mscs1, vs11, vs31 := msc_inner(grep, mscs1, scs[..|scs|-1], vs11, vs21, vs3)
+    }
+
+  } else {
+    // Chain is empty: return to outer loop
+    mscs1 := mscs
+    vs11 := vs1
+    vs31 := vs3
+  }
+}
+
+method compact(grep: Ref, w: Node, scs: Seq[Elem], c: Comp, es: Seq[Edges], vs1: Set[Node], vs2: Set[Node])
+  returns (new_scs: Seq[Elem])
+  requires acc(graph_rep(grep), wildcard)
+  requires w in vs2 setminus comp_nodes(c) && w in adj(graph(grep), comp_end(c))
+  requires comp_path(graph(grep), c) && |es| > 0
+  requires chain_rec(graph(grep), scs, comp_start(c), vs1, vs2 setminus comp_nodes(c))
+  requires valid_elem(graph(grep), elem(comp_start(c), comp_end(c), c, es), comp_start(c), vs1, vs2, false)
+  ensures acc(graph_rep(grep), wildcard)
+  ensures chain(graph(grep), new_scs, vs1, vs2)
+{
+  var g: Graph := graph(grep)
+  unfold chain_rec(g, scs, comp_start(c), vs1, vs2 setminus comp_nodes(c))
+
+  var e1: Elem
+  e1 := scs[|scs| - 1]
+
+  var es1: Seq[Edges]
+  es1 := elem_adj(e1) ++ es
+  lem_edges_concat(elem_adj(e1), es)   
+
+  if (w in comp_nodes(elem_sc(e1))) {
+    var c1: Comp 
+    c1 := ccomp(pcomp(w, elem_sc(e1), elem_outn(e1)), c)
+
+    assert comp_start(ccomp_right(c1)) in adj(g, comp_end(ccomp_left(c1))) &&
+      comp_path(g, ccomp_left(c1)) && 
+      comp_start(ccomp_left(c1)) in comp_nodes(ccomp_left(c1)) && 
+      comp_end(ccomp_left(c1)) in comp_nodes(ccomp_left(c1)) &&
+      comp_path(g, ccomp_right(c1))
+
+    var trgs: Set[Node]
+    trgs := edges_trgs(es1[|es1|-1])
+    var v: Node
+    v := edges_src(es1[|es1|-1])
+    var es2: Seq[Edges]
+    es2 := es1[..|es1|-1] ++ Seq(edges(v, trgs setminus Set(w)))
+
+    e1 := elem(elem_inn(e1), v, c1, es1)
+ 
+    assert comp_nodes(c1) == comp_nodes(ccomp_left(c1)) union comp_nodes(ccomp_right(c1))
+    assert comp_adj(g, c1) == comp_adj(g, ccomp_left(c1)) union comp_adj(g, ccomp_right(c1))
+    
+    new_scs := scs[..|scs|-1] ++ Seq(e1)
+    assert (vs2 setminus comp_nodes(c)) setminus comp_nodes(elem_sc(scs[|scs|-1])) == vs2 setminus comp_nodes(c1)
+    assert new_scs[..|new_scs| - 1] == scs[..|scs| - 1]
+    assert chain(g, new_scs, vs1, vs2)
+  } else {  
+    var c1: Comp 
+    c1 := ccomp(pcomp(elem_inn(e1), elem_sc(e1), elem_outn(e1)), c)
+
+    assert comp_start(ccomp_right(c1)) in adj(g, comp_end(ccomp_left(c1))) &&
+      comp_path(g, ccomp_left(c1)) && 
+      comp_start(ccomp_left(c1)) in comp_nodes(ccomp_left(c1)) && 
+      comp_end(ccomp_left(c1)) in comp_nodes(ccomp_left(c1)) &&
+      comp_path(g, ccomp_right(c1))
+
+    assert comp_adj(g, c1) == comp_adj(g, ccomp_left(c1)) union comp_adj(g, ccomp_right(c1))
+
+    assert (vs2 setminus comp_nodes(c)) setminus comp_nodes(elem_sc(scs[|scs|-1])) == vs2 setminus comp_nodes(c1)
+    new_scs := compact(grep, w, scs[..|scs|-1], c1, es1, vs1, vs2)
+  }
+}

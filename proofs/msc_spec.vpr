@@ -1,0 +1,235 @@
+/** High-level specification of Dijkstra's MSC Algorithm */
+
+import "msc_graph.vpr"
+
+// Computes set of nodes occurring on path p
+function path_nodes(p: Seq[Node]) : Set[Node]
+{
+  |p| > 0 ? Set(p[0]) union path_nodes(p[1..]) : Set[Node]() 
+}
+
+// Computes the set of nodes adjacent to nodes on path p in graph g
+function path_adj(g: Graph, p: Seq[Node]) : Set[Node]
+  requires wf_graph(g)
+{
+  |p| > 0 ? adj(g, p[0]) union path_adj(g, p[1..]) : Set[Node]()
+}
+
+// Expresses that p is a path in graph g
+function path(g: Graph, p: Seq[Node]) : Bool 
+  requires wf_graph(g)
+  ensures path(g, Seq())
+  ensures |p| == 1 ==> path(g, p)
+{
+  (|p| > 0 ==> p[0] in V(g) && path(g, p[1..]))
+  && (|p| > 1 ==> p[1] in adj(g, p[0]))
+}
+
+// Lemma stating that all target nodes of edges leaving nodes in a path p of g are nodes in g
+method lem_path_adj_nodes(g: Graph, p: Seq[Node])
+  requires wf_graph(g)
+  requires path(g, p)
+  ensures path_adj(g, p) subset V(g)
+{
+  if (|p| > 0) {
+    lem_path_adj_nodes(g, p[1..])
+  }
+}
+
+//  Lemma stating that more nodes in a path also yield larger sets of target nodes
+method lem_path_adj_subset(g: Graph, p: Seq[Node], q: Seq[Node])
+  requires wf_graph(g)
+  requires path_nodes(p) subset path_nodes(q)
+  ensures path_adj(g, p) subset path_adj(g, q)
+{
+  if (|p| > 0) {
+    assert |q| > 0
+    if (p[0] != q[0]) {
+      assert path_nodes(Seq(p[0])) == Set(p[0]) union path_nodes(Seq(p[0])[1..])
+      lem_path_adj_subset(g, Seq(p[0]), q[1..])
+    } 
+    lem_path_adj_subset(g, p[1..], q)
+  }
+}
+
+method lem_path_adj_equal(g: Graph, p: Seq[Node], q: Seq[Node])
+  requires wf_graph(g)
+  requires path_nodes(p) == path_nodes(q)
+  ensures path_adj(g, p) == path_adj(g, q)
+{
+  lem_path_adj_subset(g, p, q)
+  lem_path_adj_subset(g, q, p)
+}
+
+// Lemma relating two paths p and q with their concatenation p ++ q
+method lem_path_concat(g: Graph, p: Seq[Node], q: Seq[Node])
+  requires wf_graph(g)
+  requires path(g, p) && path(g, q)
+  requires (|p| > 0 && |q| > 0) ==> q[0] in adj(g, p[|p|-1])
+  ensures path(g, p) && path(g, q)
+  ensures path(g, p ++ q) && path_nodes(p ++ q) == path_nodes(p) union path_nodes(q)
+  ensures path_adj(g, p ++ q) == path_adj(g, p) union path_adj(g, q)
+{
+  if (|p| > 0) {
+    lem_path_concat(g, p[1..], q)
+    assert path_nodes(Seq(p[0]) ++ (p[1..] ++ q)) == Set(p[0]) union path_nodes((Seq(p[0]) ++ (p[1..] ++ q))[1..])
+    assert (Seq(p[0]) ++ (p[1..] ++ q))[1..] == p[1..] ++ q
+    assert Seq(p[0]) ++ (p[1..] ++ q) == p ++ q
+  } 
+}
+
+// Lemma relating a path p ++ q with its constituent paths p and q (TODO: merge with previous lemma)
+method lem_path_split(g: Graph, p: Seq[Node], q: Seq[Node])
+  requires wf_graph(g)
+  requires path(g, p ++ q)
+  ensures path(g, p ++ q) && path(g, p) && path(g, q) && path_nodes(p ++ q) == path_nodes(p) union path_nodes(q)
+  ensures path_adj(g, p ++ q) == path_adj(g, p) union path_adj(g, q)
+  ensures (|p| > 0 && |q| > 0) ==> q[0] in adj(g, p[|p|-1])
+{
+  if (|p| > 0) {
+    assert path_nodes(p ++ q) == (Set((p ++ q)[0]) union path_nodes((p ++ q)[1..]))
+    assert p[1..] ++ q == (p ++ q)[1..]
+    lem_path_split(g, p[1..], q)
+    assert path_nodes(Seq(p[0]) ++ (p[1..] ++ q)) == Set(p[0]) union path_nodes((Seq(p[0]) ++ (p[1..] ++ q))[1..])
+    assert (Seq(p[0]) ++ (p[1..] ++ q))[1..] == p[1..] ++ q
+    assert path_nodes(Seq(p[0]) ++ (p[1..] ++ q)) == Set(p[0]) union path_nodes(p[1..] ++ q)
+    assert Seq(p[0]) ++ (p[1..] ++ q) == p ++ q
+  } 
+}
+
+// Helper function that rotates a cyclic path p1 ++ p2 containing a node w1 until w1 is at the head.
+// The returned paths q1 and q2 satisfy that q1 ++ q2 is the desired rotation of p1 ++ p2.
+// The node w2 is the original head of p1 ++ p2, which is also guaranteed to be the last node in q1.
+method rotate_until(g: Graph, p1: Seq[Node], p2: Seq[Node], w1: Node, w2: Node) 
+  returns (q1: Seq[Node], q2: Seq[Node])
+  requires wf_graph(g)
+  requires |p1| > 0 && path(g, p1 ++ p2) && (p1 ++ p2)[0] == (p1 ++ p2)[|p1 ++ p2|-1]  
+  requires w1 in path_nodes(p1) && p1[|p1|-1] == w2
+  ensures path(g, q1 ++ q2) && path_nodes(p1 ++ p2) == path_nodes(q1 ++ q2)
+  ensures |q1| > 0 && q1[0] == w1 && (q1 ++ q2)[|(q1 ++ q2)|-1] == w1 && q1[|q1|-1] == w2
+{  
+  if (w1 == p1[0]) {
+    q1 := p1
+    q2 := p2
+ } else {
+    assert w1 in path_nodes(p1[1..])
+    assert p1[1..] ++ (p2 ++ Seq(p1[1])) == (p1[1..] ++ p2) ++ Seq(p1[1]) 
+    assert p1[1..] ++ p2 == (p1 ++ p2)[1..]
+    lem_path_concat(g, p1[1..] ++ p2, Seq(p1[1]))
+    q1, q2 := rotate_until(g, p1[1..], p2 ++ Seq(p1[1]), w1, w2)
+    assert path_nodes(p1 ++ p2) == Set(p1[0]) union path_nodes((p1 ++ p2)[1..])
+    assert p1[1..] ++ p2 == (p1 ++ p2)[1..]
+    assert (p1 ++ p2)[1..] == (p1 ++ p2)[1..|p1 ++ p2|-1] ++ Seq((p1[1..] ++ p2)[|p1[1..] ++ p2|-1])
+    lem_path_split(g, (p1 ++ p2)[1..|p1 ++ p2|-1], Seq((p1[1..] ++ p2)[|p1[1..] ++ p2|-1]))
+    assert path_nodes(p1[1..] ++ p2) == path_nodes((p1 ++ p2)[1..|p1 ++ p2|-1]) union path_nodes(Seq((p1[1..] ++ p2)[|p1[1..] ++ p2|-1]))
+    
+    lem_path_split(g, p1[1..] ++ p2, Seq(p1[1]))
+    assert path_nodes(Seq(p1[1])) == Set(p1[1]) union path_nodes(Seq(p1[1])[1..])
+  }
+}
+
+// Expresses that p represents a strongly connected component in graph g.
+define is_sc(g, p)
+  path(g, p) && |p| > 0 && p[0] == p[|p|-1]
+
+// Expresses that p represents a maximal strongly connected component in graph g
+define is_msc(g, p)
+  is_sc(g, p)
+  && (forall q: Seq[Node] :: (path(g, q) && |q| > 0 && q[0] in path_nodes(p) && q[|q|-1] in path_nodes(p)) ==> path_nodes(q) subset path_nodes(p))
+
+// Expresses that mscs is a sequence of MSCs in graph g
+predicate msc_seq(g: Graph, mscs: Seq[Seq[Node]]) {
+  wf_graph(g) && |mscs| > 0 ==> is_msc(g, mscs[|mscs|-1]) && msc_seq(g, mscs[..|mscs|-1])
+}
+
+// Expresses that c is a strong component in graph g
+// with nodes in vs1 and outgoing edges targeting only vs1.
+// (similar to msc_comp above, but using an explicit path c as a witness for the strong component)
+define msc_path(g, c, vs1)
+  is_sc(g, c)
+  && path_adj(g, c) subset vs1
+  && path_nodes(c) subset vs1
+
+// Expresses that mscs is a "directed" sequence of strongly connected components in graph g, covering nodes vs1
+// (like msc_comp_seq above, but using explicit paths as witnesses for the strong components)
+predicate msc_path_seq(g: Graph, mscs: Seq[Seq[Node]], vs1: Set[Node])
+{
+  wf_graph(g) && |mscs| > 0 ? msc_path(g, mscs[|mscs|-1], vs1)
+                           && msc_path_seq(g, mscs[..|mscs|-1], vs1 setminus path_nodes(mscs[|mscs|-1])) 
+                            : vs1 == Set()
+}
+
+// Auxiliary lemma used in the proof of lem_msc_codes below
+method lem_msc_path_closed(g: Graph, mscs: Seq[Seq[Node]], q: Seq[Node], vs1: Set[Node])
+  requires wf_graph(g)
+  requires msc_path_seq(g, mscs, vs1)
+  requires path(g, q) && |q| > 0 && q[0] in vs1 && !(q[|q|-1] in vs1)
+  ensures false
+{
+  unfold msc_path_seq(g, mscs, vs1)
+  if (|mscs| > 0) {
+    var c: Seq[Node]
+    c := mscs[|mscs|-1]
+    if (q[0] in path_nodes(c)) {
+      assert path_nodes(Seq(q[0])) == Set(q[0]) union path_nodes(Seq(q[0])[1..])
+      lem_path_adj_subset(g, Seq(q[0]), c)
+      fold msc_path_seq(g, mscs, vs1)
+      lem_msc_path_closed(g, mscs, q[1..], vs1)
+    } else {
+      assert !(q[0] in path_nodes(mscs[|mscs|-1]))
+      lem_msc_path_closed(g, mscs[..|mscs|-1], q, vs1 setminus path_nodes(mscs[|mscs|-1]))
+    } 
+  }
+}
+
+// Auxiliary lemma used in the proof of lem_msc_path_seq_implies_msc_seq below
+method lem_msc_closed(g: Graph, mscs: Seq[Seq[Node]], q: Seq[Node], vs1: Set[Node])
+  requires wf_graph(g)
+  requires |mscs| > 0
+  requires |q| > 0 && q[0] in path_nodes(mscs[|mscs|-1]) && q[|q|-1] in path_nodes(mscs[|mscs|-1])
+  requires path(g, q) && msc_path_seq(g, mscs, vs1)
+  ensures path_nodes(q) subset path_nodes(mscs[|mscs|-1])
+  ensures msc_path_seq(g, mscs, vs1)
+{
+  if (|q| > 1) {
+    assert path_nodes(Seq(q[0])) == Set(q[0]) union path_nodes(Seq(q[0])[1..])
+    lem_path_adj_subset(g, Seq(q[0]), mscs[|mscs|-1])
+    assert q[1] in path_adj(g, mscs[|mscs|-1])
+    assert unfolding msc_path_seq(g, mscs, vs1) in q[1] in vs1
+    if (q[1] in path_nodes(mscs[|mscs|-1])) {
+      lem_msc_closed(g, mscs, q[1..], vs1)
+    } else {
+      unfold msc_path_seq(g, mscs, vs1)
+      lem_msc_path_closed(g, mscs[..|mscs|-1], q[1..], vs1 setminus path_nodes(mscs[|mscs|-1]))
+    }
+  } else {
+    assert path_nodes(q) == Set(q[0]) union path_nodes(q[1..])
+  }
+}
+
+// Lemma stating that directed sequences of strong components are maximal strong components
+// (The induction step in the proof relates to Theorem 2a in Dijkstra's book.)
+method lem_msc_path_seq_implies_msc_seq(g: Graph, mscs: Seq[Seq[Node]], vs1: Set[Node])
+  requires wf_graph(g)
+  requires msc_path_seq(g, mscs, vs1)
+  ensures msc_seq(g, mscs)
+{
+  if (|mscs| > 0) {
+    var p: Seq[Node]
+    p := mscs[|mscs|-1]
+    // prove: forall q: Seq[Node] :: (path(g, q) && |q| > 0 && q1[0] in path_nodes(p) && q[|q|-1] in path_nodes(p)) ==> path_nodes(q) subset path_nodes(p)
+    var q: Seq[Node]
+    if (path(g, q) && |q| > 0 && q[0] in path_nodes(p) && q[|q|-1] in path_nodes(p)) {
+      lem_msc_closed(g, mscs, q, vs1)
+    }
+    unfold msc_path_seq(g, mscs, vs1)
+    assert (path(g, q) && |q| > 0 && q[0] in path_nodes(p) && q[|q|-1] in path_nodes(p)) ==> path_nodes(q) subset path_nodes(p)
+    // end prove. Can now assume forall q: ...
+    assume forall q1: Seq[Node] :: (path(g, q1) && |q1| > 0 && q1[0] in path_nodes(p) && q1[|q1|-1] in path_nodes(p)) ==> path_nodes(q1) subset path_nodes(p)
+    lem_msc_path_seq_implies_msc_seq(g, mscs[..|mscs|-1], vs1 setminus path_nodes(mscs[|mscs|-1]))
+    fold msc_seq(g, mscs)
+  } else {
+    fold msc_seq(g, Seq())
+  }
+}
+

@@ -1,0 +1,269 @@
+// This TeTs proof is separated into 2 parts to shorten the proof time.
+// Part1 infers all useful invariants from T_b, which is referred to is_next_permutation_tb
+// Part1 also proves that d is a permutation of c
+// Part2 uses is_next_permutation_tb to infer other specs in the WLS.
+
+// TODO: distinct_up_to(d, n)
+
+import "IArray.vpr"
+
+function contents_of_seg_old(a: IArray, l: Int, r: Int) : Set[Int] 
+// gives contents of array as a set with l inclusive, r exclusive
+    requires access_read(a)
+    requires 0 <= l
+    requires r <= len(a)
+    ensures r <= l ==> result == Set()
+        // Viper doesn't unfold recursive definitions all the way, it just unfolds one step of the induction
+        // So, we need to explicitly give it the base case
+    ensures forall i: Int :: {slot(a,i).val} l <= i && i < r ==> slot(a,i).val in result
+{
+  l >= r ? Set() : Set(slot(a, r-1).val) union contents_of_seg_old(a, l, r-1)
+}
+
+method lemma_contents_of_seg_length_old(a: IArray, l: Int, r: Int, n: Int)
+  requires access_read(a) && n <= len(a) && distinct_up_to(a, n)
+  requires 0 <= l
+  requires r <= n
+  ensures access_read(a) && untouched(a)
+  ensures r >= 0 ==> forall r1: Int :: {slot(a, r1)} r <= r1 && r1 < n ==> !(slot(a, r1).val in contents_of_seg_old(a, l, r)) 
+  ensures |contents_of_seg_old(a, l, r)| == (r - l > 0 ? r - l : 0)
+{
+  if (l < r) {
+    lemma_contents_of_seg_length_old(a, l, r - 1, n)
+  }
+}
+
+// Choice function for sets of integers
+// Aside: I believe Set[Int] = P_fin(Z), i.e. the set of finite subsets of the set of integers
+// So we do not need to rely on the Axiom of Choice to justify the existence of this function 
+function choose_int(s: Set[Int]) : Int
+  ensures s != Set() ==> result in s
+
+// Lemma proving some basic facts of set theory
+// This is needed because of Viper's incomplete axiomatization of the set cardinality operator.
+method card_subset(a: Set[Int], b: Set[Int])
+  requires a subset b
+  ensures |a| <= |b|
+  ensures |a| == |b| ==> (a == b)
+{
+  if (a != Set()) {
+    var x : Int
+    x := choose_int(a)
+    card_subset(a setminus Set(x), b setminus Set(x))
+    assert (a setminus Set(x) union Set(x)) == a
+    assert (b setminus Set(x) union Set(x)) == b
+  }
+}
+
+// ensures that the array C has a next permutation
+define have_next_perm(c, n)
+    exists i: Int :: i >= 0 && i < n - 1 && slot(c, i).val < slot(c, i+1).val
+
+// i is the first index where the next permutation differs from the current array
+// Observation for i is that c[i] < c[i + 1] && c[k] > c[k + 1] for all k > i
+define is_i(i, c, n)
+    i >= 0 && i < n - 1 && slot(c, i).val < slot(c, i+1).val &&
+    forall p: Int, q: Int :: {slot(c, p).val, slot(c, q).val}
+        i < p && p < q && q < n ==> slot(c, p).val > slot(c, q).val
+
+// j is the index where we swap item i with
+// Observation for j is that c[j] > c[i] && c[j + 1] < c[i], if c[j + 1] exists
+define is_j(i, j, c, n)
+    j > i && j < n && slot(c, j).val > slot(c, i).val &&
+    forall k1: Int :: {slot(c, k1).val}
+        k1 > i && k1 < n ==> slot(c, k1).val >= slot(c, j).val || slot(c, k1).val < slot(c, i).val
+
+// Basic relationship between d and c
+define is_d_p0(i, j, c, d)
+    (forall k1: Int :: {slot(d, k1).val}
+        k1 > i && k1 < n && n - k1 + i != j ==> slot(d, k1).val == slot(c, n - k1 + i).val) &&
+    slot(d, n - j + i).val == slot(c, i).val
+
+// d is a permutation of c
+define is_d_p1(c, d)
+    contents_of_seg_old(d, 0, n) == contents_of_seg_old(c, 0, n) &&
+    distinct_up_to(d, n)
+
+// d[k] = c[k] for all k < i; d[i] = c[j]; d[k] < d[k+1] for all k > i
+define is_d_p2(i, j, c, d)
+    (forall k1: Int :: {slot(c, k1).val} {slot(d, k1).val}
+        k1 >= 0 && k1 < i ==> slot(d, k1).val == slot(c, k1).val) &&
+    slot(d, i).val == slot(c, j).val &&
+    (forall k1: Int, k2: Int :: {slot(d, k1).val, slot(d, k2).val}
+        i < k1 && k1 < k2 && k2 < n ==> slot(d, k1).val < slot(d, k2).val)
+
+// Verify that d is the next permutation of c
+// Observation for next_permutation is that
+//  we swap item i and j, and then reverse everything after index i
+// To do so, we need the supplimentary i, j,
+// and an intermediate array c1 to record the state after item i and j are swapped
+define is_next_permutation_tb(i, j, c, d, n)
+    is_i(i, c, n) && is_j(i, j, c, n) && is_d_p0(i, j, c, d) && is_d_p1(c, d) && is_d_p2(i, j, c, d)
+
+// Verify the code presented in the spec
+// cc is an identical array of c that is used for intermediate process
+method next_permutation_sp(i: Int, j: Int, c: IArray, cc: IArray, d: IArray, ind_in_c: IArray, n: Int, ci: Int, cip1: Int, cj: Int, cjp1: Int)
+    requires access_read(c) && access(cc) && access_read(d) && access(ind_in_c) && c != d
+    requires n > 1 && n <= len(c) && n <= len(cc) && n <= len(d) && n <= len(ind_in_c)
+    requires distinct_up_to(c, n) && have_next_perm(c, n)
+    ensures access_read(c) && access(cc) && access_read(d) && access(ind_in_c)
+    ensures i >= 0 && j > i && j < n
+    ensures is_next_permutation_tb(i, j, c, d, n)
+{
+    assume forall k1: Int :: {slot(c, k1).val} {slot(cc, k1).val}
+        k1 >= 0 && k1 < n && k1 != i && k1 != j ==> slot(cc, k1).val == slot(c, k1).val
+
+    assume 0 <= i
+    assume i < j
+    assume j < n
+
+    assume ci < cip1
+    assume cj > ci
+    if (j != n - 1) {
+        assume cjp1 < ci
+    }
+    var k: Int := 0
+    // Swap c[i] and c[j]
+    while (k < maxsize())
+        invariant access_read(c) && access(cc)
+        invariant k >= 0
+        invariant distinct_up_to(c, n)
+        
+        // c[i] < c[i+1] && c[j] > c[i] && c[j+1] <= c[i]
+        invariant forall k1: Int :: {slot(cc, k1).val} {slot(c, k1).val}
+            k1 >= k && k1 < n && k1 != i && k1 != j ==> slot(cc, k1).val == slot(c, k1).val
+        invariant k > i ==> slot(c, i).val == ci
+        invariant k > i + 1 ==> slot(c, i+1).val == cip1
+        invariant k > j ==> slot(c, j).val == cj
+        invariant j < n - 1 && k > j + 1 ==> slot(c, j+1).val == cjp1
+        invariant k > i + 1 ==> slot(c, i).val < slot(c, i+1).val
+        invariant k > j ==> slot(c, j).val > slot(c, i).val
+        invariant k > j + 1 && j < n - 1 ==> slot(c, i).val > slot(c, j+1).val
+        
+        // cc is c with i, j swapped
+        invariant forall k1: Int :: {slot(cc, k1).val} {slot(c, k1).val}
+            k1 >= 0 && k1 < k && k1 < n && k1 != i && k1 != j ==> slot(cc, k1).val == slot(c, k1).val
+        invariant k > i ==> slot(cc, i).val == cj
+        invariant k > j ==> slot(cc, i).val == slot(c, j).val && slot(cc, j).val == slot(c, i).val
+
+        // Prove cc is a permutation of c
+        invariant k <= i ==> contents_of_seg_old(cc, 0, k) == contents_of_seg_old(c, 0, k)
+        invariant k > i && k <= j ==> contents_of_seg_old(cc, 0, k) union Set(ci) == contents_of_seg_old(c, 0, k) union Set(cj)
+        invariant k > j && k <= n ==> contents_of_seg_old(cc, 0, k) == contents_of_seg_old(c, 0, k)
+        invariant k >= n ==> contents_of_seg_old(cc, 0, n) == contents_of_seg_old(c, 0, n)
+    {
+        if (k == i) {
+            assume slot(c, k).val == ci
+            assume slot(cc, k).val == cj
+        }
+        if (k == i + 1) {
+            assume slot(c, k).val == cip1
+        }
+        if (k == j) {
+            assume slot(c, k).val == cj
+            assume slot(cc, k).val == ci
+        }
+        if (k == j + 1 && k != n) {
+            assume slot(c, k).val == cjp1
+        }
+        k := k + 1
+    }
+    assert contents_of_seg_old(cc, 0, n) == contents_of_seg_old(c, 0, n)
+
+    k := 0
+    var cc_seen: Set[Int] := Set()
+    var d_seen: Set[Int] := Set()
+    // Use cc_cont to record the items of cc we have processed so far
+    var cc_cont: Seq[Int] := Seq()
+    // Same for d, don't need d_ind
+    var d_cont: Seq[Int] := Seq()    
+    var cor: Int
+    while (k < maxsize())
+        invariant access_read(c) && access_read(cc) && access_read(d) && access(ind_in_c)
+        invariant k >= 0
+        invariant forall k1: Int :: {slot(cc, k1).val} {slot(c, k1).val}
+            k1 >= 0 && k1 < n && k1 != i && k1 != j ==> slot(cc, k1).val == slot(c, k1).val
+        invariant slot(cc, i).val == slot(c, j).val && slot(cc, j).val == slot(c, i).val
+        invariant slot(c, j).val > slot(c, i).val && (j < n - 1 ==> slot(c, i).val > slot(c, j+1).val)
+        invariant contents_of_seg_old(cc, 0, n) == contents_of_seg_old(c, 0, n)
+        
+        // if k < i, d[k] = c[k]
+        // if k == i, d[k] = c[j]
+        // if k == n - j + i, d[k] = c[i]
+        // otherwise, d[k] = c[n - k + i]
+        invariant forall k1: Int :: {slot(c, k1).val} {slot(d, k1).val}
+            k1 >= 0 && k1 < i && k1 < k ==> slot(d, k1).val == slot(c, k1).val
+        invariant k > i ==> slot(d, i).val == slot(c, j).val
+        invariant k > n-j +i ==> slot(d, n-j+i).val == slot(c, i).val
+        invariant k - 1 > i && k - 1 < n && k - 1 != n-j+i ==>
+            slot(d, k-1).val == slot(c, n-k+i+1).val
+        invariant forall k1: Int :: {slot(d, k1).val}
+            k1 > i && k1 < k && k1 < n ==> slot(d, k1).val == slot(cc, n-k1+i).val
+        
+        // forall k > i, c[k] > c[k+1]
+        invariant forall k1: Int, k2: Int :: {slot(c, k1).val, slot(c, k2).val}
+            i < k1 && k1 < k2 && k2 < k && k2 < n ==> slot(c, k1).val > slot(c, k2).val
+        
+        // Proof for permutation
+        invariant d_seen == cc_seen
+        invariant distinct_up_to(cc, n)
+        invariant k <= n ==> distinct_up_to(d, k)
+        invariant k >= n ==> distinct_up_to(d, n)
+        // for d
+        invariant k <= n ==> |d_cont| == k
+        invariant k >= n ==> |d_cont| == n
+        invariant forall k1: Int :: {d_cont[k1]}
+            k1 >= 0 && k1 < k && k1 < n ==> d_cont[k1] == slot(d, k1).val
+        invariant forall k1: Int :: k1 in d_seen ==> k1 in d_cont
+        invariant |d_cont| == |d_seen|
+        invariant d_seen subset contents_of_seg_old(d, 0, n)
+        // for cc
+        invariant k <= n ==> |cc_cont| == k
+        invariant k >= n ==> |cc_cont| == n
+        invariant forall k1: Int :: {cc_cont[k1]}
+            k1 >= 0 && k1 < k && k1 <= i ==> cc_cont[k1] == slot(cc, k1).val
+        invariant forall k1: Int :: {cc_cont[k1]}
+            k1 > i && k1 < k && k1 < n ==> cc_cont[k1] == slot(cc, n - k1 + i).val
+        invariant forall k1: Int :: k1 in cc_seen ==> k1 in cc_cont
+        invariant |cc_cont| == |cc_seen|
+        invariant cc_seen subset contents_of_seg_old(cc, 0, n)
+    {
+        if (k < n) {
+            if (k <= i) {
+                cor := k
+            }
+            else {
+                cor := n - k + i
+            }
+            slot(ind_in_c, k).val := cor
+            assume slot(d, k).val == slot(cc, cor).val
+
+            // forall k > i, c[k] > c[k+1]
+            if (k != 0 && k - 1 > i) {
+                assume slot(c, k-1).val > slot(c, k).val
+            }
+            // Process d_seen
+            d_cont := d_cont ++ Seq(slot(d, k).val)
+            assert !(slot(d, k).val in d_seen)
+            d_seen := d_seen union Set(slot(d, k).val)
+            // Process cc_seen
+            cc_cont := cc_cont ++ Seq(slot(cc, cor).val)
+            assert !(slot(cc, cor).val in cc_seen)
+            cc_seen := cc_seen union Set(slot(cc, cor).val)
+        }
+        k := k + 1
+    }
+
+    // d_seen = set(d)
+    lemma_contents_of_seg_length_old(d, 0, n, n)
+    card_subset(d_seen, contents_of_seg_old(d, 0, n))
+    assert d_seen == contents_of_seg_old(d, 0, n)
+    // cc_seen = set(cc)
+    lemma_contents_of_seg_length_old(cc, 0, n, n)
+    card_subset(cc_seen, contents_of_seg_old(cc, 0, n))
+    assert cc_seen == contents_of_seg_old(cc, 0, n)
+    // set(d) = set(cc)
+    assert contents_of_seg_old(d, 0, n) == contents_of_seg_old(cc, 0, n)
+    assert contents_of_seg_old(cc, 0, n) == contents_of_seg_old(c, 0, n)
+    assert contents_of_seg_old(d, 0, n) == contents_of_seg_old(c, 0, n)
+}

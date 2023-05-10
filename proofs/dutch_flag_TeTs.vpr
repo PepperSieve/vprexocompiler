@@ -1,0 +1,279 @@
+// For this example, I create a special type of array called dutch_array that has two identifiers:
+// col: Should only be 0, 1, and 2.
+// val: Any integer. The same val should not appear twice in the array.
+
+import "IArray.vpr"
+
+function contents_of_seg_old(a: IArray, l: Int, r: Int) : Set[Int] 
+// gives contents of array as a set with l inclusive, r exclusive
+    requires access_read(a)
+    requires 0 <= l
+    requires r <= len(a)
+    ensures r <= l ==> result == Set()
+        // Viper doesn't unfold recursive definitions all the way, it just unfolds one step of the induction
+        // So, we need to explicitly give it the base case
+    ensures forall i: Int :: {slot(a,i).val} l <= i && i < r ==> slot(a,i).val in result
+{
+  l >= r ? Set() : Set(slot(a, r-1).val) union contents_of_seg_old(a, l, r-1)
+}
+
+method lemma_contents_of_seg_length_old(a: IArray, l: Int, r: Int, n: Int)
+  requires access_read(a) && n <= len(a) && distinct_up_to(a, n)
+  requires 0 <= l
+  requires r <= n
+  ensures access_read(a) && untouched(a)
+  ensures r >= 0 ==> forall r1: Int :: {slot(a, r1)} r <= r1 && r1 < n ==> !(slot(a, r1).val in contents_of_seg_old(a, l, r)) 
+  ensures |contents_of_seg_old(a, l, r)| == (r - l > 0 ? r - l : 0)
+{
+  if (l < r) {
+    lemma_contents_of_seg_length_old(a, l, r - 1, n)
+  }
+}
+
+// --
+
+field col: Int
+
+define access_dutch(array)
+    forall j: Int :: {slot(array, j)}
+        0 <= j && j < len(array) ==> acc(slot(array, j).col) && acc(slot(array, j).val)
+
+define access_read_dutch(array)
+    forall j: Int :: {slot(array, j)} 
+        0 <= j && j < len(array) ==> acc(slot(array, j).col, 2/3) && acc(slot(array, j).val, 2/3)
+
+define unsorted_dutch_flag(a, n)
+    n < len(a) &&
+    // verify that color is legal
+    (forall j: Int :: {slot(a, j).col} 
+        0 <= j && j < n ==> slot(a, j).col >= 0 && slot(a, j).col <= 2) &&
+    // verify that value is unique
+    (forall i: Int, j: Int :: {slot(a, i).val, slot(a, j).val}
+        0 <= i && i < j && j < n ==> slot(a, i).val != slot(a, j).val)
+
+// B is the sorted version of dutch flag A
+// To verify that B is a permutation of A, we ensure that the set of all the VALs in A and B are the same.
+// More over, for every VAL, the correspondng COL in A and B are the same.
+define sorted_dutch_flag(a, b, n)
+    unsorted_dutch_flag(a, n) && contents(a) == contents(b) &&
+    (forall i: Int, j: Int :: {slot(a, i), slot(b, j)}
+        0 <= i && i < n && 0 <= j && j < n && slot(a, i).val == slot(b, j).val ==> slot(a, i).col == slot(b, j).col) &&
+    (forall i: Int, j: Int :: {slot(b, i).col, slot(b, j).col}
+        0 <= i && i < j && j < n ==> slot(b, i).col <= slot(b, j).col)
+
+// k1: a[k1] RED && a[k1 + 1] WHITE
+// k2: a[k2] WHITE && a[k2 + 1] BLUE
+//     Use -1 and n-1 if some of the colors does not exist
+// ord: assert that every item in A corresponds to something in B
+//      ORD is a regular array
+method dutch_flag_sp(n: Int, a: IArray, b: IArray, k1: Int, k2: Int, ord: IArray)
+    requires access_read_dutch(a) && access_read_dutch(b) && access(ord)
+    requires n > 0 && n < maxsize() && len(a) == maxsize() && len(b) == maxsize() && len(ord) == maxsize()
+    requires unsorted_dutch_flag(a, n)
+    ensures access_read_dutch(a) && access_read_dutch(b) && access(ord)
+    ensures forall i: Int, j: Int :: {slot(b, i).col, slot(b, j).col}
+        0 <= i && i < j && j < n ==> slot(b, i).col <= slot(b, j).col
+    ensures contents_of_seg_old(a, 0, n) == contents_of_seg_old(b, 0, n)
+{
+    var count: IArray
+    inhale access(count)
+    assume count != a && count != b
+    assume len(count) == maxsize()
+    var i: Int := 0
+    // Initialize count
+    while (i < maxsize())
+        invariant access(count)
+        invariant i >= 0
+        invariant i <= maxsize() ==> forall j: Int :: {slot(count, j).val} j >= 0 && j < i ==> slot(count, j).val == 0
+        invariant i >= maxsize() ==> forall j: Int :: {slot(count, j).val} j >= 0 && j < maxsize() ==> slot(count, j).val == 0
+    {
+        slot(count, i).val := 0
+        i := i + 1
+    }
+
+    assume k1 >= -1
+    assume k1 <= k2
+    assume k2 < n
+
+    var inv_ord: IArray
+    assume inv_ord != a && inv_ord != b && inv_ord != count && inv_ord != ord
+    inhale access(inv_ord)
+    assume len(inv_ord) == maxsize()
+    // Initialize inv_ord, set to -1
+    i := 0
+    while (i < maxsize())
+        invariant access(inv_ord)
+        invariant i >= 0
+        invariant i <= maxsize() ==> forall j: Int :: {slot(inv_ord, j).val} j >= 0 && j < i ==> slot(inv_ord, j).val == -1
+        invariant i >= maxsize() ==> forall j: Int :: {slot(inv_ord, j).val} j >= 0 && j < maxsize() ==> slot(inv_ord, j).val == -1
+    {
+        slot(inv_ord, i).val := -1
+        i := i + 1
+    }
+
+    i := 0
+    var tmp_ord: Int := 0
+    var tmp_col: Int
+    var cur_col: Int := 0
+
+    var count_set : Set[Int]
+    count_set := Set()
+
+    // Precondition: all of count[j] is set to 0
+    assert forall j: Int :: {slot(count, j).val} j >= 0 && j < n ==> slot(count, j).val == 0 
+    while (i < maxsize())
+        invariant access_read_dutch(a) && access_read_dutch(b) && access(ord) && access(count) && access(inv_ord)
+        invariant count != a && count != b && inv_ord != count && inv_ord != ord
+        invariant i >= 0 && i <= maxsize()
+        invariant i >= 0 && i <= n ==> tmp_ord >= 0 && tmp_ord < n
+        
+        invariant distinct_up_to(a, n)
+
+        invariant
+          forall p: Int :: {slot(a, p)} {slot(inv_ord, p)} 
+            p >= 0 && p < n && slot(count, p).val == 1 ==>
+                (slot(inv_ord, p).val >= 0 && slot(inv_ord, p).val < n && slot(b, slot(inv_ord, p).val).col == slot(a, p).col && slot(b, slot(inv_ord, p).val).val == slot(a, p).val)
+
+        // For all j >= n, count[j] is set to 1 after the loop
+        invariant forall j: Int :: {slot(count, j).val} j >= n && j < i ==> slot(count, j).val == 1
+        
+        // cur_col
+        invariant cur_col >= 0
+        invariant i - 1 <= k1 ==> cur_col == 0
+        invariant i - 1 > k1 && i - 1 <= k2 ==> cur_col == 1
+        invariant i - 1 > k2 ==> cur_col == 2
+
+        // coloring
+        invariant forall p: Int :: {slot(b, p).col} 0 <= p && p < (i <= k1 ? i : k1 + 1) ==> slot(b, p).col == 0        
+        invariant forall p: Int :: {slot(b, p).col} k1 < p && p < (i <= k2 ? i : k2 + 1) ==> slot(b, p).col == 1        
+        invariant forall p: Int :: {slot(b, p).col} k2 < p && p < (i < n ? i : n) ==> slot(b, p).col == 2
+
+        //  Without this invariant, Viper doesn't seem to recognize that the uniqueness of A is preserved
+        invariant forall p: Int, q: Int :: {slot(a, p).val, slot(a, q).val}
+            0 <= p && p < q && q < n ==> slot(a, p).val != slot(a, q).val
+
+        // If count == 1, then inv_ord must have been assigned
+        invariant forall p: Int :: {slot(count, p).val} {slot(inv_ord, p).val}
+            p >= 0 && p < n && slot(count, p).val == 1 ==> slot(inv_ord, p).val >= 0 && slot(inv_ord, p).val < n
+        // If inv_ord is assigned, then it must have been assigned differently each time (since i is increasing)
+        invariant forall p: Int :: {slot(inv_ord, p).val}
+            p >= 0 && p < n ==> slot(inv_ord, p).val < i
+        invariant forall p: Int, q: Int :: {slot(inv_ord, p).val, slot(inv_ord, q).val}
+            p >= 0 && p < n && q >= 0 && q < n && p != q &&
+                slot(inv_ord, p).val >= 0 && slot(inv_ord, p).val < n ==>
+                slot(inv_ord, p).val != slot(inv_ord, q).val
+
+        invariant forall p: Int :: {slot(ord, p)}
+            0 <= p && p < (i < n ? i : n) ==> 0 <= slot(ord, p).val && slot(ord, p).val < n
+
+        invariant forall p: Int :: {slot(b, p).val}
+            0 <= p && p < (i < n ? i : n) ==> slot(b, p).val == slot(a, slot(ord, p).val).val
+
+        invariant forall p: Int :: {slot(b, p).val}
+            0 <= p && p < (i < n ? i : n) ==> slot(b, p).val == slot(a, slot(ord, p).val).val
+
+        invariant forall p: Int :: {slot(ord, p)}
+            0 <= p && p < (i < n ? i : n) ==> slot(count, slot(ord, p).val).val == 1
+
+        // inv_ord is inverse of ord
+        invariant forall p: Int :: {slot(ord, p)}
+            0 <= p && p < (i < n ? i : n) ==> slot(inv_ord, slot(ord, p).val).val == p
+
+        invariant forall p: Int :: {p in count_set} p in count_set ==> 0 <= p && p < n && slot(count, p).val == 1
+        invariant |count_set| == (i < n ? i : n)  
+    {
+        tmp_ord := slot(ord, i).val
+        // We might have no items with color 0 or color 1
+        if (i - 1 == k1) {
+            cur_col := cur_col + 1;
+        }
+        if (i - 1 == k2) {
+            cur_col := cur_col + 1;
+        }
+        if (i < n) {
+            assume tmp_ord >= 0 && tmp_ord < n
+            assume slot(count, tmp_ord).val == 0 // New!
+            slot(count, tmp_ord).val := 1
+            count_set := count_set union Set(tmp_ord)
+            assume(slot(b, i).col == slot(a, tmp_ord).col)
+            assume(slot(b, i).val == slot(a, tmp_ord).val)
+
+            slot(inv_ord, tmp_ord).val := i
+            tmp_col := slot(b, i).col
+            assume tmp_col == cur_col
+        }
+        else {
+            assert i >= n
+            slot(count, i).val := 1
+        }
+        i := i + 1
+    }
+    //assert forall p: Int, q: Int :: {slot(b, p).col, slot(b, q).col}
+    //    0 <= p && p < q && q < n ==> slot(b, p).col <= slot(b, q).col
+
+    assert count_set subset interval(0,n)
+    card_subset(count_set, interval(0, n))
+
+    assert forall p: Int :: {slot(count, p).val} p >= 0 && p < n ==> p in count_set && slot(count, p).val == 1 
+       
+    // Convert b[inv_ord[i]].val into a set
+    var b_set: Set[Int] := Set()
+    i := 0
+    while (i < n)
+        invariant i >= 0 && i <= n
+        invariant access_read_dutch(a) && access_read_dutch(b) && access_read(inv_ord)
+        invariant forall p: Int, q: Int :: {slot(b, p).col, slot(b, q).col}
+          0 <= p && p < q && q < n ==> slot(b, p).col <= slot(b, q).col
+        
+        invariant distinct_up_to(a, n)
+        invariant distinct_up_to(b, n)
+
+        // Correspondence between a and b
+        invariant forall p: Int :: {slot(b, slot(inv_ord, p).val)}
+            p >= 0 && p < n ==> slot(b, slot(inv_ord, p).val).val == slot(a, p).val
+        
+        // Content of b_set
+        invariant b_set == contents_of_seg_old(a, 0, i)
+        invariant b_set subset contents_of_seg_old(b, 0, n)
+    {
+        b_set := b_set union Set(slot(b, slot(inv_ord, i).val).val)
+        i := i + 1
+    }
+    lemma_contents_of_seg_length_old(a, 0, n, n)
+    lemma_contents_of_seg_length_old(b, 0, n, n)
+
+    card_subset(b_set, contents_of_seg_old(b, 0, n)) 
+}
+
+// Choice function for sets of integers
+// Aside: I believe Set[Int] = P_fin(Z), i.e. the set of finite subsets of the set of integers
+// So we do not need to rely on the Axiom of Choice to justify the existence of this function 
+function choose_int(s: Set[Int]) : Int
+  ensures s != Set() ==> result in s
+
+// Lemma proving some basic facts of set theory
+// This is needed because of Viper's incomplete axiomatization of the set cardinality operator.
+method card_subset(a: Set[Int], b: Set[Int])
+  requires a subset b
+  ensures |a| <= |b|
+  ensures |a| == |b| ==> (a == b)
+{
+  if (a != Set()) {
+    var x : Int
+    x := choose_int(a)
+    card_subset(a setminus Set(x), b setminus Set(x))
+    assert (a setminus Set(x) union Set(x)) == a
+    assert (b setminus Set(x) union Set(x)) == b
+  }
+}
+
+// The set of integers in the half-open interval [l,r)
+function interval(l: Int, r: Int) : Set[Int] 
+  requires 0 <= l && l <= r
+  ensures r == l ==> result == Set() 
+  ensures forall i: Int :: {i in result} l <= i && i < r ==> i in result
+  ensures forall i: Int :: {i in result} i in result ==> l <= i && i < r 
+  ensures |result| == r - l
+{
+  l >= r ? Set() : Set(r-1) union interval(l, r-1)
+}

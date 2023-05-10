@@ -1,0 +1,17 @@
+domain Tuple[T1, T2] {
+  function pair(fst: T1, snd: T2) : Tuple[T1, T2]
+  function fst(p: Tuple[T1,T2]) : T1
+  function snd(p: Tuple[T1,T2]) : T2
+  
+  axiom pairInjective {
+    forall x: T1, y: T2 :: 
+      {pair(x, y)} 
+        fst(pair(x,y)) == x && 
+        snd(pair(x,y)) == y 
+    }
+
+  axiom pairSurjective {
+    forall p: Tuple[T1,T2] :: {fst(p)} {snd(p)} 
+      pair(fst(p), snd(p)) == p
+  }
+}

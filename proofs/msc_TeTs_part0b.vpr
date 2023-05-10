@@ -1,0 +1,379 @@
+// This part proves that recv of pcomps always point to ncomps
+
+// NOTE: comp_recv & comp_outg should be viewed as custom functions defined in Viper,
+//       not an altering the assumption of the algorithm
+//       i.e., ncomp still does not have a recv value, comp_recv(ncomp(n)) = n
+
+// In an attempt to construct a tree bottom-up from the T-array, I modify the program
+// with the following change:
+//     After processing every pcomp, I always store it into the stack before processing
+//     its children.
+// This is undesirable for the actual code in pequin because:
+//     Consider the case where the last child of a pcomp is a pcomp, we call the parent
+//     node pcomp1 and child node pcomp2. If we push pcomp2 in stack, after processing
+//     all children of pcomp2, we pop pcomp2 out of the stack, and realize that there
+//     are also no more children in pcomp1. We have to then pop pcomp1 out of the stack
+//     in the next iteration. The problem is that during the iteration where we pop
+//     pcomp2 out of the stack, we did not process any element in array T (since we did
+//     nothing except waiting for pcomp1 to be popped), and so # of iterations is no
+//     longer bounded by the length of array T, which is undesirable.
+
+import "IArray.vpr"
+import "stack.vpr"
+
+field remn: Int
+field recv: Int
+field outg: Int
+field depth: Int
+field head: Int
+field next: Int
+// Record the head of the pcomp, used to verify tree structure
+field pcomp_head: Int
+
+// Ensure_Strong Properties
+function remn_sum_seg(low: Int, sq: Seq[SValue]): Int
+    requires low >= 1 && low <= |sq|
+{
+    low == |sq| ? 0 : get_remn(sq[low]) + remn_sum_seg(low + 1, sq)
+}
+
+define access_tree_read(array)
+    forall j: Int :: {slot(array, j)}
+        0 <= j && j < len(array) ==> 
+            acc(slot(array, j).remn, 2/3) && acc(slot(array, j).recv, 2/3) &&
+            acc(slot(array, j).outg, 2/3) && acc(slot(array, j).next, 2/3) &&
+            acc(slot(array, j).val, 2/3)
+
+define access_edge_read(array)
+    forall j: Int :: {slot(array, j)}
+        0 <= j && j < len(array) ==> acc(slot(array, j).outg, 2/3) && acc(slot(array, j).val, 2/3)
+
+define access_stack(array)
+  forall j: Int :: {slot(array,  j).sv} 0 <= j && j < len(array) ==> acc(slot(array,j).sv)
+
+// Use ps to record the various program state AFTER processing node i
+define access_ps(array)
+    forall j: Int :: {slot(array, j)}
+        0 <= j && j < len(array) ==> 
+            acc(slot(array, j).depth) && acc(slot(array, j).pcomp_head) && acc(slot(array, j).remn)
+
+define is_edgeB(NV, NE, edgeB)
+    slot(edgeB, 0).val == 0 &&
+    slot(edgeB, NV).val == NE &&
+    forall i: Int, j: Int :: {slot(edgeB, i).val, slot(edgeB, j).val}
+        0 <= i && i < j && j <= NV ==> slot(edgeB, i).val <= slot(edgeB, j).val
+
+define is_edges(NV, NE, edges) 
+    forall i: Int :: {slot(edges, i).outg} {slot(edges, i).val}
+        i >= 0 && i < NE ==>
+        slot(edges, i).outg >= 0 && slot(edges, i).outg < NV &&
+        slot(edges, i).val >= 0 && slot(edges, i).val < NV
+
+define forms_edge(NV, edgeB, edges)
+    forall i: Int, j: Int, ebi: Int :: {slot(edgeB, i).val, slot(edgeB, j).val, slot(edges, ebi).outg}
+        i >= 0 && j == i + 1 && j <= NV && ebi >= slot(edgeB, i).val && ebi < slot(edgeB, j).val ==>
+        slot(edges, ebi).outg == i
+
+// Tree properties
+define siblings_in_bound(sib)
+    forall k: Int :: k >= 0 && k < |sib| ==>
+        comp_node(sib[k]) >= 0 && comp_node(sib[k]) < NT
+define siblings_remn_match(sib)
+    (forall k: Int :: k >= 0 && k < |sib| ==> type(sib[k]) == typeof_ncomp() ==> comp_remn(sib[k]) == 0) &&
+    (forall k: Int :: k >= 0 && k < |sib| ==> type(sib[k]) == typeof_pcomp() ==> comp_remn(sib[k]) == slot(T, comp_node(sib[k])).remn)
+define siblings_comp_match(sib)
+    forall k1: Int, k2: Int :: k1 >= 0 && k2 == k1 + 1 && k2 < |sib| ==>
+        comp_node(sib[k2]) == comp_node(sib[k1]) + comp_remn(sib[k1]) + 1
+function recv_is_ncomp(sib: Seq[Comp], T: IArray, NV: Int) : Bool
+    requires len(T) == maxsize() && access_tree_read(T)
+{
+    (forall k: Int :: {sib[k]} k >= 0 && k < |sib| ==>
+        comp_recv(sib[k]) >= 0 && comp_recv(sib[k]) < maxsize() && slot(T, comp_recv(sib[k])).val >= 0 && slot(T, comp_recv(sib[k])).val < NV) &&
+    (forall k3: Int :: {sib[k3]} k3 >= 0 && k3 < |sib| && |comp_cycl(sib[k3])| > 0 ==> recv_is_ncomp(comp_cycl(sib[k3]), T, NV))
+}
+
+// currently ignore next_T
+// currently assume that T is compact and has length NT
+// Putting the stack inside input because otherwise it doesn't seem to work
+// Since the stack frame for depth 0 is different from the rest, I REMOVED IT.
+// Currently only tracking stack frame w/ depth 1+, only sp is affected.
+// E is redefined as an adjacency matrix, and subsequently all occurrence of E has been altered.
+method msc_tree_sp_strong(NV: Int, NE: Int, edgeB: IArray, edges: IArray, T: IArray, s: Ref)
+    returns (trees: Seq[Comp])
+    requires len(edgeB) == maxsize() && len(edges) == maxsize() && len(T) == maxsize()
+    requires access_read(edgeB) && access_edge_read(edges) && access_tree_read(T)
+    requires stack(s) && stack_size(s) == 0 && stack_capacity(s) == maxsize()
+    requires NV > 0 && 2 * NV - 1 < maxsize() && NE >= 0 && NE < maxsize()
+    requires is_edgeB(NV, NE, edgeB) && is_edges(NV, NE, edges) && forms_edge(NV, edgeB, edges)
+    ensures access_read(edgeB) && access_edge_read(edges) && access_tree_read(T)
+    ensures stack(s)
+    ensures forall k: Int :: {comp_cycl(trees[k])} k >= 0 && k < |trees| && |comp_cycl(trees[k])| > 0 ==>
+        recv_is_ncomp(comp_cycl(trees[k]), T, NV)
+{
+    var NT: Int := 2 * NV - 1
+    // ind_head: index of cur_head, supplied by the verifier
+    var cur_depth: Int := 0; var cur_head: Int := -1
+    var cur_msc: Int := -1
+    var i: Int := 0; var j: Int := 0; var v: Int
+    var cur_recv: Int; var cur_outg: Int; var v_recv: Int; var v_outg: Int
+    var cur_remn: Int := -1; var remn_last: Int
+    var cur_next: Int := -1
+    var sv_temp: SValue
+    // Record pcomp_head of current vertex, -1 if DNE
+    var pcomp_h: Int := -1
+    var stack_old: Seq[SValue]
+    // Use tree_head to construct a tree from the array T
+    var tree_head: Comp := pcomp(-1, Seq(), -1, -1, -1, Set())
+    // Use cur_parent to record the parent of the current node
+    var cur_siblings: Seq[Comp] := Seq(); var cur_siblings_old: Seq[Comp] := cur_siblings
+    var cur_last: Int := i
+    // Subtree represents all the nodes under the current pcomp
+    // The sequence records INDICES IN T, instead of the node number
+    var subtree: Set[Int] := Set()
+
+    while (i < NT)
+        invariant access_read(edgeB) && access_edge_read(edges) && access_tree_read(T)
+        invariant stack(s)
+
+        // recv_is_ncomp properties
+        invariant forall c: Comp :: {comp_cycl(c)} |comp_cycl(c)| == 0 ==> recv_is_ncomp(comp_cycl(c), T, NV)
+        invariant forall k: Int :: {ncomp(k)} recv_is_ncomp(comp_cycl(ncomp(k)), T, NV)
+
+        // Preliminary invariants:
+        // 0 <= sp == cur_depth <= i < maxsize()
+        invariant 0 <= stack_size(s) && stack_size(s) <= i && i < maxsize()
+        invariant stack_capacity(s) == maxsize() && stack_size(s) < stack_capacity(s)
+        invariant forall k1: Int, k2: Int :: {stack_contents(s)[k1], stack_contents(s)[k2]}
+            0 <= k1 && k1 < k2 && k2 < stack_size(s) ==> get_depth(stack_contents(s)[k1]) < get_depth(stack_contents(s)[k2])
+        invariant stack_size(s) == cur_depth &&
+            forall k: Int :: {stack_contents(s)[k]} k >= 0 && k < stack_size(s) ==> k == get_depth(stack_contents(s)[k])
+        
+        // cur_depth == 0 <==> cur_remn < 0
+        invariant (cur_depth == 0 ==> cur_remn <= 0) && (cur_depth > 0 ==> get_remn(stack_contents(s)[0]) <= 0)
+        invariant cur_remn < 0 ==> cur_depth == 0
+        // cur_depth > 0 <==> cur_remn >= 0
+        invariant forall k: Int :: {get_remn(stack_contents(s)[k])}
+            k >= 1 && k < stack_size(s) ==> get_remn(stack_contents(s)[k]) >= 0
+        invariant cur_depth > 0 ==> cur_remn >= 0
+        invariant cur_remn > 0 ==> cur_depth > 0
+
+        invariant cur_depth != 0 && |cur_siblings| == 0 ==> cur_remn > 0
+
+        // --
+        // Properties of the constructed pseudo-tree
+        // --
+        // pcomp_head is the parent of the current node
+        invariant (cur_depth == 0 ==> pcomp_h == -1) && (stack_size(s) >= 1 ==> get_phead(stack_contents(s)[0]) == -1)
+        invariant (cur_depth > 0 ==> pcomp_h >= 0 && pcomp_h < i) &&
+            (forall k: Int :: {stack_contents(s)[k]} k >= 1 && k < stack_size(s) ==> get_phead(stack_contents(s)[k]) >= 0 && get_phead(stack_contents(s)[k]) < i)
+        // current node is within the remn of pcomp_head
+        invariant (stack_size(s) > 0 ==> get_remn(stack_contents(s)[stack_size(s) - 1]) == get_tremn(stack_contents(s)[stack_size(s) - 1])) &&
+            forall k1: Int, k2: Int :: {stack_contents(s)[k1], stack_contents(s)[k2]} k1 >= 0 && k2 == k1 + 1 && k2 < stack_size(s) ==>
+                get_tremn(stack_contents(s)[k1]) == get_remn(stack_contents(s)[k1]) + get_tremn(stack_contents(s)[k2])
+        invariant (cur_depth > 0 ==> pcomp_h + slot(T, pcomp_h).remn == i - 1 + cur_remn) &&
+            forall k: Int :: {stack_contents(s)[k]} k >= 1 && k < stack_size(s) ==>
+                get_phead(stack_contents(s)[k]) + slot(T, get_phead(stack_contents(s)[k])).remn == i - 1 + cur_remn + get_tremn(stack_contents(s)[k])
+
+        // --
+        // Properties of the generated tree
+        // --
+        // Prelimnaries
+        // All tree values are in bound
+        invariant (forall k: Int :: {cur_siblings[k]} k >= 0 && k < |cur_siblings| ==>
+            comp_node(cur_siblings[k]) >= 0 && comp_node(cur_siblings[k]) < NT) &&
+            forall k1: Int :: {stack_contents(s)[k1]} k1 >= 0 && k1 < stack_size(s) ==>
+                forall k2: Int :: {get_csiblings(stack_contents(s)[k1])[k2]} k2 >= 0 && k2 < |get_csiblings(stack_contents(s)[k1])| ==>
+                    comp_node(get_csiblings(stack_contents(s)[k1])[k2]) >= 0 && comp_node(get_csiblings(stack_contents(s)[k1])[k2]) < NT
+        invariant (cur_depth > 0 ==> forall k: Int :: {cur_siblings[k]} k >= 0 && k < |cur_siblings| ==>
+            comp_recv(cur_siblings[k]) >= 0 && comp_recv(cur_siblings[k]) < NT &&
+            comp_outg(cur_siblings[k]) >= 0 && comp_outg(cur_siblings[k]) < NT) &&
+            forall k1: Int :: {stack_contents(s)[k1]} k1 >= 1 && k1 < stack_size(s) ==>
+                forall k2: Int :: {get_csiblings(stack_contents(s)[k1])[k2]} k2 >= 0 && k2 < |get_csiblings(stack_contents(s)[k1])| ==>
+                    comp_recv(get_csiblings(stack_contents(s)[k1])[k2]) >= 0 && comp_recv(get_csiblings(stack_contents(s)[k1])[k2]) < NT &&
+                    comp_outg(get_csiblings(stack_contents(s)[k1])[k2]) >= 0 && comp_outg(get_csiblings(stack_contents(s)[k1])[k2]) < NT        
+
+        // Last child of csiblings in stack is a pcomp
+        invariant forall k: Int :: {stack_contents(s)[k]} k >= 0 && k < stack_size(s) ==>
+            |get_csiblings(stack_contents(s)[k])| >= 1 && type(get_csiblings(stack_contents(s)[k])[|get_csiblings(stack_contents(s)[k])| - 1]) == typeof_pcomp()
+        // last in each stack frame corresponds to pcomp_head in the next frame
+        invariant (stack_size(s) > 0 ==> get_last(stack_contents(s)[stack_size(s) - 1]) == pcomp_h) &&
+            forall k1: Int, k2: Int :: {stack_contents(s)[k1], stack_contents(s)[k2]} k1 >= 0 && k2 == k1 + 1 && k2 < stack_size(s) ==>
+                get_last(stack_contents(s)[k1]) == get_phead(stack_contents(s)[k2])
+        // Head is the first element of cur_siblings
+        invariant cur_head >= -1 && (stack_size(s) > 0 ==> get_head(stack_contents(s)[0]) >= -1) &&
+            forall k: Int :: {stack_contents(s)[k]} k >= 1 && k < stack_size(s) ==> get_head(stack_contents(s)[k]) >= 0
+        invariant cur_depth > 0 && cur_head == -1 ==> cur_siblings == Seq()
+        invariant cur_depth > 0 && cur_head != -1 ==> |cur_siblings| >= 1
+        invariant (cur_depth > 0 && cur_head != -1 ==> cur_head == slot(T, comp_recv(cur_siblings[0])).val) &&
+            forall k: Int :: {stack_contents(s)[k]} k >= 1 && k < stack_size(s) ==>
+                get_head(stack_contents(s)[k]) == slot(T, comp_recv(get_csiblings(stack_contents(s)[k])[0])).val
+        // remn of each node is correct
+        invariant siblings_remn_match(cur_siblings) &&
+            forall k: Int :: {stack_contents(s)[k]} k >= 0 && k < stack_size(s) ==>
+                siblings_remn_match(get_csiblings(stack_contents(s)[k]))
+        // pcomp_head is the node of the last comp in the last stack frame
+        invariant (cur_depth > 0 ==> pcomp_h == comp_node(get_csiblings(stack_contents(s)[stack_size(s)-1])[|get_csiblings(stack_contents(s)[stack_size(s)-1])|-1])) &&
+            forall k1: Int, k2: Int :: {stack_contents(s)[k1], stack_contents(s)[k2]} k1 >= 0 && k2 == k1 + 1 && k2 < stack_size(s) ==>
+                get_phead(stack_contents(s)[k2]) == comp_node(get_csiblings(stack_contents(s)[k1])[|get_csiblings(stack_contents(s)[k1])|-1])
+
+        // Next is in bound
+        invariant cur_depth > 0 && cur_remn == 0 ==> |cur_siblings| > 0 
+        invariant cur_depth > 0 && cur_next != -1 ==> |cur_siblings| > 0
+        invariant cur_depth > 0 && |cur_siblings| > 0 ==> cur_next != -1
+        invariant (cur_depth > 0 && cur_next != -1 ==> cur_next >= 0 && cur_next < NV) &&
+            forall k: Int :: {stack_contents(s)[k]} k >= 1 && k < stack_size(s) ==>
+                get_next(stack_contents(s)[k]) >= 0 && get_next(stack_contents(s)[k]) < NV
+
+        // T[recv] is in bound
+        // T[recv][1..]
+        invariant (cur_depth > 0 && |cur_siblings| > 1 ==> slot(T, comp_recv(cur_siblings[|cur_siblings|-1])).val >= 0 && slot(T, comp_recv(cur_siblings[|cur_siblings|-1])).val < NV) &&
+            forall k: Int :: {stack_contents(s)[k]} k >= 1 && k < stack_size(s) && |get_csiblings(stack_contents(s)[k])| > 1 ==>
+                slot(T, comp_recv(get_csiblings(stack_contents(s)[k])[|get_csiblings(stack_contents(s)[k])|-1])).val >= 0 && slot(T, comp_recv(get_csiblings(stack_contents(s)[k])[|get_csiblings(stack_contents(s)[k])|-1])).val < NV
+        invariant (cur_depth > 0 && |cur_siblings| > 0 ==> 
+            forall k: Int :: {cur_siblings[k]} k >= 1 && k < |cur_siblings| ==>
+                slot(T, comp_recv(cur_siblings[k])).val >= 0 && slot(T, comp_recv(cur_siblings[k])).val < NV) &&
+            forall k1: Int :: {stack_contents(s)[k1]} k1 >= 1 && k1 < stack_size(s) ==>
+                forall k2: Int :: {get_csiblings(stack_contents(s)[k1])[k2]} k2 >= 1 && k2 < |get_csiblings(stack_contents(s)[k1])| ==>
+                slot(T, comp_recv(get_csiblings(stack_contents(s)[k1])[k2])).val >= 0 && slot(T, comp_recv(get_csiblings(stack_contents(s)[k1])[k2])).val < NV
+        
+        // Recursively verify recv
+        invariant (forall k: Int :: {comp_cycl(cur_siblings[k])} k >= 0 && k < |cur_siblings| && |comp_cycl(cur_siblings[k])| > 0 ==>
+            recv_is_ncomp(comp_cycl(cur_siblings[k]), T, NV)) &&
+            forall k1: Int, k2: Int :: {comp_cycl(get_csiblings(stack_contents(s)[k1])[k2])}
+                k1 >= 0 && k1 < stack_size(s) && k2 >= 0 && k2 < |get_csiblings(stack_contents(s)[k1])| ==>
+                    recv_is_ncomp(comp_cycl(get_csiblings(stack_contents(s)[k1])[k2]), T, NV)
+    {
+        // !!!
+        // In the original code, we skip those T[i] which is greater than NV
+        // So we assume here that T[i] < NV
+        assume(slot(T, i).val < NV)
+
+        cur_siblings_old := cur_siblings
+        if (cur_remn == 0) {
+            i := i - 1
+        }
+
+        // The only case where cur_remn == 0 is where we pop up a pcomp with remn == 0
+        // This cannot occur in the original program
+        if (cur_remn != 0) {
+
+            // Update current subtree
+            subtree := subtree union Set(i)            
+            // if we are at depth 0, we reach a new MSC (tree)
+            // if (cur_depth == 0) { cur_msc := cur_msc + 1; }
+
+            // Case 1: we meet a new pcomp, represented by a negative number
+            if (slot(T, i).val < 0) {
+                remn_last := cur_remn - slot(T, i).remn - 1;
+                cur_remn := slot(T, i).remn
+                cur_recv := slot(T, i).recv
+                cur_outg := slot(T, i).outg
+                // We can safely assume cur_depth > 0 ==> i + cur_remn < NT,
+                // otherwise we cannot return to depth 0 at the end of the program
+                assume cur_depth > 0 ==> i + cur_remn < NT
+                assume cur_recv > i; assume cur_outg > i
+                assume cur_recv <= i + cur_remn; assume cur_outg <= i + cur_remn
+                // No need to bound-check v_recv and v_outg because otherwise it cannot satisfy an edge
+                assume cur_recv < maxsize()
+                assume cur_outg < maxsize()
+                v_recv := slot(T, cur_recv).val
+                v_outg := slot(T, cur_outg).val
+                // Assumption here comes from the fact that it will be connected by an edge
+                assume v_recv >= 0; assume v_recv < NV
+                assume v_outg >= 0; assume v_outg < NV
+                // insert a dummy cur_sibling here
+                cur_siblings := cur_siblings ++ Seq(pcomp(cur_recv, Seq(), cur_outg, i, cur_remn, Set()))
+            }
+            
+            // Case 2: we meet a singleton vertex (ncomp)
+            else {
+                v := slot(T, i).val
+                // if we are at depth 0, we reach a new MSC (singleton vertex)
+                // Verify that MSC[v] == current MSC, also record that v appears
+                // assume slot(MSC, v).val == cur_msc;
+                v_recv := v
+                v_outg := v
+                cur_remn := cur_remn - 1
+                cur_siblings := cur_siblings ++ Seq(ncomp(i))
+            }
+            assert slot(T, comp_recv(cur_siblings[|cur_siblings|-1])).val == v_recv
+            assert slot(T, comp_outg(cur_siblings[|cur_siblings|-1])).val == v_outg
+
+            // !!!
+            // While this is not directly stated in the code,
+            // we can assume this because we can only exit the depth when remn == 0
+            // If cur_remn < 0, then we are stuck on this depth, and thus 
+            // the exit condition cur_depth == 0 can never hold
+            // Similarly, if remn_last < 0, we store it inside 
+            assume cur_depth > 0 ==> remn_last >= 0
+
+            // if we are at depth 0, we are done. Otherwise record information to prove cyclic
+            // This part is shared by both cases, albeit with different v_recv and v_outg
+            if (cur_depth != 0) {
+                if (cur_head == -1) {
+                    cur_head := v_recv
+                }
+                if (cur_next != -1) {
+                    assume v_recv == cur_next
+                    assert cur_next >= 0 && cur_next < NV
+                    assert slot(T, comp_recv(cur_siblings[|cur_siblings|-1])).val >= 0 && slot(T, comp_recv(cur_siblings[|cur_siblings|-1])).val < NV
+                }
+                // Prove the supplementary E edge is correct
+                cur_last := i
+                cur_next := slot(T, i).next
+                // Replace assertions on edge array with assertions on adjacency matrix
+                // assume(slot(E, i).val >= 0); assume(slot(E, i).val < NE)
+                // assume(slot(edgeV, slot(E, i).val).val == v_outg)
+                // assume(slot(edges, slot(E, i).val).val == cur_next)
+                assume v_outg >= 0 && v_outg < NV && cur_next >= 0 && cur_next < NV
+                // assume edge(E, cur_outg, cur_next)
+            }
+
+            // Prepare for entering next depth if we are in a pcomp
+            if (slot(T, i).val < 0) {
+                // store current depth in stack if needed
+                // !!! DIFFERENT FROM C CODE, NO MORE CONDITION ON WHEN TO PUSH STUFF INTO STACK
+                // if (remn_last != 0) { stack_old := stack_contents(s) }
+                stack_update_tremn(s, remn_last)
+                push(s, set_svalue(remn_last, cur_depth, cur_head, pcomp_h, cur_next, remn_last, cur_siblings, i, subtree))
+                cur_depth := cur_depth + 1
+                pcomp_h := i
+                cur_head := -1
+                cur_next := -1
+                cur_siblings := Seq()
+                subtree := Set()
+            }
+        }
+
+        // Reset depth if remn reaches 0
+        if (cur_depth != 0 && cur_remn == 0) {
+            // Verify the "next" of the last vertex is the "head"
+            assume cur_next == cur_head       
+            assert |cur_siblings| >= 1
+            assert cur_head == slot(T, comp_recv(cur_siblings[0])).val
+            assert cur_next >= 0 && cur_next < NV
+            assert slot(T, comp_recv(cur_siblings[0])).val >= 0 && slot(T, comp_recv(cur_siblings[0])).val < NV
+            assert forall k: Int  :: {cur_siblings[k]} k >= 1 && k < |cur_siblings| ==>
+                slot(T, comp_recv(cur_siblings[k])).val >= 0 && slot(T, comp_recv(cur_siblings[k])).val < NV
+            assert forall k: Int  :: {cur_siblings[k]} k >= 0 && k < |cur_siblings| ==>
+                slot(T, comp_recv(cur_siblings[k])).val >= 0 && slot(T, comp_recv(cur_siblings[k])).val < NV
+            sv_temp := pop(s)
+            cur_remn := get_remn(sv_temp)
+            cur_depth := get_depth(sv_temp)
+            cur_head := get_head(sv_temp)
+            pcomp_h := get_phead(sv_temp)
+            cur_next := get_next(sv_temp)
+            cur_siblings := pcomp_update_subtree(get_csiblings(sv_temp), cur_siblings, subtree)
+
+            subtree := subtree union get_subtree(sv_temp)
+            cur_last := get_last(sv_temp)
+            stack_update_tremn(s, -1 * cur_remn)
+        }
+
+        i := i + 1
+        // Transcribe the post-condition of the loop
+        assume i >= NT ==> cur_depth == 0
+    }
+    assume cur_depth == 0
+    trees := cur_siblings
+}

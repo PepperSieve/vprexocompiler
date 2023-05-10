@@ -1,0 +1,63 @@
+import "IArray.vpr"
+
+method binary_search(l: Int, r: Int, x: Int, A: IArray, max_n: Int, max_log: Int)
+    requires 0 < max_log && 0 <= max_n 
+    requires access_read(A)
+    requires sorted(A)
+    requires 0 <= l && l <= r && r <= len(A)
+{
+    var r1: Int := r
+    var l1: Int := l
+    var ind: Int := -1
+    
+    var tmp: Int
+    tmp := 0
+    while(tmp < max_log)
+        invariant 0 <= tmp && tmp <= max_log
+        invariant access_read(A)
+        invariant sorted(A)
+        invariant l <= l1 && l1 <= r1 && r1 <= r
+        invariant l1 == r1 && l1 < r && slot(A,l1).val == x ==> ind != -1
+        invariant ind == -1 || l <= ind && ind < r && slot(A, ind).val == x
+        invariant l1 > l && ind == -1 ==> slot(A,l1-1).val < x 
+        invariant r1 < r ==> x < slot(A, r1).val 
+    {   
+        if (ind == -1 && r1 > l1) {
+            var mid: Int := l1 + (r1 - l1) / 2 // (l1 + r1)/2
+            var amid: Int := slot(A, mid).val
+            if (amid > x) {
+              r1 := mid
+            } else {
+              l1 := mid + 1
+            } 
+            if (amid == x) {
+              ind := mid
+            } 
+        }
+        tmp := tmp + 1
+    }
+    
+    assume ind != -1 || r1 <= l1 // Justified by implicit assumption on max_log
+
+    // Additional information to be put in EXO but not T_I
+    // Compute value of auxiliary variable s
+    var s: Int 
+    if(ind == -1 && l < r && slot(A, l).val <= x && x <= slot(A, r-1).val) {
+       s := l1 - 1
+    }
+
+    // --
+    // End of T_I / EXO, beginning of T_E
+    // --
+
+    if (l == r || x < slot(A, l).val || slot(A, r - 1).val < x) {
+        assert ind == -1
+    } else {
+        if (ind == -1) {
+          assert l <= s && s < r - 1 && slot(A, s).val < x && x < slot(A, s+1).val
+        } else {
+          assert 0 <= ind && ind < r && slot(A, ind).val == x 
+        }
+    }
+
+}

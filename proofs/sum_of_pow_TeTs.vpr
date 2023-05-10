@@ -1,0 +1,143 @@
+import "sum_of_pow_prop.vpr"
+
+define got_all_sols_bounds_i(x, y, r, k, i)
+    forall p: Int, q: Int :: {pow(p, k), pow(q, k)} 
+        0 <= q && q <= p && p < i && pow(p, k) + pow(q, k) == r ==>
+            p in contents(x) && q in contents(y)
+
+define got_all_sols(x, y, r, k)
+    forall p: Int, q: Int :: {pow(p, k), pow(q, k)}
+        0 <= q && q <= p && pow(p, k) + pow(q, k) == r ==>
+                p in contents(x) && q in contents(y)
+
+method sum_of_pow_sp(r: Int, k: Int, x: IArray, y: IArray, x1: Int, x2: Int, cor_y: IArray)
+    requires 0 < k && 0 < r && r <= max_r()
+    requires access_read(x) && access_read(y) && access_read(cor_y)
+    requires len(x) == max_r() + 1 && len(y) == max_r() + 1 && len(cor_y) == max_r() + 1
+    ensures access_read(x) && access_read(y) && access_read(cor_y)
+    ensures got_all_sols(x, y, r, k)
+{
+    // making sure the range covers all solutions
+    assume x1 >= 0
+    if (x1 != 0) {
+        assume 2 * pow(x1 - 1, k) < r
+    }
+    assume 2 * pow(x1, k) >= r
+    assume pow(x2, k) <= r
+    assume pow(x2 + 1, k) > r
+    
+    // Assert x1 + max_r() >= x2
+    pow_monotonic_nonneg(x2, k)
+    assert x1 >= 0 && x2 >= 0
+    pow_ge_base(x1, k)
+    pow_ge_base(x2, k)
+    assert pow(x2, k) - pow(x1, k) <= r
+    assert x1 + max_r() >= x2
+
+    // Additional loop to prove that no 0 <= x < x1 have correspondng y such that x^k + y^k == r
+    var i: Int := 0
+    while (i < x1)
+        invariant access_read(x) && access_read(y) && access_read(cor_y)
+        invariant x1 >= 0 && (x1 != 0 ==> 2 * pow(x1 - 1, k) < r) && 2 * pow(x1, k) >= r
+        invariant pow(x2, k) <= r && pow(x2+1, k) > r
+        invariant x2 >= 0 && x1 + max_r() >= x2 && pow(x2+1, k) > r
+
+        invariant i >= 0
+        invariant forall ip1: Int, jp1: Int :: {pow(ip1, k), pow(jp1, k)}
+            0 <= jp1 && jp1 < ip1 && ip1 < i ==> pow(ip1, k) + pow(jp1, k) < r
+        invariant got_all_sols_bounds_i(x, y, r, k, i)
+    {
+        pow_monotonic(x1-1, i, k)
+        assert 2 * pow(i, k) < r
+        pow_monotonic_strict_quant_lt(i, k)
+        assert forall jp1: Int :: {pow(jp1, k)}
+            0 <= jp1 && jp1 < i ==> pow(i, k) + pow(jp1, k) < r
+        i := i + 1
+    }
+    assert got_all_sols_bounds_i(x, y, r, k, x1)
+    // End of Additional Loop
+
+    var j: Int := 0
+    var count: Int := 0
+    while (j < max_r() + 1) 
+        invariant j >= 0
+        invariant access_read(x) && access_read(y) && access_read(cor_y) 
+        invariant 0 <= count && count <= j && count <= max_r() + 1
+        invariant x2 >= 0 && x1 + max_r() >= x2 && pow(x2+1, k) > r
+        
+        // x and y contain only solutions
+        invariant forall k1: Int :: {slot(x, k1).val} {slot(y, k1).val}
+            0 <= k1 && k1 < count ==> pow(slot(x, k1).val, k) + pow(slot(y, k1).val, k) == r
+        
+        // All solutions are included in x and y
+        invariant 0 <= j - 1 && x1 + j - 1 <= x2 &&
+            pow(x1 + j - 1, k) + pow(slot(cor_y, j - 1).val, k) == r ==>
+                count >= 1 && slot(x, count - 1).val == x1 + j - 1 && slot(y, count - 1).val == slot(cor_y, j - 1).val &&
+                x1 + j - 1 in contents(x) && slot(cor_y, j - 1).val in contents(y) &&
+                forall yp1: Int :: 0 <= yp1 && yp1 <= x1 + j - 1 && yp1 != slot(cor_y, j - 1).val ==>
+                    pow(x1 + j - 1, k) + pow(yp1, k) != r
+        invariant 0 <= j - 1 && x1 + j - 1 <= x2 &&
+            pow(x1 + j - 1, k) + pow(slot(cor_y, j - 1).val, k) != r ==>
+                forall yp1: Int :: 0 <= yp1 && yp1 <= x1 + j - 1 ==>
+                    pow(x1 + j - 1, k) + pow(yp1, k) != r
+        invariant 0 <= j - 1 && x1 + j - 1 <= x2 ==>
+            forall yp1: Int :: 0 <= yp1 && yp1 <= x1 + j - 1 &&
+                pow(x1 + j - 1, k) + pow(yp1, k) == r ==>
+                    yp1 == slot(cor_y, j - 1).val &&
+                    x1 + j - 1 in contents(x) && yp1 in contents(y)
+        invariant x1 + j - 1 <= x2 ==> got_all_sols_bounds_i(x, y, r, k, x1 + j)
+        invariant x1 + j - 1 > x2 ==> got_all_sols_bounds_i(x, y, r, k, x2 + 1)
+    {   
+        if (x1 + j <= x2) { // ie if x1+j is a valid candidate (w/in range)
+            var tmp1: Int := pow(x1 + j, k) // trying out x1+j as x to see if it has a sol
+            pow_monotonic(x2, x1 + j, k)
+            assert tmp1 <= r
+            
+            var tmp2: Int := pow(slot(cor_y, j).val, k) // seeing if corr y gives sol
+
+            assume tmp1 + tmp2 <= r
+            assume tmp1 + pow(slot(cor_y, j).val + 1, k) > r
+
+            // To prove slot(cor_y, j).val >= 0
+            pow_monotonic_nonneg(slot(cor_y, j).val, k)
+            assert slot(cor_y, j).val >= 0
+
+            // To prove slot(cor_y, j).val <= x1 + j
+            pow_monotonic(x1 + j, x1, k)
+            assert tmp2 <= pow(x1, k)
+            if (slot(cor_y, j).val > x1) {
+                root_monotonic(slot(cor_y, j).val, x1, k)
+            }
+            assert slot(cor_y, j).val <= x1 + j
+
+            if (tmp1 + tmp2 == r) { // if it gives a sol, check that the sol is recorded
+                assume slot(x, count).val == x1 + j
+                assume slot(y, count).val == slot(cor_y, j).val
+                count := count + 1
+                unique_sol(x1 + j, r, k, slot(cor_y, j).val)
+            } else {
+                // To prove no cor_y exists for given xi + j
+                pow_monotonic_strict_quant(k)
+                pow_monotonic_strict_quant_lt(slot(cor_y,j).val, k)
+                assert forall y11: Int :: {pow(y11,k)} y11 >= 0 && y11 < slot(cor_y, j).val ==> pow(y11,k) < tmp2
+                assert forall y11: Int :: {pow(y11,k)} y11 >= 0 && y11 < slot(cor_y, j).val ==> tmp1 + pow(y11,k) < tmp1 + tmp2 
+                assert forall y1: Int :: {pow(y1,k)} y1 >= 0 && y1 < slot(cor_y, j).val ==> tmp1 + pow(y1,k) < r
+                pow_monotonic_strict_quant(k)
+                pow_monotonic_strict_quant_gt(slot(cor_y,j).val+1, k)
+                assert forall y21: Int :: {pow(y21,k)} y21 > slot(cor_y, j).val+1 ==> tmp1 + pow(y21,k) > tmp1 + pow(slot(cor_y, j).val+1, k)
+                assert forall y2: Int :: {pow(y2,k)} y2 > slot(cor_y, j).val+1 ==> tmp1 + pow(y2,k) > r
+           }
+        }
+        j := j + 1
+    }
+
+    assert got_all_sols_bounds_i(x, y, r, k, x2 + 1)
+    pow_monotonic_strict_quant_gt(x2 + 1, k)
+    assert forall xp1: Int, yp1: Int :: x2 + 1 <= xp1 && 0 <= yp1 && yp1 <= xp1 ==>
+        pow(xp1, k) > r && pow(xp1, k) + pow(yp1, k) > r
+    
+    assert got_all_sols(x, y, r, k)
+}
+
+
+

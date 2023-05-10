@@ -1,0 +1,281 @@
+//import "msc_graph.vpr"
+import "msc_spec.vpr"
+
+
+// Datatype used to encode witnesses for strongly connected components in a graph
+// type Comp = pcomp(start: Node, cycl: Comp, end: Node) | ccomp(left: Comp, right: Comp) | ncomp(n: Node)
+// - pcomp(start, cycl, end) encodes a path from 'start' to 'end' that is connected by a cycle 'cycl'
+// - ccomp(left, right) encodes a path segment consisting of two connected paths 'left' and 'right'
+// - ncomp(n) encodes a path/cycle consisting of a single node 'n'
+domain Comp {
+  function pcomp(start: Node, cycl: Comp, end: Node) : Comp
+  function pcomp_start(c: Comp) : Node
+  function pcomp_end(c: Comp) : Node
+  function pcomp_cycl(c: Comp) : Comp
+
+  function ccomp(left: Comp, right: Comp) : Comp
+  function ccomp_left(c: Comp) : Comp
+  function ccomp_right(c: Comp) : Comp
+
+  function ncomp(n: Node) : Comp
+  function ncomp_node(c: Comp) : Node
+  
+  // Constructor types 
+  function type (c : Comp) : Int 
+  unique function typeof_pcomp () : Int
+  unique function typeof_ccomp () : Int
+  unique function typeof_ncomp () : Int
+
+  axiom pcompInjective {
+    forall start: Node, cycl: Comp, end: Node ::
+      {pcomp(start, cycl, end)}
+         pcomp_start(pcomp(start, cycl, end)) == start
+      && pcomp_cycl(pcomp(start, cycl, end)) == cycl
+      && pcomp_end(pcomp(start, cycl, end)) == end
+  }
+
+  axiom ccompInjective {
+    forall left: Comp, right: Comp ::
+      {ccomp(left, right)}
+         ccomp_left(ccomp(left, right)) == left
+      && ccomp_right(ccomp(left, right)) == right      
+  }
+
+  axiom ncompInjective {
+    forall n: Node :: {ncomp(n)}
+      ncomp_node(ncomp(n)) == n
+  }
+
+  axiom type_of_pcomp {
+    forall start: Node, cycl: Comp, end: Node ::
+      {pcomp(start, cycl, end)}
+      type(pcomp(start, cycl, end)) == typeof_pcomp()
+  }  
+
+  axiom type_of_ccomp {
+    forall left: Comp, right: Comp ::
+      {ccomp(left, right)}
+      type(ccomp(left, right)) == typeof_ccomp()
+  }  
+
+  axiom type_of_ncomp {
+    forall n: Node ::
+      {ncomp(n)}
+      type(ncomp(n)) == typeof_ncomp()
+  }
+
+  axiom type_existence {
+    forall c: Comp :: {type(c)} type(c) == typeof_pcomp() || type(c) == typeof_ncomp() || type(c) == typeof_ccomp()
+  }
+
+  // Optional axiom, used to facilitate TiTe Proof
+  axiom pcomp_cycl_def {
+    forall c: Comp :: {pcomp_cycl(c)}
+      type(c) == typeof_pcomp() ==> type(pcomp_cycl(c)) == typeof_ccomp()
+  }
+}
+
+// Compute the nodes of the path encoded by c
+function comp_nodes(c: Comp) : Set[Node] {
+  type(c) == typeof_pcomp() ?
+    comp_nodes(pcomp_cycl(c)) :
+  type(c) == typeof_ccomp() ?
+    comp_nodes(ccomp_left(c)) union comp_nodes(ccomp_right(c))
+  : Set(ncomp_node(c))
+}
+
+// Compute the adjacency set of the nodes of the path encoded by c
+function comp_adj(g: Graph, c: Comp) : Set[Node] 
+  requires wf_graph(g)
+{
+  type(c) == typeof_pcomp() ?
+    comp_adj(g, pcomp_cycl(c)) :
+  type(c) == typeof_ccomp() ?
+    comp_adj(g, ccomp_left(c)) union comp_adj(g, ccomp_right(c))
+  : adj(g, ncomp_node(c))
+}
+
+// Compute the start node of the path encoded by c
+function comp_start(c: Comp) : Node {
+  type(c) == typeof_pcomp() ?
+    pcomp_start(c) : 
+  type(c) == typeof_ccomp() ? 
+    comp_start(ccomp_left(c)) :
+    ncomp_node(c)
+}
+
+// Compute the end node of the path encoded by c
+function comp_end(c: Comp) : Node 
+{
+  type(c) == typeof_pcomp() ?
+    pcomp_end(c) : 
+  type(c) == typeof_ccomp() ? 
+    comp_end(ccomp_right(c)) :    
+    ncomp_node(c)
+
+}
+
+// Predicate that checks whether c encodes a cycle in graph g
+function comp_cycle(g: Graph, c: Comp) : Bool 
+  requires wf_graph(g)
+  ensures result && type(c) == typeof_pcomp() ==> comp_cycle(g, pcomp_cycl(c))
+{
+  type(c) == typeof_pcomp() ?
+    pcomp_start(c) in comp_nodes(pcomp_cycl(c)) &&
+    pcomp_end(c) in comp_nodes(pcomp_cycl(c)) &&  
+    comp_cycle(g, pcomp_cycl(c))
+  : type(c) == typeof_ccomp() ?
+    comp_start(ccomp_left(c)) in adj(g, comp_end(ccomp_right(c))) &&  
+    comp_start(ccomp_right(c)) in adj(g, comp_end(ccomp_left(c))) &&
+    comp_path(g, ccomp_left(c)) && 
+    comp_path(g, ccomp_right(c))
+  : ncomp_node(c) in V(g)
+} 
+
+// Predicate that checks whether c encodes a path in graph g
+function comp_path(g: Graph, c: Comp) : Bool 
+  requires wf_graph(g)
+  ensures result && type(c) == typeof_pcomp() ==> comp_cycle(g, pcomp_cycl(c))
+{
+  type(c) == typeof_pcomp() ?
+    pcomp_start(c) in comp_nodes(pcomp_cycl(c)) &&
+    pcomp_end(c) in comp_nodes(pcomp_cycl(c)) &&
+    comp_cycle(g, pcomp_cycl(c))
+  : type(c) == typeof_ccomp() ?
+      comp_start(ccomp_right(c)) in adj(g, comp_end(ccomp_left(c))) &&
+      comp_path(g, ccomp_left(c)) && 
+      comp_path(g, ccomp_right(c))
+    : ncomp_node(c) in V(g)
+}
+
+// Expresses that component p represents a strongly connected component in graph g.
+// If b is false, then p only needs to be a non-empty path in g.
+define is_sc_comp(g, p, b)  
+  b ? comp_cycle(g, p) : comp_path(g, p)
+
+// Expresses that c is a strong component in graph g
+// with nodes in vs2 and outgoing edges targeting only (cadj union vs1) 
+define msc_comp(g, c, cadj, vs1, vs2, b)
+  is_sc_comp(g, c, b)
+  && comp_adj(g, c) subset (cadj union vs1 union comp_nodes(c))
+  && comp_nodes(c) subset vs2
+
+
+// Expresses that mscs is a "directed" sequence of strongly connected components in graph g, covering nodes vs1
+predicate msc_comp_seq(g: Graph, mscs: Seq[Comp], vs1: Set[Node])
+{
+  wf_graph(g) &&
+  |mscs| > 0 ? msc_comp(g, mscs[|mscs|-1], Set(), vs1, vs1, true)
+               && msc_comp_seq(g, mscs[..|mscs|-1], vs1 setminus comp_nodes(mscs[|mscs|-1])) 
+             : vs1 == Set()
+}
+
+// Lemma / function that decodes a Comp witness of a path into an actual path
+method lem_decode_path(g: Graph, c: Comp)
+  returns (p: Seq[Node])
+  requires wf_graph(g)
+  requires comp_path(g, c) 
+  ensures path(g, p) && |p| > 0 && comp_nodes(c) == path_nodes(p) && comp_adj(g, c) == path_adj(g, p)
+  ensures p[0] == comp_start(c) && p[|p|-1] == comp_end(c)
+{
+  if (type(c) == typeof_ccomp()) {
+      var pl: Seq[Node]
+      pl := lem_decode_path(g, ccomp_left(c))
+      var pr: Seq[Node]
+      pr := lem_decode_path(g, ccomp_right(c))
+      p := pl ++ pr
+      lem_path_concat(g, pl, pr)
+      assert path_nodes(p) == path_nodes(pl ++ pr)
+      lem_path_adj_equal(g, pl ++ pr, p)
+  } else {
+    if (type(c) == typeof_pcomp()) {
+      var pc: Seq[Node]
+      pc := lem_decode_cycle(g, pcomp_cycl(c))
+      var p1: Seq[Node]
+      var p2: Seq[Node]
+      p1, p2 := rotate_until(g, pc, Seq(), pcomp_end(c), pc[0]) 
+      var p11: Seq[Node]
+      var p21: Seq[Node]
+      p11, p21 := rotate_until(g, p1 ++ p2, Seq(), pcomp_start(c), pcomp_end(c)) 
+      p := p11 ++ p21 ++ p11[1..]
+      lem_path_split(g, p11, p21)
+      lem_path_concat(g, p11 ++ p21, p11[1..])
+      lem_path_adj_equal(g, p, pc)
+    } else {
+      p := Seq(ncomp_node(c))
+      assert path_nodes(p) == Set(ncomp_node(c)) union path_nodes(p[1..])
+      assert path_adj(g, p) == adj(g, ncomp_node(c)) union path_adj(g, p[1..])
+    }
+  }
+}
+
+// Lemma / function that decodes a Comp witness of a cycle into an actual cyclic path
+method lem_decode_cycle(g: Graph, c: Comp)
+  returns (p: Seq[Node])
+  requires wf_graph(g)
+  requires comp_cycle(g, c) 
+  ensures is_sc(g, p) && comp_nodes(c) == path_nodes(p) && comp_adj(g, c) == path_adj(g, p)
+  ensures p[0] == comp_start(c)
+{
+  if (type(c) == typeof_ccomp()) {
+      var pl: Seq[Node]
+      pl := lem_decode_path(g, ccomp_left(c))
+      var pr: Seq[Node]
+      pr := lem_decode_path(g, ccomp_right(c))
+      p := pl ++ pr ++ Seq(pl[0])
+      lem_path_concat(g, pl, pr)
+      assert path_nodes(Seq(pl[0])) == Set(pl[0]) union path_nodes(Seq(pl[0])[1..])
+      lem_path_concat(g, pl ++ pr, Seq(pl[0]))
+      assert path_nodes(p) == path_nodes(pl ++ pr)
+      lem_path_adj_equal(g, pl ++ pr, p)
+  } else {
+    if (type(c) == typeof_pcomp()) {
+      var pc: Seq[Node]
+      pc := lem_decode_cycle(g, pcomp_cycl(c))
+      var p1: Seq[Node]
+      var p2: Seq[Node]
+      p1, p2 := rotate_until(g, pc, Seq(), pcomp_start(c), pc[0]) 
+      p := p1 ++ p2
+      lem_path_adj_equal(g, p, pc)
+    } else {
+      p := Seq(ncomp_node(c))
+      assert path_nodes(p) == Set(ncomp_node(c)) union path_nodes(p[1..])
+      assert path_adj(g, p) == adj(g, ncomp_node(c)) union path_adj(g, p[1..])
+    }
+  }
+}
+
+
+method lem_msc_comp_seq_implies_msc_path_seq(g: Graph, mscs: Seq[Comp], vs1: Set[Node])
+  returns (mscs1: Seq[Seq[Node]])
+  requires wf_graph(g)
+  requires msc_comp_seq(g, mscs, vs1)
+  ensures msc_path_seq(g, mscs1, vs1)
+{
+  unfold msc_comp_seq(g, mscs, vs1)
+  if (|mscs| > 0) {
+    var p : Seq[Node]
+    var mscst : Seq[Seq[Node]]
+    mscst := lem_msc_comp_seq_implies_msc_path_seq(g, mscs[..|mscs|-1], vs1 setminus comp_nodes(mscs[|mscs|-1]))
+    p := lem_decode_cycle(g, mscs[|mscs|-1])
+    
+    mscs1 := mscst ++ Seq(p)
+    assert mscst == mscs1[..|mscs1|-1]
+    fold msc_path_seq(g, mscs1, vs1)
+  } else {
+    mscs1 := Seq()
+    fold msc_path_seq(g, mscs1, vs1)
+  }
+}  
+
+// Theorem stating that directed sequences of strongly connected components are sequences of MSCs
+method thm_msc_comp_seq_implies_msc_seq(g: Graph, mscs: Seq[Comp])
+  returns (mscs1: Seq[Seq[Node]])
+  requires wf_graph(g)
+  requires msc_comp_seq(g, mscs, V(g))
+  ensures msc_seq(g, mscs1)
+{
+  mscs1 := lem_msc_comp_seq_implies_msc_path_seq(g, mscs, V(g))
+  lem_msc_path_seq_implies_msc_seq(g, mscs1, V(g))
+}
+

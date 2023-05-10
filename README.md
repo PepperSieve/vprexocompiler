@@ -50,3 +50,6 @@ Benchmarks        | Ti Code | Te Code | Ts Code | TiTe Proof | TeTs Proof
 `mst`             | N | N | N | N | N
 
 * A bug in pequin prevents one assertion in `dutch_flag_te` from verification. Refer to line 113 and 129 of `$VPREXOCOMPILER/src/dutch_flag.vpex` for more detail.
+
+# Handwritte Proofs
+You can also access handwritten viper proofs in `proofs/`. Please refer to https://www.pm.inf.ethz.ch/research/viper.html for more details on how to verify viper proofs. You can also find information on what backend to use and expected verification time in `proofs/00_sample_runtime_result.txt`.

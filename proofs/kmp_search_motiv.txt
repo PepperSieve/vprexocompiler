@@ -1,0 +1,168 @@
+This short text explains what LPS_MAT (LM) and LPP are and how to use it.
+
+Catalog:
+1. Motivation for LM
+2. Definition of LM
+3. Computing LM
+4. Use LM to Compute the Mismatch Array
+
+
+--
+1 Motivation for LM
+In T_I, we use LPS to "skip" part of the pattern matching, e.g.
+
+               V
+ind: 0 1 2 3 4 5 6
+txt: A B A A B C A ...
+pat: A B A A B A
+lps: 0 0 1 1 2 1
+
+Aligning PAT[0] at TXT[0], we notice that at TXT[5] / PAT[5] a mismatch occurs.
+Since LPS[4] = 2, PAT[0, 1] == PAT[3, 4].
+We can realign PAT[0] at TXT[3] (where PAT[3] was) and compare TXT[5] / PAT[2].
+
+               V
+ind: 0 1 2 3 4 5 6
+txt: A B A A B C A ...
+pat:       A B A A B A
+
+This ensures T_I is linear, but is a bad news for T_B, which requires the prover to
+provide a B array such that:
+
+                           PAT[B[i]] != TXT[i + B[i]]
+
+  i.e. if we align PAT[0] at TXT[i] and a mismatch occurs at TXT[k], then B[i] = k.
+  B[i] might not be unique.
+
+Since LPS skips alignment at TXT[1], we cannot infer B[1] and B[2]:
+
+i = 1:
+       ? ?   ? ?
+txt: A B A A B C A
+pat:   A B A A B A
+
+i = 2:
+           ? ? ? ?
+txt: A B A A B C A
+pat:     A B A A B A
+
+To solve this problem, we first note the following:
+1. Suppose LPS[4] = 4, then we would realign PAT[0] at TXT[1] (where PAT[1] was)
+2. But LPS[4] < 4, so PAT[0 .. 4) does not match with PAT[1 .. 5).
+3. Suppose PAT[0 .. 4) does not match with PAT[1 .. 5) at index 1, i.e. PAT[1] != PAT[1+1=2],
+   then I know that since PAT[1] == TXT[1], PAT[2] != TXT[1], so B[1] = 1.
+4. We can use the same logic to deduce B[2].
+
+
+--
+2. Definition of LM
+This gives us a new idea:
+Construct a matrx LM, where LM(a, b) = c means
+  PAT[0 .. b) does not match with PAT[a-b+1 .. a+1) because PAT[c] != PAT[a-b+1+c]
+  (and thus LPS[a] != b), c <= a - b
+Ignore LM if LPS[a] == b or PAT[0 .. b) == PAT[a-b+1 .. a+1)
+
+In the above example:
+
+index: 0 1 2 3 4 5 6 7 8 9
+       A B A B C A B A B A
+  lps: 0 0 1 2 0 1 2 3 4 3
+
+LM: (. -> ignore / undefined, X -> the value of LPS)
+       0 1 2 3 4 5 6 7 8 9
+     0 X X . . X . . . . .
+     1 . 0 X . 0 X . . . .
+     2 . . 0 X 0 0 X . . .
+     3 . . . 0 2 0 0 X . X
+     4 . . . . 0 2 0 0 X 0
+     5 . . . . . 0 2 0 0 4
+     6 . . . . . . 0 2 0 0
+     7 . . . . . . . 0 2 0
+     8 . . . . . . . . 0 2
+     9 . . . . . . . . . 0
+
+For each i, if LPS[i] == j, then part 1 tells us that we don't need to care about
+LM(i, k) for k <= j. Moreover, if k > i, then LM(i, k) is undefined.
+
+Formal definition:
+  forall i, j, lps[i] < j <= i ==> PAT[LM(i, j)] != PAT[i - j + 1 + LM(i, j)]
+
+--
+3. LM and LPP
+One can see that LM is in fact very redundant, since it always has the same diagonal value.
+As a result, in paper, we use a 1-D array LPP to replace LM.
+LPP is defined as: LPP[i] = j ==> PAT[j] != PAT[i + j],
+or converting from LM: LM(i, j) = LPP[i - j + 1].
+
+It is, however, difficult to use LPP to prove refinement in Viper, because some values in
+LPP is undefined. For example, let PAT =
+index: 0 1 2 3 4
+       A B A B A
+Then LPP[2] and LPP[4] are undefined. To prove that LPP[2] and LPP[4] are never used to
+generate B, we need LM.
+
+--
+4. Computing LM
+LM can be computed as we generate LPS. In fact, we need to compute LPS and LM
+together for Viper to infer any relationship between them.
+However, since LM can be in worse case scenario quadratic, this means LPS is no longer
+generated linearly.
+
+***
+First an overview on how LPS is computed:
+
+       l   i
+pat: A B A B C A B A B A
+lps: 0 0 1
+
+The iteration through PAT takes 2 variables:
+  i denotes the current element we are dealing with
+  l denotes that PAT[0..l) = PAT[i-l+1..i)
+In the above case, PAT[l] = PAT[i], so LPS[i] = l + 1, and we add 1 to both l and i.
+
+         l   i
+pat: A B A B C A B A B A
+lps: 0 0 1 2
+
+Now PAT[l] != PAT[i], so we find where elements before PAT[l] was repeated earlier, i.e. l := lps[l-1].
+
+     l       i
+pat: A B A B C A B A B A
+lps: 0 0 1 2
+
+Still, PAT[l] != PAT[i]. But l is already 0, set lps[i] to 0 and add 1 to i.
+
+     l         i
+pat: A B A B C A B A B A
+lps: 0 0 1 2 0
+
+...
+
+Elements in LM can be divided into 3 cases based on how i and l are updated:
+
+1. LM(i, j) = k ==> LM(i + 1, j + 1) = k
+   This is obvious from the definition. Intuitively, LM(i + 1, j + 1) contains LM(i, j),
+   so if a mismatch occurs in LM(i, j), it should also occur in LM(i + 1, j + 1).
+   This characteristics means we can update LPS_MAT diaganolly.
+   
+   This characterstics also matches with the fact that the gap between i and l can only
+   grow larger. It means that if i - l = k, then forall p >= i, q < k, LM(p, p - q) has been assigned.
+
+2. PAT[l] != PAT[i] ==> LM(i, l + 1) == l
+   That is literally the definition of LM.
+
+3. l := lps[l - 1] ==> forall lps[l - 1] < k <= l, LM(i, k) := LM(l, k)
+   where l refers to the old l before assigning to lps[l - 1]
+   This is true because elements immediately before l are the same as elements immediately before
+   i. So if a mismatch occurs on some elements before l, it should also occur at the same location
+   before i.
+
+The three steps above can handle every possible assignment needed for LM.
+
+
+--
+5. Use LM to Compute the Mismatch Array
+This is now very easy, and it was partially described in section 1.
+If TXT[i] != PAT[j], then: 
+  B[i - j] := j
+  forall LPS[j - 1] < k <= j - 1, B[i - k] := LM(j - 1, k) 

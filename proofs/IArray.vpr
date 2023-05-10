@@ -1,0 +1,110 @@
+domain IArray {
+  function slot(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function maxsize(): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+  axiom all_diff {
+    forall a: IArray, i: Int :: { slot(a,i) }
+      first(slot(a,i)) == a && second(slot(a,i)) == i
+  }
+
+  axiom len_nonneg {
+    forall a: IArray :: { len(a) }
+      len(a) >= 0
+  }
+
+  axiom valid_size {
+      forall a: IArray :: {len(a)}
+        len(a) <= maxsize()
+  }
+}
+
+field val: Int
+field length: Int // used in merge_TiTb, value stored in first element
+
+define access(array)
+  forall j: Int :: {slot(array,j).val} 0 <= j && j < len(array) ==> acc(slot(array,j).val)
+
+define access_perm(array, p)
+  forall j: Int :: {slot(array,j).val} 0 <= j && j < len(array) ==> acc(slot(array,j).val, p)
+
+define access_read(array)
+  access_perm(array, 2/3)
+
+define access_indexed(array, l, r)
+  forall j:Int :: {(slot(array,j).val)} 0 <= j && j < len(array) && l <= j && j < r ==> acc(slot(array,j).val)
+
+define access_perm_indexed(array, l, r, p)
+  forall j:Int :: {(slot(array,j).val)} 0 <= j && j < len(array) && l <= j && j < r ==> acc(slot(array,j).val, p)
+
+define access_read_indexed(array, l, r)
+  access_perm_indexed(array, l, r, 1/4)
+
+define untouched(array) 
+  forall j: Int :: {slot(array,j).val} 0 <= j && j < len(array) ==> slot(array, j).val == old(slot(array, j).val)
+
+define valid_index(array, i)
+     0 <= i && i < len(array)
+
+define sorted_up_to(array, i)
+    forall j1: Int, j2: Int :: {slot(array,j1).val, slot(array,j2).val}
+    (j1 < j2 && j2 < i && valid_index(array, j1) && valid_index(array, j2)) ==> slot(array,j1).val < slot(array,j2).val
+
+define sorted(array)
+    sorted_up_to(array, len(array))
+
+define sorted_array(array)
+// beware -- this gives access
+   access(array) && sorted(array)
+    
+define distinct_up_to(array, i)
+    forall j1: Int, j2: Int :: {slot(array,j1).val, slot(array,j2).val}
+      j1 != j2 && 0 <= j1 && j1 < i && 0 <= j2 && j2 < i ==> slot(array,j1).val != slot(array,j2).val
+
+define distinct(array)
+    distinct_up_to(array, len(array))
+
+function contents_of_seg(a: IArray, l: Int, r: Int) : Set[Int] 
+// gives contents of array as a set with l inclusive, r exclusive
+    requires 0 <= l
+    requires r <= len(a)
+    requires access_perm_indexed(a, l, r, wildcard)
+    ensures r <= l ==> result == Set()
+        // Viper doesn't unfold recursive definitions all the way, it just unfolds one step of the induction
+        // So, we need to explicitly give it the base case
+    ensures forall i: Int :: {slot(a,i).val} l <= i && i < r ==> slot(a,i).val in result
+{
+  l >= r ? Set() : Set(slot(a, r-1).val) union contents_of_seg(a, l, r-1)
+}
+
+method lemma_contents_of_seg_length(a: IArray, l: Int, r: Int, n: Int, p: Perm)
+  requires none < p && p < write
+  requires access_perm(a, p) && n <= len(a) && distinct_up_to(a, n)
+  requires 0 <= l
+  requires r <= n
+  ensures access_perm(a, p)
+  ensures r >= 0 ==> forall r1: Int :: {slot(a, r1)} r <= r1 && r1 < n ==> !(slot(a, r1).val in contents_of_seg(a, l, r)) 
+  ensures |contents_of_seg(a, l, r)| == (r - l > 0 ? r - l : 0)
+{
+  if (l < r) {
+    lemma_contents_of_seg_length(a, l, r - 1, n, p/2)
+  }
+}
+
+define contents(a) 
+    contents_of_seg(a, 0, len(a))
+
+method new_array(l: Int, d: Int)
+  returns (a: IArray)
+  requires l >= 0
+  ensures access(a)
+  ensures len(a) == l
+  ensures forall k: Int :: {slot(a, k).val} 0 <= k && k < l ==> slot(a, k).val == d
+
+method new_array_no_init(l: Int)
+  returns (a: IArray)
+  requires l >= 0
+  ensures access(a)
+  ensures len(a) == l

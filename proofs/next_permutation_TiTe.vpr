@@ -1,0 +1,244 @@
+import "IArray.vpr"
+
+// ensures that the array C has a next permutation
+define have_next_perm(c, n)
+    exists i: Int :: i >= 0 && i < n - 1 && slot(c, i).val < slot(c, i+1).val
+
+// i is the first index where the next permutation differs from the current array
+// Observation for i is that c[i] < c[i + 1] && c[k] > c[k + 1] for all k > i
+define is_i(i, c, n)
+    i >= 0 && i < n - 1 && slot(c, i).val < slot(c, i+1).val &&
+    forall p: Int, q: Int :: {slot(c, p).val, slot(c, q).val}
+        i < p && p < q && q < n ==> slot(c, p).val > slot(c, q).val
+
+// j is the index where we swap item i with
+// Observation for j is that c[j] > c[i] && c[j + 1] < c[i], if c[j + 1] exists
+define is_j(i, j, c, n)
+    j > i && j < n && slot(c, j).val > slot(c, i).val &&
+    forall k1: Int :: {slot(c, k1).val}
+        k1 > i && k1 < n ==> slot(c, k1).val >= slot(c, j).val || slot(c, k1).val < slot(c, i).val
+
+// d is a permutation of c
+define is_d_p1(c, d)
+    contents_of_seg(d, 0, n) == contents_of_seg(c, 0, n)
+
+// d[k] = c[k] for all k < i; d[i] = c[j]; d[k] < d[k+1] for all k > i
+define is_d_p2(i, j, c, d)
+    (forall k1: Int :: {slot(c, k1).val} {slot(d, k1).val}
+        k1 >= 0 && k1 < i ==> slot(d, k1).val == slot(c, k1).val) &&
+    slot(d, i).val == slot(c, j).val &&
+    (forall k1: Int, k2: Int :: {slot(d, k1).val, slot(d, k2).val}
+        i < k1 && k1 < k2 && k2 < n ==> slot(d, k1).val < slot(d, k2).val)
+
+// Verify that d is the next permutation of c
+// Observation for next_permutation is that
+//  we swap item i and j, and then reverse everything after index i
+// To do so, we need the supplimentary i, j,
+// and an intermediate array c1 to record the state after item i and j are swapped
+define is_next_permutation(i, j, c, d, n)
+    is_i(i, c, n) && is_j(i, j, c, n) && is_d_p1(c, d) && is_d_p2(i, j, c, d)
+
+method next_permutation(n: Int, c: IArray, cc: IArray, d: IArray)
+    requires access_read(c) && access(cc) && access(d)
+    requires n > 1 && n == len(c) && n == len(cc) && n == len(d)
+    requires distinct_up_to(c, n) && have_next_perm(c, n)
+    ensures access_read(c) && access(cc)
+{
+    var tmp: Int
+    var k: Int := 0
+    // Copy C to CC and modify CC
+    while (k < maxsize())
+        invariant access_read(c) && access(cc) && access(d)
+        invariant distinct_up_to(c, n) && have_next_perm(c, n)
+        invariant k >= 0
+        invariant forall k1: Int :: {slot(cc, k1).val} {slot(c, k1).val}
+          k1 >= 0 && k1 < k && k1 < n ==> slot(cc, k1).val == slot(c, k1).val
+    {
+        if (k < n) {
+            slot(cc, k).val := slot(c, k).val
+        }
+        k := k + 1
+    }
+
+    // Find i
+    var i: Int := -1
+    var d_i: Int
+    var d_j: Int
+    k := 1
+    while (k < maxsize())
+        invariant access_read(c) && access(cc) && access(d)
+        invariant distinct_up_to(c, n) && have_next_perm(c, n) && distinct_up_to(cc, n) && have_next_perm(cc, n)
+        invariant forall k1: Int :: {slot(cc, k1).val} {slot(c, k1).val}
+          k1 >= 0 && k1 < n ==> slot(cc, k1).val == slot(c, k1).val        
+        invariant k >= 1 && i >= -1 && (k > 1 ==> tmp >= 0)
+        invariant k > 1 ==> tmp == maxsize() - k
+        invariant k > 1 && i == -1 ==> forall k1: Int, k2: Int :: {slot(cc, k1).val, slot(cc, k2).val}
+          tmp <= k1 && k1 < k2 && k2 < n ==> slot(cc, k1).val > slot(cc, k2).val
+        invariant i >= 0 ==> forall k1: Int, k2: Int :: {slot(cc, k1).val, slot(cc, k2).val}
+          i < k1 && k1 < k2 && k2 < n ==> slot(cc, k1).val > slot(cc, k2).val
+        invariant i >= 0 ==> i < n - 1 && slot(cc, i).val < slot(cc, i + 1).val
+        invariant i >= 0 ==> d_i == slot(cc, i).val
+    {
+        // Assume that cc has a next permutation
+        // This means that the while loop must terminate before i = 0
+        tmp := maxsize() - k - 1
+        if (i == -1 && tmp < n - 1) {
+            if (slot(cc, tmp).val < slot(cc, tmp + 1).val) {
+                i := tmp
+                d_i := slot(cc, tmp).val
+            }
+        }
+        k := k + 1
+    }
+
+    assert i >= 0 && is_i(i, c, n)
+
+    // Find j
+    var j: Int := -1
+    k := 1
+    while (k < maxsize())
+        invariant access_read(c) && access(cc) && access(d)
+        invariant distinct_up_to(c, n) && have_next_perm(c, n) && distinct_up_to(cc, n) && have_next_perm(cc, n)
+        invariant is_i(i, c, n) && d_i == slot(cc, i).val
+        invariant forall k1: Int :: {slot(cc, k1).val} {slot(c, k1).val}
+          k1 >= 0 && k1 < n ==> slot(cc, k1).val == slot(c, k1).val
+        invariant k >= 1 && (j == -1 || j > i) && (k > 1 ==> tmp >= 0)
+        invariant k > 1 ==> tmp == maxsize() - k + 1
+        invariant k > 1 && j == -1 ==> forall k1: Int :: {slot(cc, k1).val}
+          tmp <= k1 && k1 < n ==> slot(cc, k1).val < d_i
+        invariant j > i ==> forall k1: Int :: {slot(cc, k1).val}
+          j < k1 && k1 < n ==> slot(cc, k1).val < d_i
+        invariant j > i ==> j < n && slot(cc, j).val > d_i
+        invariant j > i ==> d_j == slot(cc, j).val
+    {
+        tmp := maxsize() - k
+        if (j == -1 && tmp < n) {
+            // j must be greater than i
+            if (slot(cc, tmp).val > d_i) {
+                j := tmp
+                d_j := slot(cc, tmp).val
+            }
+        }
+        k := k + 1
+    }
+
+    assert j > i
+
+    // Swap CC_i and CC_j
+    slot(cc, i).val := d_j
+    slot(cc, j).val := d_i
+
+    // Copy CC to D. Revert D[i+1..n]
+    var cor: Int
+    k := 0
+    while (k < maxsize())
+        invariant access_read(c) && access(cc) && access(d)
+        invariant forall k1: Int :: {slot(c, k1).val} {slot(cc, k1).val}
+          k1 >= 0 && k1 < n && k1 != i && k1 != j ==> slot(cc, k1).val == slot(c, k1).val
+        invariant is_i(i, c, n) && slot(c, i).val == d_i && slot(c, j).val == d_j
+        invariant slot(cc, i).val == d_j && slot(cc, j).val == d_i
+        invariant j > i ==> forall k1: Int :: {slot(cc, k1).val}
+          j < k1 && k1 < n ==> slot(cc, k1).val < d_i
+
+        invariant k >= 0 && (k-1 >= 0 && k-1 <= i ==> cor == k-1) && (k-1 > i && k-1 < n ==> cor == n - (k-1) + i)
+        invariant forall k1: Int :: {slot(d, k1).val}
+          k1 >= 0 && k1 < k && k1 <= i ==> slot(d, k1).val == slot(cc, k1).val
+        invariant k-1 > i && k-1 < n ==> slot(d, k-1).val == slot(cc, n - (k-1) + i).val
+        invariant forall k1: Int :: {slot(d, k1).val} 
+          k1 > i && k1 < k && k1 < n ==> slot(d, k1).val == slot(cc, n - k1 + i).val
+    {
+        if (k < n) {
+            if (k <= i) {
+                cor := k
+            } else {
+                cor := n - k + i
+            }
+            slot(d, k).val := slot(cc, cor).val
+        }
+        k := k + 1
+    }
+
+    // Insert ghost variables
+    var ci: Int := d_i
+    var cj: Int := d_j
+    var cip1: Int := slot(c, i+1).val
+    var cjp1: Int
+    if (j != n - 1) {
+        cjp1 := slot(c, j+1).val
+    }
+
+    // Assert T_B
+    assert forall k1: Int :: {slot(c, k1).val} {slot(cc, k1).val}
+        k1 >= 0 && k1 < n && k1 != i && k1 != j ==> slot(cc, k1).val == slot(c, k1).val
+
+    assert 0 <= i
+    assert i < j
+    assert j < n
+
+    assert ci < cip1
+    assert cj > ci
+    if (j != n - 1) {
+        assert cjp1 < ci
+    }
+    k := 0
+
+    // Swap c[i] and c[j]
+    while (k < maxsize())
+        invariant access_read(c) && access(cc) && access(d)
+        invariant k >= 0 && is_i(i, c, n)
+        invariant slot(c, i).val == ci
+        invariant slot(cc, i).val == cj
+        invariant slot(c, i+1).val == cip1
+        invariant slot(c, j).val == cj
+        invariant slot(cc, j).val == ci
+        invariant j != n - 1 ==> slot(c, j+1).val == cjp1
+        invariant forall k1: Int :: {slot(d, k1).val}
+          k1 >= 0 && k1 <= i ==> slot(d, k1).val == slot(cc, k1).val
+        invariant forall k1: Int :: {slot(d, k1).val} 
+          k1 > i && k1 < n ==> slot(d, k1).val == slot(cc, n - k1 + i).val
+    {
+        if (k == i) {
+            assert slot(c, k).val == ci
+            assert slot(cc, k).val == cj
+        }
+        if (k == i + 1) {
+            assert slot(c, k).val == cip1
+        }
+        if (k == j) {
+            assert slot(c, k).val == cj
+            assert slot(cc, k).val == ci
+        }
+        if (k == j + 1 && k != n) {
+            assert slot(c, k).val == cjp1
+        }
+        k := k + 1
+    }
+
+    // if k < i, d[k] = cc[k]
+    // otherwise, d[k] = cc[n - k + 1]
+    k := 0
+    while (k < maxsize())
+        invariant access_read(c) && access(cc) && access(d)
+        invariant k >= 0 && is_i(i, c, n)
+        invariant forall k1: Int :: {slot(d, k1).val}
+          k1 >= 0 && k1 <= i ==> slot(d, k1).val == slot(cc, k1).val
+        invariant forall k1: Int :: {slot(d, k1).val} 
+          k1 > i && k1 < n ==> slot(d, k1).val == slot(cc, n - k1 + i).val
+    {
+        if (k < n) {
+            if (k <= i) {
+                cor := k
+            }
+            else {
+                cor := n - k + i
+            }
+            assert slot(d, k).val == slot(cc, cor).val
+
+            // forall k > i, c[k] > c[k+1]
+            if (k != 0 && k - 1 > i) {
+                assert slot(c, k-1).val > slot(c, k).val
+            }
+        }
+        k := k + 1
+    }    
+}

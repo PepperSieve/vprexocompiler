@@ -1,0 +1,179 @@
+// NOTE: all Int values here (recv, outg, node) refer to INDEX in the T Array,
+//       not the numbering of the actual Node!!!
+domain Comp {
+  function pcomp(p_recv: Int, cycl: Seq[Comp], p_outg: Int, p_node: Int, p_remn: Int, p_subtree: Set[Int]) : Comp
+  function comp_recv(c: Comp) : Int
+  function comp_outg(c: Comp) : Int
+  function comp_cycl(c: Comp) : Seq[Comp]
+  function comp_node(c: Comp) : Int
+  function comp_remn(c: Comp) : Int
+  function comp_subtree(c: Comp) : Set[Int]
+
+  function ncomp(n: Int) : Comp
+  
+  // Constructor types 
+  function type (c: Comp) : Int 
+  unique function typeof_pcomp () : Int
+  unique function typeof_ncomp () : Int
+
+  axiom pcompInjective {
+    forall p_recv: Int, cycl: Seq[Comp], p_outg: Int, n: Int, p_remn: Int, p_subtree: Set[Int] ::
+      {pcomp(p_recv, cycl, p_outg, n, p_remn, p_subtree)}
+         comp_recv(pcomp(p_recv, cycl, p_outg, n, p_remn, p_subtree)) == p_recv
+      && comp_cycl(pcomp(p_recv, cycl, p_outg, n, p_remn, p_subtree)) == cycl
+      && comp_outg(pcomp(p_recv, cycl, p_outg, n, p_remn, p_subtree)) == p_outg
+      && comp_node(pcomp(p_recv, cycl, p_outg, n, p_remn, p_subtree)) == n
+      && comp_remn(pcomp(p_recv, cycl, p_outg, n, p_remn, p_subtree)) == p_remn
+      && comp_subtree(pcomp(p_recv, cycl, p_outg, n, p_remn, p_subtree)) == p_subtree
+  }
+
+  axiom ncompInjective {
+    forall n: Int :: {ncomp(n)}
+      comp_node(ncomp(n)) == n
+  }
+
+  axiom ncompRecvOutgMatch {
+    forall n: Int :: {ncomp(n)}
+      comp_recv(ncomp(n)) == n &&
+      comp_outg(ncomp(n)) == n
+  }
+
+  axiom ncompNoChild {
+    forall n: Int :: {ncomp(n)}
+      comp_cycl(ncomp(n)) == Seq() &&
+      comp_subtree(ncomp(n)) == Set(n) &&
+      comp_recv(ncomp(n)) in comp_subtree(ncomp(n)) &&
+      comp_outg(ncomp(n)) in comp_subtree(ncomp(n))
+  }
+
+  axiom ncompNoRemn {
+    forall n: Int :: {ncomp(n)}
+      comp_remn(ncomp(n)) == 0
+  }
+
+  axiom type_of_pcomp {
+    forall p_recv: Int, cycl: Seq[Comp], p_outg: Int, n: Int, p_remn: Int, p_subtree: Set[Int] ::
+      {pcomp(p_recv, cycl, p_outg, n, p_remn, p_subtree)}
+      type(pcomp(p_recv, cycl, p_outg, n, p_remn, p_subtree)) == typeof_pcomp()
+  }  
+
+  axiom type_of_ncomp {
+    forall n: Int :: {ncomp(n)}
+      type(ncomp(n)) == typeof_ncomp()
+  }
+
+  axiom type_existence {
+    forall c: Comp :: {type(c)} type(c) == typeof_pcomp() || type(c) == typeof_ncomp()
+  }
+}
+
+// Compute all nodes of a sequence of trees CS
+function comp_nodes_seq(c: Seq[Comp]) : Seq[Int]
+{
+  |c| == 0 ? Seq()
+  : type(c[0]) == typeof_pcomp() ?
+    Seq(comp_node(c[0])) ++ comp_nodes_seq(comp_cycl(c[0])) ++ comp_nodes_seq(c[1..|c|])
+  : Seq(comp_node(c[0])) ++ comp_nodes_seq(c[1..|c|])
+}
+
+// Update the children list of the last element in a sequence to CC
+method pcomp_update_subtree(c: Seq[Comp], cc: Seq[Comp], st: Set[Int])
+    returns(ret: Seq[Comp])
+    requires |c| >= 1
+    requires type(c[|c|-1]) == typeof_pcomp()
+    ensures |c| == |ret|
+    ensures c[0..|c|-1] == ret[0..|ret|-1]
+    ensures type(ret[|ret|-1]) == typeof_pcomp()
+    ensures comp_recv(ret[|ret| - 1]) == comp_recv(c[|c| - 1])
+      && comp_cycl(ret[|ret| - 1]) == cc
+      && comp_outg(ret[|ret| - 1]) == comp_outg(c[|c| - 1])
+      && comp_node(ret[|ret| - 1]) == comp_node(c[|c| - 1])
+      && comp_remn(ret[|ret| - 1]) == comp_remn(c[|c| - 1])
+      && comp_subtree(ret[|ret| - 1]) == st
+  {
+    ret := c[0..|c| - 1] ++ Seq(pcomp(comp_recv(c[|c| - 1]), cc, comp_outg(c[|c| - 1]), comp_node(c[|c| - 1]), comp_remn(c[|c| - 1]), st))
+  }
+
+domain SValue {
+    // Record all data applicable to an element in T (for MSC Tree)
+
+    function set_svalue(remn: Int, depth: Int, head: Int, phead: Int, next: Int, tremn: Int, csiblings: Seq[Comp], last: Int, subtree: Set[Int]): SValue
+
+    // remn: # of slots after this node that corresponds to nodes that have the same parent
+    // depth: the depth of the tree this node is at
+    // head: the first node that has the same parent this node
+    // phead: the parent of this node
+    // tremn: the remn of this node + remn of all children of this node that are in stack
+    // ihead: the index of head of this node in T
+    // csiblings: the processed siblings of this node in the generated tree
+    // last: the last node processed before pushing into the stack (pcomp_head of the next frame)
+    // subtree: index in T of all the nodes in the subtree of pcomp
+    function get_remn(a: SValue): Int
+    function get_depth(a: SValue): Int
+    function get_head(a: SValue): Int
+    function get_phead(a: SValue): Int
+    function get_next(a: SValue): Int
+    function get_tremn(a: SValue): Int
+    function get_csiblings(a: SValue): Seq[Comp]
+    function get_last(a: SValue): Int
+    function get_subtree(a: SValue): Set[Int]
+    function update_tremn(a: SValue, k: Int): SValue
+
+    axiom sgRemn {
+        forall sg_remn: Int, sg_depth: Int, sg_head: Int, sg_phead: Int, sg_next: Int, sg_tremn: Int, sg_cs: Seq[Comp], sg_last: Int, sg_st: Set[Int] ::
+        {set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)}
+        get_remn(set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)) == sg_remn
+    }
+    axiom sgDepth {
+        forall sg_remn: Int, sg_depth: Int, sg_head: Int, sg_phead: Int, sg_next: Int, sg_tremn: Int, sg_cs: Seq[Comp], sg_last: Int, sg_st: Set[Int] ::
+        {set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)}
+        get_depth(set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)) == sg_depth
+    }
+    axiom sgHead {
+        forall sg_remn: Int, sg_depth: Int, sg_head: Int, sg_phead: Int, sg_next: Int, sg_tremn: Int, sg_cs: Seq[Comp], sg_last: Int, sg_st: Set[Int] ::
+        {set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)}
+        get_head(set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)) == sg_head
+    }
+    axiom sgPHead {
+        forall sg_remn: Int, sg_depth: Int, sg_head: Int, sg_phead: Int, sg_next: Int, sg_tremn: Int, sg_cs: Seq[Comp], sg_last: Int, sg_st: Set[Int] ::
+        {set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)}
+        get_phead(set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)) == sg_phead
+    }
+    axiom sgNext {
+        forall sg_remn: Int, sg_depth: Int, sg_head: Int, sg_phead: Int, sg_next: Int, sg_tremn: Int, sg_cs: Seq[Comp], sg_last: Int, sg_st: Set[Int] ::
+        {set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)}
+        get_next(set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)) == sg_next
+    }
+    axiom sgTRemn {
+        forall sg_remn: Int, sg_depth: Int, sg_head: Int, sg_phead: Int, sg_next: Int, sg_tremn: Int, sg_cs: Seq[Comp], sg_last: Int, sg_st: Set[Int] ::
+        {set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)}
+        get_tremn(set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)) == sg_tremn
+    }
+    axiom sgCParent {
+        forall sg_remn: Int, sg_depth: Int, sg_head: Int, sg_phead: Int, sg_next: Int, sg_tremn: Int, sg_cs: Seq[Comp], sg_last: Int, sg_st: Set[Int] ::
+        {set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)}
+        get_csiblings(set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)) == sg_cs
+    }
+    axiom sgLast {
+        forall sg_remn: Int, sg_depth: Int, sg_head: Int, sg_phead: Int, sg_next: Int, sg_tremn: Int, sg_cs: Seq[Comp], sg_last: Int, sg_st: Set[Int] ::
+        {set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)}
+        get_last(set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)) == sg_last
+    }
+    axiom sgSubtree {
+        forall sg_remn: Int, sg_depth: Int, sg_head: Int, sg_phead: Int, sg_next: Int, sg_tremn: Int, sg_cs: Seq[Comp], sg_last: Int, sg_st: Set[Int] ::
+        {set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)}
+        get_subtree(set_svalue(sg_remn, sg_depth, sg_head, sg_phead, sg_next, sg_tremn, sg_cs, sg_last, sg_st)) == sg_st
+    }
+    axiom upTRemn {
+        forall a: SValue, k: Int :: {update_tremn(a, k)}
+        get_remn(update_tremn(a, k)) == get_remn(a) &&
+        get_depth(update_tremn(a, k)) == get_depth(a) &&
+        get_head(update_tremn(a, k)) == get_head(a) &&
+        get_phead(update_tremn(a, k)) == get_phead(a) &&
+        get_next(update_tremn(a, k)) == get_next(a) &&
+        get_tremn(update_tremn(a, k)) == get_tremn(a) + k &&
+        get_last(update_tremn(a, k)) == get_last(a) &&
+        get_csiblings(update_tremn(a, k)) == get_csiblings(a) &&
+        get_subtree(update_tremn(a, k)) == get_subtree(a)
+    }
+}

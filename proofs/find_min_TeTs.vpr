@@ -1,0 +1,71 @@
+import "IArray.vpr"
+
+method find_min(A: IArray, n: Int, MAX_N: Int)
+    requires access_read(A)
+    requires MAX_N > 0
+    requires len(A) == MAX_N
+    requires n <= len(A) && n > 0
+{
+    var min: Int 
+    var p: Int
+    var B: IArray
+    inhale access(B)
+    assume len(B) == MAX_N
+        
+    var i: Int
+    i := 0
+    var found: Int := 0
+    while(i < MAX_N)
+        invariant 0 <= i && i <= MAX_N
+        invariant access_read(A)
+        invariant access(B)
+        invariant forall j:Int :: valid_index(A,j) && j < i && j < n ==> min <= slot(A,j).val
+        invariant forall j:Int :: valid_index(A,j) && j < i && j < n && slot(A, j).val == min ==>
+            slot(B, j).val == 1
+        invariant forall j:Int :: valid_index(A,j) && j < i && j < n && slot(A, j).val != min ==>
+            slot(B, j).val == 0
+        invariant found != 0 ==> 0 <= p && p < n && slot(A, p).val == min
+    {
+        if(i < n){
+            assume min < slot(A, i).val 
+            if(slot(A,i).val == min){
+                assume slot(B, i).val == 1;
+                found := 1; p := i
+            } else {
+                assume slot(B, i).val == 0;
+            }
+        }
+        i := i+1
+    }
+    assume found != 0
+    
+    // --
+    // END OF T_E, BEGINNING OF T_S
+    // --
+
+    i := 0
+    while(i < MAX_N)
+        invariant 0 <= i && i <= MAX_N
+        invariant access_perm(A, 1/6)
+        invariant access(B)
+        invariant forall j: Int ::
+            valid_index(A,j) && j < n ==> min <= slot(A,j).val
+        invariant forall j:Int :: valid_index(A,j) && j < n && slot(A, j).val == min ==>
+            slot(B, j).val == 1
+        invariant forall j:Int :: valid_index(A,j) && j < n && slot(A, j).val != min ==>
+            slot(B, j).val == 0
+    {
+        if(i < n){
+          assert min <= slot(A,i).val
+          if (min == slot(A, i).val) {
+            assert slot(B, i).val == 1
+          }
+          else {
+            assert slot(B, i).val == 0
+          }
+        }
+        i := i+1
+    }
+
+    assert 0 <= p && p < n && slot(A,p).val == min
+}

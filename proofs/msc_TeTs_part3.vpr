@@ -1,0 +1,135 @@
+// This part proves properties related to OutGoingToOlder
+
+// NOTE: comp_recv & comp_outg should be viewed as custom functions defined in Viper,
+//       not an altering the assumption of the algorithm
+//       i.e., ncomp still does not have a recv value, comp_recv(ncomp(n)) = n
+
+// In an attempt to construct a tree bottom-up from the T-array, I modify the program
+// with the following change:
+//     After processing every pcomp, I always store it into the stack before processing
+//     its children.
+// This is undesirable for the actual code in pequin because:
+//     Consider the case where the last child of a pcomp is a pcomp, we call the parent
+//     node pcomp1 and child node pcomp2. If we push pcomp2 in stack, after processing
+//     all children of pcomp2, we pop pcomp2 out of the stack, and realize that there
+//     are also no more children in pcomp1. We have to then pop pcomp1 out of the stack
+//     in the next iteration. The problem is that during the iteration where we pop
+//     pcomp2 out of the stack, we did not process any element in array T (since we did
+//     nothing except waiting for pcomp1 to be popped), and so # of iterations is no
+//     longer bounded by the length of array T, which is undesirable.
+
+import "IArray.vpr"
+import "stack.vpr"
+
+field remn: Int
+field recv: Int
+field outg: Int
+field depth: Int
+field head: Int
+field next: Int
+// Record the head of the pcomp, used to verify tree structure
+field pcomp_head: Int
+
+// Ensure_Strong Properties
+function remn_sum_seg(low: Int, sq: Seq[SValue]): Int
+    requires low >= 1 && low <= |sq|
+{
+    low == |sq| ? 0 : get_remn(sq[low]) + remn_sum_seg(low + 1, sq)
+}
+
+define access_tree_read(array)
+    forall j: Int :: {slot(array, j)}
+        0 <= j && j < len(array) ==> 
+            acc(slot(array, j).remn, 2/3) && acc(slot(array, j).recv, 2/3) &&
+            acc(slot(array, j).outg, 2/3) && acc(slot(array, j).next, 2/3) &&
+            acc(slot(array, j).val, 2/3)
+
+define access_edge_read(array)
+    forall j: Int :: {slot(array, j)}
+        0 <= j && j < len(array) ==> acc(slot(array, j).outg, 2/3) && acc(slot(array, j).val, 2/3)
+
+define access_stack(array)
+  forall j: Int :: {slot(array,  j).sv} 0 <= j && j < len(array) ==> acc(slot(array,j).sv)
+
+// Use ps to record the various program state AFTER processing node i
+define access_ps(array)
+    forall j: Int :: {slot(array, j)}
+        0 <= j && j < len(array) ==> 
+            acc(slot(array, j).depth) && acc(slot(array, j).pcomp_head) && acc(slot(array, j).remn)
+
+define is_edgeB(NV, NE, edgeB)
+    slot(edgeB, 0).val == 0 &&
+    slot(edgeB, NV).val == NE &&
+    forall i: Int, j: Int :: {slot(edgeB, i).val, slot(edgeB, j).val}
+        0 <= i && i < j && j <= NV ==> slot(edgeB, i).val <= slot(edgeB, j).val
+
+define is_edges(NV, NE, edges) 
+    forall i: Int :: {slot(edges, i).outg} {slot(edges, i).val}
+        i >= 0 && i < NE ==>
+        slot(edges, i).outg >= 0 && slot(edges, i).outg < NV &&
+        slot(edges, i).val >= 0 && slot(edges, i).val < NV
+
+define forms_edge(NV, edgeB, edges)
+    forall i: Int, j: Int, ebi: Int :: {slot(edgeB, i).val, slot(edgeB, j).val, slot(edges, ebi).outg}
+        i >= 0 && j == i + 1 && j <= NV && ebi >= slot(edgeB, i).val && ebi < slot(edgeB, j).val ==>
+        slot(edges, ebi).outg == i  
+
+// edges.outg: outgoing vertex; edges.val: receiving vertex
+method msc_tree_sp_outgoing(NV: Int, NE: Int, msc_num: Int, msc: IArray, edgeB: IArray, edges: IArray)
+    requires access_read(msc) && access_read(edgeB) && access_edge_read(edges)
+    requires NV > 0 && NV < maxsize() && NE >= 0 && NE < maxsize()
+    requires msc_num > 0 && msc_num <= NV
+    requires len(msc) == maxsize() && len(edgeB) == maxsize() && len(edges) == maxsize()
+    requires forall i: Int :: {slot(msc, i).val}
+        i >= 0 && i < NV ==> slot(msc, i).val >= 0 && slot(msc, i).val < msc_num
+    requires is_edgeB(NV, NE, edgeB)
+    requires is_edges(NV, NE, edges)
+    requires forms_edge(NV, edgeB, edges)
+    ensures access_read(msc) && access_read(edgeB) && access_edge_read(edges)
+    ensures forall k: Int :: { slot(edges, k).val}
+                k >= 0 && k < NE ==> 
+                    slot(edges, k).val >= 0 && slot(edges, k).val < NV &&
+                    slot(edges, k).outg >= 0 && slot(edges, k).outg < NV &&
+                    slot(msc, slot(edges, k).val).val <= slot(msc, slot(edges, k).outg).val
+{
+    var i: Int := 0
+    var j: Int := 0
+    var ej: Int := slot(edges, j).val
+    var ebi0: Int := slot(edgeB, 0).val
+    var ebi1: Int := slot(edgeB, 1).val
+    var ebi1_tmp: Int := ebi1;
+    var cur_msc: Int := slot(msc, i).val
+    while (i < maxsize())
+        invariant access_read(msc) && access_read(edgeB) && access_edge_read(edges)
+        invariant is_edgeB(NV, NE, edgeB) && is_edges(NV, NE, edges) && forms_edge(NV, edgeB, edges)
+        invariant i >= 0 && j >= 0   
+        invariant i < NV ==> ebi0 == slot(edgeB, i).val && ebi1 == slot(edgeB, i+1).val
+        invariant i < NV ==> ebi0 <= NE && ebi1 <= NE
+        invariant ebi0 <= ebi1 && j >= ebi0 && j <= ebi1 && j <= NE
+        invariant i < NV && j != ebi1 ==>
+            i == slot(edges, j).outg && cur_msc == slot(msc, slot(edges, j).outg).val
+        invariant i < NV && j >= 1 ==> 
+            forall k: Int :: { slot(msc, slot(edges, k).val).val } { slot(msc, slot(edges, k).outg).val }
+                k >= 0 && k < j ==> slot(msc, slot(edges, k).val).val <= slot(msc, slot(edges, k).outg).val
+        invariant i >= NV ==>
+            forall k: Int :: { slot(msc, slot(edges, k).val).val } { slot(msc, slot(edges, k).outg).val }
+                k >= 0 && k < NE ==> slot(msc, slot(edges, k).val).val <= slot(msc, slot(edges, k).outg).val
+    {
+        if (i < NV) {
+            ebi1_tmp := ebi1
+            if (j == ebi1) {
+                i := i + 1
+                cur_msc := slot(msc, i).val
+                ebi0 := ebi1
+                if (i < NV) { ebi1 := slot(edgeB, i+1).val }
+            }
+            else {
+                assert j < NE
+                ej := slot(edges, j).val
+                assert ej >= 0 && ej < NV
+                assume slot(msc, ej).val <= cur_msc
+                j := j + 1
+            }
+        }
+    }
+}

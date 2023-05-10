@@ -1,0 +1,213 @@
+// Properties of child_index on interval [head, tail) of Tr
+
+// Return a sequence
+// Relate all result[j] to result[0]
+// Relate all result[j] to result[i]
+function child_index(T_remn: Seq[Int], cur: Int, tail: Int): Seq[Int]
+  requires 0 <= cur && cur < tail && tail <= |T_remn|
+  requires forall i: Int :: {T_remn[i]} 
+    cur <= i && i < tail ==> 0 <= T_remn[i] && i + T_remn[i] < tail
+  // Preliminaries
+  ensures 1 <= |result| && |result| <= tail - cur
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==> cur <= result[i] && result[i] < tail
+  // Head and Tail
+  ensures result[0] == cur
+  ensures result[|result|-1] + 1 + T_remn[result[|result|-1]] == tail
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| - 1 ==> result[i] + 1 + T_remn[result[i]] != tail
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && result[i] + 1 + T_remn[result[i]] != tail ==>
+      i != |result| - 1
+  ensures result[0] + 1 + T_remn[result[0]] == tail ==> |result| == 1
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && result[i] + 1 + T_remn[result[i]] == tail ==>
+      i == |result| - 1
+  // Inductive Proof
+  ensures forall i: Int, j: Int :: {result[i], result[j]}
+    0 <= i && i + 1 == j && j < |result| ==>
+      result[j] == result[i] + 1 + T_remn[result[i]]
+  // Quantified Proof
+  ensures cur + 1 + T_remn[cur] < tail ==>
+    forall i: Int, j: Int ::
+      1 <= i && i < |result| && j == i - 1 ==> result[i] == child_index(T_remn, cur + 1 + T_remn[cur], tail)[j]
+{
+  cur + 1 + T_remn[cur] == tail ? Seq(cur)
+  : Seq(cur) ++ child_index(T_remn, cur + 1 + T_remn[cur], tail)
+}
+
+// Relationship between ccomp and ccomp_left
+function lem_T_remn_eq_implies_child_index_eq_1(Tr1: Seq[Int], Tr2: Seq[Int], cur1: Int, cur2: Int, tail1: Int, tail2: Int): Bool
+  requires 0 <= cur1 && cur1 < tail1 && tail1 <= |Tr1|
+  requires 0 <= cur2 && cur2 < tail2 && tail2 <= |Tr2|
+  requires tail1 == tail2
+  requires |Tr1| > |Tr2| && Tr1[..|Tr2|] == Tr2
+  requires forall i: Int :: {Tr1[i]} 
+    cur1 <= i && i < tail1 ==> 0 <= Tr1[i] && i + 1 + Tr1[i] <= tail1
+  ensures cur1 == cur2 ==> result
+  ensures result ==> |child_index(Tr1, cur1, tail1)| == |child_index(Tr2, cur2, tail2)| &&
+    forall i: Int :: {child_index(Tr1, cur1, tail1)[i]} {child_index(Tr2, cur2, tail2)[i]}
+      0 <= i && i < |child_index(Tr2, cur2, tail2)| ==>
+        child_index(Tr1, cur1, tail1)[i] == child_index(Tr2, cur2, tail2)[i]
+{
+  cur1 == cur2 && cur2 + 1 + Tr2[cur2] == tail2 ? true
+  : cur1 == cur2 && lem_T_remn_eq_implies_child_index_eq_1(Tr1, Tr2, cur1 + 1 + Tr1[cur1], cur2 + 1 + Tr2[cur2], tail1, tail2)
+}
+
+// Relationship between ccomp and ccomp_right
+function lem_T_remn_eq_implies_child_index_eq_2(Tr1: Seq[Int], Tr2: Seq[Int], cur1: Int, cur2: Int, tail1: Int, tail2: Int): Bool
+  requires 0 <= cur1 && cur1 < tail1 && tail1 <= |Tr1|
+  requires 0 <= cur2 && cur2 < tail2 && tail2 <= |Tr2|
+  requires tail1 - tail2 == |Tr1| - |Tr2|
+  requires |Tr1| > |Tr2| && Tr1[|Tr1| - |Tr2|..] == Tr2
+  requires forall i: Int :: {Tr1[i]} 
+    cur1 <= i && i < tail1 ==> 0 <= Tr1[i] && i + 1 + Tr1[i] <= tail1
+  ensures cur2 + |Tr1| - |Tr2| == cur1 ==> result
+  ensures result ==> |child_index(Tr1, cur1, tail1)| == |child_index(Tr2, cur2, tail2)| &&
+    forall i: Int :: {child_index(Tr1, cur1, tail1)[i]} {child_index(Tr2, cur2, tail2)[i]}
+      0 <= i && i < |child_index(Tr2, cur2, tail2)| ==>
+        child_index(Tr1, cur1, tail1)[i] == child_index(Tr2, cur2, tail2)[i] + |Tr1| - |Tr2|
+{
+  cur2 + |Tr1| - |Tr2| == cur1 && cur2 + 1 + Tr2[cur2] == tail2 ? cur1 + 1 + Tr1[cur1] == tail1
+  : cur2 + |Tr1| - |Tr2| == cur1 && lem_T_remn_eq_implies_child_index_eq_2(Tr1, Tr2, cur1 + 1 + Tr1[cur1], cur2 + 1 + Tr2[cur2], tail1, tail2)
+}
+
+// Derive from lem_eq_1
+method axiom_T_remn_eq_implies_child_index_eq_1(Tr: Seq[Int], Tr1: Seq[Int], head1: Int, tail1: Int)
+  requires |Tr1| > 0
+  requires 0 <= head1 && head1 < tail1 && tail1 <= |Tr1|
+  requires forall i: Int :: {Tr1[i]}
+    head1 <= i && i < tail1 ==> 0 <= Tr1[i] && i + Tr1[i] < tail1
+  requires |Tr| > |Tr1| && Tr[..|Tr1|] == Tr1
+  ensures lem_T_remn_eq_implies_child_index_eq_1(Tr, Tr1, head1, head1, tail1, tail1)
+  ensures |child_index(Tr, head1, tail1)| == |child_index(Tr1, head1, tail1)| &&
+    forall i: Int :: {child_index(Tr, head1, tail1)[i]} {child_index(Tr1, head1, tail1)[i]}
+      0 <= i && i < |child_index(Tr1, head1, tail1)| ==>
+        child_index(Tr, head1, tail1)[i] == child_index(Tr1, head1, tail1)[i]
+{
+}
+
+// Derive from lem_eq_2
+method axiom_T_remn_eq_implies_child_index_eq_2(Tr: Seq[Int], Tr2: Seq[Int], head2: Int, tail2: Int)
+  requires |Tr2| > 0
+  requires 0 <= head2 && head2 < tail2 && tail2 <= |Tr2|
+  requires forall i: Int :: {Tr2[i]}
+    head2 <= i && i < tail2 ==> 0 <= Tr2[i] && i + Tr2[i] < tail2
+  requires |Tr| > |Tr2| && Tr[|Tr| - |Tr2|..] == Tr2
+  ensures lem_T_remn_eq_implies_child_index_eq_2(Tr, Tr2, head2 + |Tr| - |Tr2|, head2, tail2 + |Tr| - |Tr2|, tail2)
+  ensures |child_index(Tr, head2 + |Tr| - |Tr2|, tail2 + |Tr| - |Tr2|)| == |child_index(Tr2, head2, tail2)| &&
+    forall i: Int :: {child_index(Tr2, head2, tail2)[i]}
+      0 <= i && i < |child_index(Tr2, head2, tail2)| ==>
+        child_index(Tr, head2 + |Tr| - |Tr2|, tail2 + |Tr| - |Tr2|)[i] == child_index(Tr2, head2, tail2)[i] + |Tr| - |Tr2|
+{
+}
+
+define child_index_t(Tr, cur)
+  child_index(Tr, cur, |Tr|)
+
+// Relationship between ccomp and ccomp_left
+function lem_T_remn_eq_implies_child_index_t_eq_1(Tr1: Seq[Int], Tr2: Seq[Int], cur1: Int, cur2: Int): Bool
+  requires 0 <= cur1 && cur1 < |Tr1|
+  requires 0 <= cur2 && cur2 < |Tr2|
+  requires |Tr1| > |Tr2| && Tr1[..|Tr2|] == Tr2
+  requires forall i: Int :: {Tr1[i]} 
+    0 <= i && i < |Tr1| ==> 0 <= Tr1[i] && i + 1 + Tr1[i] <= |Tr1| 
+  requires forall i: Int :: {Tr2[i]} 
+    0 <= i && i < |Tr2| ==> 0 <= Tr2[i] && i + 1 + Tr2[i] <= |Tr2| 
+  ensures cur1 == cur2 ==> result
+  ensures result ==> |child_index_t(Tr1, cur1)| > |child_index_t(Tr2, cur2)| &&
+    forall i: Int :: {child_index_t(Tr1, cur1)[i]} {child_index_t(Tr2, cur2)[i]}
+      0 <= i && i < |child_index_t(Tr2, cur2)| ==> child_index_t(Tr1, cur1)[i] == child_index_t(Tr2, cur2)[i]
+{
+  cur1 == cur2 && cur2 + 1 + Tr2[cur2] == |Tr2| ? true
+  : cur1 == cur2 && lem_T_remn_eq_implies_child_index_t_eq_1(Tr1, Tr2, cur1 + 1 + Tr1[cur1], cur2 + 1 + Tr2[cur2])
+}
+
+// Relationship between ccomp and ccomp_right
+function lem_T_remn_eq_implies_child_index_t_eq_2(Tr1: Seq[Int], Tr2: Seq[Int], cur1: Int, cur2: Int): Bool
+  requires 0 <= cur1 && cur1 < |Tr1|
+  requires 0 <= cur2 && cur2 < |Tr2|
+  requires |Tr1| > |Tr2| && Tr1[|Tr1| - |Tr2|..] == Tr2
+  requires forall i: Int :: {Tr1[i]} 
+    0 <= i && i < |Tr1| ==> 0 <= Tr1[i] && i + 1 + Tr1[i] <= |Tr1| 
+  ensures cur2 + |Tr1| - |Tr2| == cur1 ==> result
+  ensures result ==> |child_index_t(Tr1, cur1)| == |child_index_t(Tr2, cur2)| &&
+    forall i: Int :: {child_index_t(Tr1, cur1)[i]} {child_index_t(Tr2, cur2)[i]}
+      0 <= i && i < |child_index_t(Tr2, cur2)| ==>
+        child_index_t(Tr1, cur1)[i] == child_index_t(Tr2, cur2)[i] + |Tr1| - |Tr2|
+{
+  cur2 + |Tr1| - |Tr2| == cur1 && cur2 + 1 + Tr2[cur2] == |Tr2| ? cur1 + 1 + Tr1[cur1] == |Tr1|
+  : cur2 + |Tr1| - |Tr2| == cur1 && lem_T_remn_eq_implies_child_index_t_eq_2(Tr1, Tr2, cur1 + 1 + Tr1[cur1], cur2 + 1 + Tr2[cur2])
+}
+
+// Lemma used to prove eq_4
+function lem_T_remn_eq_implies_child_index_t_eq_3(Tr: Seq[Int], cur1: Int, cur2: Int, i: Int, j: Int, k2: Int): Bool
+  requires 0 <= cur1 && cur1 < |Tr|
+  requires 0 <= cur2 && cur2 < |Tr|
+  requires forall k: Int :: {Tr[k]} 
+    0 <= k && k < |Tr| ==> 0 <= Tr[k] && k + 1 + Tr[k] <= |Tr| 
+  requires 0 <= i && i < |child_index_t(Tr, cur1)|
+  requires 0 <= j && j < |child_index_t(Tr, cur2)|
+  ensures child_index_t(Tr, cur1)[i] == child_index_t(Tr, cur2)[j] ==> result
+  ensures result && j + 1 == |child_index_t(Tr, cur2)| ==> i + 1 == |child_index_t(Tr, cur1)|
+  ensures result && j + 1 < |child_index_t(Tr, cur2)| ==> i + 1 < |child_index_t(Tr, cur1)|
+  ensures result ==> |child_index_t(Tr, cur2)| - j + i == |child_index_t(Tr, cur1)|
+  ensures forall k1: Int :: result && 0 <= k1 && j + k1 < |child_index_t(Tr, cur2)| ==>
+    i + k1 < |child_index_t(Tr, cur1)|
+  ensures result && 0 <= k2 && j + k2 < |child_index_t(Tr, cur2)| ==> 
+    i + k2 < |child_index_t(Tr, cur1)|
+    && child_index_t(Tr, cur1)[i + k2] == child_index_t(Tr, cur2)[j + k2]
+{
+  j + 1 == |child_index_t(Tr, cur2)| ? child_index_t(Tr, cur1)[i] == child_index_t(Tr, cur2)[j] && i + 1 == |child_index_t(Tr, cur1)|
+  : i + 1 < |child_index_t(Tr, cur1)| && child_index_t(Tr, cur1)[i] == child_index_t(Tr, cur2)[j] && lem_T_remn_eq_implies_child_index_t_eq_3(Tr, cur1, cur2, i + 1, j + 1, k2 - 1)
+}
+
+function lem_T_remn_eq_implies_child_index_t_eq_4(Tr: Seq[Int], cur1: Int, cur2: Int, i: Int, j: Int): Bool
+  requires 0 <= cur1 && cur1 < |Tr|
+  requires 0 <= cur2 && cur2 < |Tr|
+  requires forall k: Int :: {Tr[k]} 
+    0 <= k && k < |Tr| ==> 0 <= Tr[k] && k + 1 + Tr[k] <= |Tr| 
+  requires 0 <= i && i < |child_index_t(Tr, cur1)|
+  requires 0 <= j && j < |child_index_t(Tr, cur2)|
+  ensures child_index_t(Tr, cur1)[i] == child_index_t(Tr, cur2)[j] ==> result
+  ensures result && j + 1 == |child_index_t(Tr, cur2)| ==> i + 1 == |child_index_t(Tr, cur1)|
+  ensures result && j + 1 < |child_index_t(Tr, cur2)| ==> i + 1 < |child_index_t(Tr, cur1)|
+  ensures result ==> |child_index_t(Tr, cur2)| - j + i == |child_index_t(Tr, cur1)|
+  ensures result ==> forall k1: Int :: 0 <= k1 && j + k1 < |child_index_t(Tr, cur2)| ==>
+    i + k1 < |child_index_t(Tr, cur1)|
+  ensures result ==> forall k1: Int, k2: Int :: {child_index_t(Tr, cur1)[k1], child_index_t(Tr, cur2)[k2]}
+    i <= k1 && k1 < |child_index_t(Tr, cur1)| && k2 == k1 - i + j ==>
+      lem_T_remn_eq_implies_child_index_t_eq_3(Tr, cur1, cur2, i, j, k1 - i) &&
+      k2 < |child_index_t(Tr, cur2)| &&
+      child_index_t(Tr, cur1)[k1] == child_index_t(Tr, cur2)[k2]
+{
+  j + 1 == |child_index_t(Tr, cur2)| ? child_index_t(Tr, cur1)[i] == child_index_t(Tr, cur2)[j] && i + 1 == |child_index_t(Tr, cur1)|
+  : i + 1 < |child_index_t(Tr, cur1)| && child_index_t(Tr, cur1)[i] == child_index_t(Tr, cur2)[j] && lem_T_remn_eq_implies_child_index_t_eq_4(Tr, cur1, cur2, i + 1, j + 1)
+}
+
+// Combine the last 4 lemma together
+method lem_T_remn_eq_implies_child_index_t_eq_5(Tr: Seq[Int], Tr1: Seq[Int], Tr2: Seq[Int])
+  requires |Tr1| > 0 && |Tr2| > 0
+  requires forall i: Int :: {Tr1[i]}
+    0 <= i && i < |Tr1| ==> 0 <= Tr1[i] && i + Tr1[i] < |Tr1|
+  requires forall i: Int :: {Tr2[i]}
+    0 <= i && i < |Tr2| ==> 0 <= Tr2[i] && i + Tr2[i] < |Tr2|
+  requires Tr == Tr1 ++ Tr2
+  ensures lem_T_remn_eq_implies_child_index_t_eq_1(Tr, Tr1, 0, 0)
+  ensures lem_T_remn_eq_implies_child_index_t_eq_2(Tr, Tr2, |Tr1|, 0)
+  ensures lem_T_remn_eq_implies_child_index_t_eq_4(Tr, |Tr1|, 0, 0, |child_index_t(Tr1, 0)|)
+  ensures |child_index_t(Tr, 0)| == |child_index_t(Tr1, 0)| + |child_index_t(Tr2, 0)|
+  ensures |child_index_t(Tr, 0)| >= |child_index_t(Tr1, 0)| &&
+    forall i: Int :: {child_index_t(Tr, 0)[i]} {child_index_t(Tr1, 0)[i]}
+      0 <= i && i < |child_index_t(Tr1, 0)| ==> child_index_t(Tr, 0)[i] == child_index_t(Tr1, 0)[i]
+  ensures |child_index_t(Tr, |Tr1|)| >= |child_index_t(Tr2, 0)| &&
+    forall i1: Int, i2: Int :: {child_index_t(Tr, 0)[i1], child_index_t(Tr2, 0)[i2]}
+      0 <= i2 && i2 < |child_index_t(Tr2, 0)| && i1 == i2 + |child_index_t(Tr1, 0)| ==>
+        child_index_t(Tr, 0)[i1] == child_index_t(Tr2, 0)[i2] + |Tr1|
+{
+}
+
+define child_form_path_p(g, T_comp, T_remn)
+  forall i: Int, j: Int :: {child_index_t(T_remn, 0)[i], child_index_t(T_remn, 0)[j]}
+    0 <= i && i + 1 == j && j < |child_index_t(T_remn, 0)| ==>
+      comp_start(T_comp[child_index_t(T_remn, 0)[j]]) in adj(g, comp_end(T_comp[child_index_t(T_remn, 0)[i]]))

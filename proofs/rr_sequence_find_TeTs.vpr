@@ -1,0 +1,189 @@
+import "IArray.vpr"
+
+// Family of j-indexed monotonically increasing functions over Int
+function f(j: Int, s: Int): Int 
+  ensures s < result // f increasing for each j
+  ensures forall t: Int :: {f(j, t)} s < t ==> result < f(j, t) // f monotonic for each j
+
+define access_arrays(A)
+    forall i:Int :: {A[i]}
+        0 <= i && i < |A| ==> access(A[i])
+
+define access_perm_arrays(A, p)
+    forall i:Int :: {A[i]}
+        0 <= i && i < |A| ==> access_perm(A[i], p)
+
+
+method rr_sequence_find(s_0: Int, n: Int, m: Int, seq: IArray)
+  requires n > 0 && m > 0
+  requires access(seq)
+  requires len(seq) >= n
+{
+  var j: Int
+  var k: Int
+
+  // T_E
+  var seq_last: Int
+  assume seq_last == slot(seq, n-1).val
+  assume s_0 == slot(seq, 0).val
+
+  var prev_k: IArray
+  prev_k := new_array(n, n)
+  var prev_j: IArray
+  prev_j := new_array(n, m)
+
+  var fseq: Seq[IArray] := Seq()
+  j := 0
+  while (j < m)
+    invariant 0 <= j && j <= m
+    invariant |fseq| == j
+    invariant forall j1: Int :: {fseq[j1]} 0 <= j1 && j1 < j ==> access(fseq[j1]) && len(fseq[j1]) == n
+  {
+    var fseq_j: IArray 
+    fseq_j := new_array(n, n) 
+    fseq := fseq ++ Seq(fseq_j)
+    j := j + 1
+  }
+  
+  j := 0
+  while (j < m)
+    invariant 0 <= j && j <= m
+    invariant access_perm(seq, 1/3)
+    invariant forall j1: Int :: 0 <= j1 && j1 < m ==> acc(slot(fseq[j1],0).val)
+    invariant forall j1: Int :: {slot(fseq[j1], 0).val} 0 <= j1 && j1 < j ==> 0 <= slot(fseq[j1], 0).val
+    invariant forall j1: Int :: {slot(fseq[j1], 0).val} 0 <= j1 && j1 < j ==> 
+        slot(fseq[j1], 0).val >= n ==> f(j1, slot(seq, 0).val) > seq_last 
+    invariant forall j1: Int :: {slot(seq, slot(fseq[j1], 0).val).val} 0 <= j1 && j1 < j ==> 
+      slot(fseq[j1], 0).val < n ==> (f(j1, slot(seq, 0).val) == slot(seq, slot(fseq[j1], 0).val).val) 
+  {
+    var fseq_j_k: Int
+    slot(fseq[j], 0).val := fseq_j_k
+    assume fseq_j_k >= 0
+    if (fseq_j_k >= n) {
+      assume f(j, s_0) > seq_last
+    } else {
+      assume f(j, s_0) == slot(seq, fseq_j_k).val
+    }
+    j := j + 1
+  }
+
+
+  k := 1
+  while (k < n) 
+    invariant 0 < k && k <= n
+    invariant access_perm(seq, 1/2)
+    invariant access(prev_k)
+    invariant access(prev_j)
+    invariant access_arrays(fseq)
+    invariant |fseq| == m
+    invariant forall j1: Int :: {fseq[j1]} 0 <= j1 && j1 < m ==> len(fseq[j1]) == n
+    // Invariants for actual proof
+    invariant forall k1: Int :: {slot(prev_k, k1).val} 0 < k1 && k1 < k ==> 0 <= slot(prev_k, k1).val && slot(prev_k, k1).val < k1
+    invariant forall k1: Int :: {slot(prev_j, k1).val} 0 < k1 && k1 < k ==> 0 <= slot(prev_j, k1).val && slot(prev_j, k1).val < m
+    invariant forall k1: Int :: {f(slot(prev_j, k1).val, slot(seq, slot(prev_k, k1).val).val)} 
+        0 < k1 && k1 < k ==> slot(seq, k1).val == f(slot(prev_j, k1).val, slot(seq, slot(prev_k, k1).val).val) 
+    invariant forall k1: Int, k2: Int :: {slot(seq, k1).val, slot(seq, k2).val}
+      0 <= k1 && k1 < k2 && k2 < k ==> slot(seq, k1).val < slot(seq, k2).val
+    invariant forall k1: Int, j1: Int :: 
+      {slot(fseq[j1], k1).val} 0 <= k1 && k1 < k && 0 <= j1 && j1 < m ==> 
+        0 <= slot(fseq[j1], k1).val
+    invariant forall k1: Int, j1: Int :: 
+      {slot(fseq[j1], k1).val} 0 <= k1 && k1 < k && 0 <= j1 && j1 < m ==> 
+        slot(fseq[j1], k1).val >= n ==> f(j1, slot(seq, k1).val) > seq_last 
+    invariant forall k1: Int, j1: Int :: 
+      {slot(seq, slot(fseq[j1], k1).val).val} 0 <= k1 && k1 < k && 0 <= j1 && j1 < m ==> 
+        slot(fseq[j1], k1).val < n ==> (f(j1, slot(seq, k1).val) == slot(seq, slot(fseq[j1], k1).val).val) 
+  {
+    var s_k: Int := slot(seq, k).val
+    
+    assume slot(seq, k-1).val < s_k
+    
+    var p_k: Int
+    assume 0 <= p_k && p_k < k
+    slot(prev_k, k).val := p_k
+
+    var s_p_k: Int := slot(seq, p_k).val
+
+    j := 0
+    var found: Int := 0
+    while (j < m)
+      invariant 0 <= j && j <= m
+      invariant access_perm(seq, 1/3)
+      invariant forall j1: Int :: 0 <= j1 && j1 < m ==> acc(slot(fseq[j1],k).val)
+      invariant acc(slot(prev_j,k).val)
+      invariant found != 0 ==> 0 <= slot(prev_j, k).val && slot(prev_j, k).val < m && f(slot(prev_j, k).val, s_p_k) == s_k
+      invariant forall j1: Int :: {slot(fseq[j1], k).val} 0 <= j1 && j1 < j ==> 0 <= slot(fseq[j1], k).val
+      invariant forall j1: Int :: {slot(fseq[j1], k).val} 0 <= j1 && j1 < j ==> 
+          slot(fseq[j1], k).val >= n ==> f(j1, slot(seq, k).val) > seq_last 
+      invariant forall j1: Int :: {slot(seq, slot(fseq[j1], k).val).val} 0 <= j1 && j1 < j ==> 
+        slot(fseq[j1], k).val < n ==> (f(j1, slot(seq, k).val) == slot(seq, slot(fseq[j1], k).val).val) 
+    {
+      if (f(j, s_p_k) == s_k) {
+        found := 1
+        slot(prev_j, k).val := j // for T_S proof
+      }
+      var fseq_j_k: Int
+      slot(fseq[j], k).val := fseq_j_k
+      assume fseq_j_k >= 0 
+      if (fseq_j_k >= n) {
+        assume f(j, s_k) > seq_last
+      } else {
+        assume f(j, s_k) == slot(seq, fseq_j_k).val
+      }
+      j := j + 1
+    }
+    assume found != 0
+
+    k := k + 1
+  }
+
+
+  // T_S
+  assert slot(seq, 0).val == s_0
+
+  k := 1
+  while (k < n) 
+    invariant 0 < k && k <= n
+    invariant access_perm(seq, 1/3)
+    invariant access_perm(prev_k, 1/3)
+    invariant access_perm(prev_j, 1/3)
+    invariant access_perm_arrays(fseq, 1/3)
+  {
+    
+    var k1 : Int := slot(prev_k, k).val
+    var j1 : Int := slot(prev_j, k).val
+    assert 0 <= k1 && k1 < k
+    assert 0 <= j1 && j1 < m
+    assert f(j1, slot(seq, k1).val) == slot(seq, k).val
+
+    j := 0
+    while (j < m)
+      invariant 0 <= j && j <= m
+      invariant access_perm(seq, 1/4)
+      invariant access_perm_arrays(fseq, 1/4)
+    {
+      var k2: Int := 0
+      while (k2 < k) 
+        invariant 0 <= k2 && k2 <= k
+        invariant access_perm(seq, 1/5)
+        invariant access_perm_arrays(fseq, 1/5)
+      {
+        // Some explicit asserts to trigger instantiation of quantifiers in main loop of T_E
+        if (slot(fseq[j], k2).val >= n) {
+          assert slot(seq, k).val <= slot(seq, n - 1).val
+          assert f(j, slot(seq, k2).val) > seq_last
+        } else {
+          assert slot(seq, slot(fseq[j], k2).val).val == f(j, slot(seq, k2).val)
+        } 
+
+        // The actual thing to check for T_S
+        assert f(j, slot(seq, k2).val) <= slot(seq, k-1).val || f(j, slot(seq, k2).val) >= slot(seq, k).val
+        k2 := k2 + 1
+      }
+      j := j + 1
+    }
+    k := k + 1
+  }
+}
+
+

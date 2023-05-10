@@ -1,0 +1,159 @@
+import "Tuples.vpr"
+import "IArray.vpr"
+
+/** Implementation of abstract data type representation for graphs from msc_graph.vpr
+
+We implement the abstract data type for graphs as follows:
+
+type Node = Int
+type Graph = Tuple[Int, Set[Tuple[Node,Node]]]
+
+That is, a graph g is a pair (size, E) with size a positive integer and E: Set[Tuple[Int,Int]] such that 
+V(g)={0,....,size-1} are g's nodes and E subset V(g) x V(g) are g's edges.
+
+*/
+
+// Size of a graph g
+function size(g: Tuple[Int, Set[Tuple[Int,Int]]]): Int {
+  fst(g)
+}
+
+// Edges of a graph g
+function E(g: Tuple[Int, Set[Tuple[Int,Int]]]): Set[Tuple[Int,Int]] {
+  snd(g)
+}
+
+// Source node of an edge e
+function src(e: Tuple[Int,Int]): Int {
+  fst(e)
+}
+
+// Destination node of an edge e
+function dst(e: Tuple[Int,Int]): Int {
+  snd(e)
+}
+
+function V(g: Tuple[Int, Set[Tuple[Int,Int]]]): Set[Int]
+  ensures forall n: Int :: (n in result) == (0 <= n && n < size(g))
+// TODO: implement
+
+function adj(g: Tuple[Int, Set[Tuple[Int,Int]]], s: Int): Set[Int] 
+  ensures forall e: Tuple[Int, Int] :: e in E(g) && src(e) == s ==> dst(e) in result 
+  ensures forall d: Int :: d in result ==> pair(s, d) in E(g)
+  ensures result subset V(g)
+// TODO: implement
+
+
+
+// Ensures that the pair g is indeed a graph
+define wf_graph(g)
+  0 < size(g) &&
+  (forall e: Tuple[Int, Int] :: e in E(g) ==> 0 <= src(e) && src(e) < size(g)) &&
+  forall e: Tuple[Int, Int] :: e in E(g) ==> 0 <= dst(e) && dst(e) < size(g)
+
+
+/** Array-based representation of graphs a la Dijkstra */
+
+field outg: Int
+
+define wf_edgeB(NV, NE, edgeB)
+    slot(edgeB, 0).val == 0 &&
+    slot(edgeB, NV).val == NE &&
+    forall i: Int, j: Int :: {slot(edgeB, i).val, slot(edgeB, j).val}
+        0 <= i && i < j && j <= NV ==> slot(edgeB, i).val <= slot(edgeB, j).val
+
+define wf_edges(NV, NE, edges) 
+    forall i: Int :: {slot(edges, i).outg} {slot(edges, i).val}
+        i >= 0 && i < NE ==>
+        slot(edges, i).outg >= 0 && slot(edges, i).outg < NV &&
+        slot(edges, i).val >= 0 && slot(edges, i).val < NV
+
+define forms_edge(NV, edgeB, edges)
+    forall i: Int, j: Int, ebi: Int :: {slot(edgeB, i).val, slot(edgeB, j).val, slot(edges, ebi).outg}
+        i >= 0 && j == i + 1 && j <= NV && ebi >= slot(edgeB, i).val && ebi < slot(edgeB, j).val ==>
+        slot(edges, ebi).outg == i
+
+
+define access_edgeB_read(array)
+    forall j: Int :: {slot(array, j)}
+        0 <= j && j < len(array) ==> acc(slot(array, j).val, wildcard)
+
+define access_edges_read(array)
+    forall j: Int :: {slot(array, j)}
+        0 <= j && j < len(array) ==> acc(slot(array, j).outg, wildcard) && acc(slot(array, j).val, wildcard)
+
+
+field NV: Int
+field NE: Int
+field edgeB: IArray
+field edges: IArray
+
+
+predicate graph_rep(grep: Ref) {
+  acc(grep.NV) && acc(grep.NE) && acc(grep.edgeB) && acc(grep.edges) &&
+  0 < grep.NV && 2 * grep.NV - 1 < maxsize() && grep.NE >= 0 && grep.NE < maxsize() &&
+  len(grep.edgeB) == maxsize() && len(grep.edges) == maxsize() &&
+  access_edges_read(grep.edges) &&
+  access_edgeB_read(grep.edgeB) &&
+  wf_edgeB(grep.NV, grep.NE, grep.edgeB) &&
+  wf_edges(grep.NV, grep.NE, grep.edges) &&
+  forms_edge(grep.NV, grep.edgeB, grep.edges)
+}
+
+function index_of_edge(nv: Int, ne: Int, p: Tuple[Int, Int], edgs: IArray, e: Int): Int
+  requires 0 <= e && e < ne && ne <= len(edgs)
+  requires access_edges_read(edgs)
+  requires wf_edges(nv, ne, edgs)
+  requires p in edges_of_graph_rep(nv, ne, edgs, e)
+  ensures e <= result && result < ne
+  ensures slot(edgs, result).outg == src(p) 
+  ensures slot(edgs, result).val == dst(p) 
+{
+    p == pair(slot(edgs,e).outg, slot(edgs,e).val) ? e : index_of_edge(nv, ne, p, edgs, e+1)
+}
+
+function edges_of_graph_rep(nv: Int, ne: Int, edgs: IArray, e: Int): Set[Tuple[Int,Int]] 
+  requires 0 <= e && e <= ne && ne <= len(edgs)
+  requires access_edges_read(edgs)
+  requires wf_edges(nv, ne, edgs)
+  ensures e == ne ==> result == Set()
+  ensures forall e1: Int :: {slot(edgs, e1).outg} {slot(edgs, e1).val} e <= e1 && e1 < ne ==> pair(slot(edgs, e1).outg, slot(edgs, e1).val) in result
+  ensures forall p: Tuple[Int, Int] :: p in result ==> 0 <= src(p) && src(p) < nv
+  ensures forall p: Tuple[Int, Int] :: p in result ==> 0 <= dst(p) && dst(p) < nv
+{
+  e == ne ? Set() : Set(pair(slot(edgs, e).outg, slot(edgs, e).val)) union edges_of_graph_rep(nv, ne, edgs, e+1)
+}
+
+function graph(grep: Ref): Tuple[Int, Set[Tuple[Int,Int]]] 
+  requires acc(graph_rep(grep), wildcard)
+  ensures wf_graph(result)   
+{
+  unfolding acc(graph_rep(grep), wildcard) in 
+    pair(grep.NV, edges_of_graph_rep(grep.NV, grep.NE, grep.edges, 0))
+}
+
+/*method get_graph(NV: Int, NE: Int, edgeB: IArray, edges: IArray) 
+  returns (g: Tuple[Int, Set[Tuple[Int,Int]]])
+  requires is_graph_rep(NV, NE, edgeB, edges)
+  ensures is_graph_rep(NV, NE, edgeB, edges)
+  ensures g == graph(NV, NE, edgeB, edges)
+  ensures unfolding is_graph_rep(NV, NE, edgeB, edges) in
+            forall e: Tuple[Int, Int] :: e in E(g) ==> slot(edges, index_of_edge(NV, NE, e, edges, 0)).val == dst(e)
+  ensures unfolding is_graph_rep(NV, NE, edgeB, edges) in
+            forall i: Int :: 0 <= i && i < NE ==> pair(slot(edges, i).outg, slot(edges,i).val) in E(g)
+{
+  g := graph(NV, NE, edgeB, edges)
+}
+*/
+
+method check_edge(grep: Ref, e: Int, v_outg: Int, next: Int)
+  requires graph_rep(grep)
+  ensures graph_rep(grep)
+  ensures pair(v_outg, next) in E(graph(grep))
+{
+  unfold graph_rep(grep)
+  assume 0 <= e && e < grep.NE
+  assume slot(grep.edges, e).outg == v_outg
+  assume slot(grep.edges, e).val == next
+  fold graph_rep(grep)
+}

@@ -1,0 +1,409 @@
+// Part2a of MSC_TiTb proves that assertions in "EnsureStrong" section hold
+// NOTE: In this proof, we assign next as we iterate through T.
+//       In the actual refinement process, we would run this once to obtain all next, 
+//       and then run it again to check that T_b is correct.
+// NOTE: Invariants on HEAD are not inferred in this proof, please refer to section
+//       "Head is the first element of cur_siblings" of msc_tree_part0a.vpr
+// NOTE: EnsureDisjoint is implicitly handled in msc_array_constr
+// NOTE: EnsureOutGoingToOlder property is also handled in msc_array_constr
+
+// Use csup to correspond nodes with elements in child_index
+// Use phead to record the INDEX of the parent of the current node
+// Use tremn to record (remn + remn of all stack frames above the current one)
+
+import "TMaps.vpr"
+import "msc_comp.vpr"
+import "msc_child_index.vpr"
+
+function update_tremn(tremn_s: Seq[Int], remn_last: Int): Seq[Int]
+    ensures |result| == |tremn_s|
+    ensures forall i: Int :: {result[i]}
+        0 <= i && i < |tremn_s| ==> result[i] == tremn_s[i] + remn_last
+{
+    |tremn_s| == 0 ? Seq() : Seq(tremn_s[0] + remn_last) ++ update_tremn(tremn_s[1..], remn_last)
+}
+
+method msc_tree(g: Graph, d: Node, T_node: Seq[Node], T_remn: Seq[Int], T_recv: Seq[Node], T_outg: Seq[Node])
+    requires wf_graph(g)
+    requires |T_node| == |T_remn| && |T_node| == |T_recv| && |T_node| == |T_outg|
+    // T_Remn bound
+    requires forall i: Int :: {T_remn[i]}
+        0 <= i && i < |T_remn| ==> 0 <= T_remn[i] && i + T_remn[i] < |T_remn|
+    requires forall i: Int :: {T_remn[i]}
+        0 <= i && i < |T_remn| && T_node[i] == d ==> T_remn[i] > 0
+    requires forall i: Int, j: Int :: {T_remn[i], T_remn[j]}
+        0 <= i && i < |T_remn| && T_node[i] == d && i < j && j <= i + T_remn[i] ==>
+            0 <= T_remn[j] && j + T_remn[j] <= i + T_remn[i]
+    requires forall i: Int :: {T_remn[i]}
+        0 <= i && i < |T_remn| && T_node[i] != d ==> T_remn[i] == 0
+    // Recv & Outg in Node
+    requires forall i: Int :: {T_recv[i]} {T_outg[i]}
+        0 <= i && i < |T_node| && T_node[i] != d ==>  
+            T_recv[i] == T_node[i] &&
+            T_outg[i] == T_node[i]
+    requires forall i: Int :: {T_recv[i]} {T_outg[i]}
+        0 <= i && i < |T_node| && T_node[i] == d ==>
+            T_recv[i] in T_node[i+1..i+1+T_remn[i]] &&
+            T_outg[i] in T_node[i+1..i+1+T_remn[i]]
+    // Child Form Path    
+    requires forall i: Int, i2: Int, i3: Int :: {T_remn[i], child_index(T_remn, i2, i3)}
+        (0 <= i && i < |T_remn| && T_node[i] == d && 
+        i2 == i + 1 && i3 == i + 1 + T_remn[i]) ==>
+            (forall j: Int :: {child_index(T_remn, i2, i3)[j]}
+                0 <= j && j < |child_index(T_remn, i2, i3)| ==>
+                    i2 <= child_index(T_remn, i2, i3)[j] && child_index(T_remn, i2, i3)[j] < i3) &&
+            child_form_path_post(g, T_remn, T_recv, T_outg, i2, i3, 0, |child_index(T_remn, i2, i3)|)
+    // Child Form Cycle
+    requires forall i: Int, i2: Int, i3: Int :: {T_remn[i], child_index(T_remn, i2, i3)}
+        (0 <= i && i < |T_remn| && T_node[i] == d && 
+        i2 == i + 1 && i3 == i + 1 + T_remn[i]) ==>
+            |child_index(T_remn, i2, i3)| > 0 &&
+            i2 <= child_index(T_remn, i2, i3)[0] && child_index(T_remn, i2, i3)[0] < i3 &&
+            child_form_cycle_post(g, T_remn, T_recv, T_outg, i2, i3)
+{
+    // There are no notion of Vertices or Edges,
+    // so we have no NV or NE
+
+    // We need a stack to keep track of the level, head vertex, next vertex,
+    // and # of remaining slots in the pcomp
+    var level_s: Seq[Int] := Seq()
+    var head_s: Seq[Node] := Seq()
+    var next_s: Seq[Node] := Seq()
+    var remn_s: Seq[Int] := Seq()
+    var csup_s: Seq[Int] := Seq()
+    var phead_s: Seq[Int] := Seq()
+    var tremn_s: Seq[Int] := Seq()
+    var sp: Int := 0
+    // However, we might not need a stack for every level. If we are processing
+    // the last child of the tree, we do not need to store the information of
+    // the parent anymore. So we differentiate this by using a variable level
+    // to record the actual depth, and the stack to store only useful information.
+    var level: Int := 0
+    var i: Int
+    var j: Int
+    var csup: Int
+    var phead: Int
+
+    // ----
+    // EnsureDisjoint()
+    // Part of it is incorporated into EnsureStrong()
+    // occ is used to verify that every vertex indeed appeared
+    
+    // int occ[MAX_V];
+    // for (i = 0; i < MAX_V; i++) occ[i] = 0;
+    // ----
+
+    // ----
+    // EnsureStrong()
+    
+    // local variables head, next, and remn so we don't have to modify the stack that often
+    // Note that head and next are represented as a node, not index of a node
+    var head: Node := d
+    var next: Node := d
+    var remn: Int := -1
+    // which MSC are we currently in? initialize to -1
+    var cur_msc: Int := -1
+
+    // Translate a pre-condition
+    assert forall k1: Int :: {T_remn[k1]}
+        0 <= k1 && k1 < |T_remn| && T_node[k1] == d ==>
+        forall k2: Int :: {T_remn[k2]} k1 < k2 && k2 <= k1 + T_remn[k1] ==>
+            0 <= T_remn[k2] && k2 + T_remn[k2] <= k1 + T_remn[k1]
+
+    i := 0
+    // for (i = 0; i < 2 * MAX_V - 1; i++) {
+        // if (input->T[i] < NV) {
+    while (i < |T_node|)
+        invariant |T_node| == |T_remn| && |T_node| == |T_recv| && |T_node| == |T_outg|
+        // T_Remn bound
+        invariant forall k: Int :: {T_remn[k]}
+            0 <= k && k < |T_remn| ==> 0 <= T_remn[k] && k + T_remn[k] < |T_remn|
+        invariant forall k: Int :: {T_remn[k]}
+            0 <= k && k < |T_remn| && T_node[k] == d ==> T_remn[k] > 0
+        invariant forall k1: Int, k2: Int :: {T_remn[k1], T_remn[k2]}
+            0 <= k1 && k1 < |T_remn| && T_node[k1] == d && k1 < k2 && k2 <= k1 + T_remn[k1] ==>
+                0 <= T_remn[k2] && k2 + T_remn[k2] <= k1 + T_remn[k1]
+        invariant forall k: Int :: {T_remn[k]}
+            0 <= k && k < |T_remn| && T_node[k] != d ==> T_remn[k] == 0
+        // Recv & Outg in Node
+        invariant forall k: Int :: {T_recv[k]} {T_outg[k]}
+            0 <= k && k < |T_node| && T_node[k] != d ==>  
+                T_recv[k] == T_node[k] &&
+                T_outg[k] == T_node[k]
+        invariant forall k: Int :: {T_recv[k]} {T_outg[k]}
+            0 <= k && k < |T_node| && T_node[k] == d ==>
+                T_recv[k] in T_node[k+1..k+1+T_remn[k]] &&
+                T_outg[k] in T_node[k+1..k+1+T_remn[k]]
+        // Child Form Path    
+        invariant forall k: Int, k2: Int, k3: Int :: {T_remn[k], child_index(T_remn, k2, k3)}
+            (0 <= k && k < |T_remn| && T_node[k] == d && 
+            k2 == k + 1 && k3 == k + 1 + T_remn[k]) ==>
+                (forall p: Int :: {child_index(T_remn, k2, k3)[p]}
+                    0 <= p && p < |child_index(T_remn, k2, k3)| ==>
+                        k2 <= child_index(T_remn, k2, k3)[p] && child_index(T_remn, k2, k3)[p] < k3) &&
+                child_form_path_post(g, T_remn, T_recv, T_outg, k2, k3, 0, |child_index(T_remn, k2, k3)|)
+        // Child Form Cycle
+        invariant forall k: Int, k2: Int, k3: Int :: {T_remn[k], child_index(T_remn, k2, k3)}
+            (0 <= k && k < |T_remn| && T_node[k] == d && 
+            k2 == k + 1 && k3 == k + 1 + T_remn[k]) ==>
+                |child_index(T_remn, k2, k3)| > 0 &&
+                k2 <= child_index(T_remn, k2, k3)[0] && child_index(T_remn, k2, k3)[0] < k3 &&
+                child_form_cycle_post(g, T_remn, T_recv, T_outg, k2, k3)
+
+        // Preliminaries
+        invariant i >= 0 && level >= 0
+        invariant i <= |T_node|
+        // Stack invariants - level
+        invariant sp == |level_s| && sp == |head_s| && sp == |next_s| && sp == |remn_s| && 
+                  sp == |csup_s| && sp == |phead_s| && sp == |tremn_s|
+        invariant forall k: Int :: {level_s[k]}
+            0 <= k && k < sp ==> 0 <= level_s[k] && level_s[k] < level
+        invariant forall k1: Int, k2: Int :: {level_s[k1], level_s[k2]}
+            0 <= k1 && k1 < k2 && k2 < sp ==> level_s[k1] < level_s[k2]
+        invariant (level == 0 ==> remn < 0) &&
+                  (level > 0 ==> sp > 0 && level_s[0] == 0 && remn_s[0] < 0)
+        // Stack invariants - phead
+        invariant sp > 0 ==> 0 <= phead && phead < i && T_node[phead] == d
+        invariant forall k: Int :: {phead_s[k]} 1 <= k && k < sp ==>
+            0 <= phead_s[k] && phead_s[k] < i && T_node[phead_s[k]] == d
+        // Stack invariants - remn
+        invariant sp > 0 ==> remn > 0 &&
+            forall k: Int :: {remn_s[k]}
+                1 <= k && k < sp ==> remn_s[k] > 0
+        invariant sp > 0 ==> tremn_s[sp - 1] == 0
+        invariant forall k1: Int, k2: Int :: {tremn_s[k1], remn_s[k2]}
+            0 <= k1 && k1 + 1 == k2 && k2 < sp ==>
+                tremn_s[k1] == tremn_s[k2] + remn_s[k2]
+        invariant sp > 0 ==> i + remn == phead + T_remn[phead] + 1
+        invariant forall k: Int :: {phead_s[k]} 1 <= k && k < sp ==>
+            i + remn + tremn_s[k] + remn_s[k] == phead_s[k] + T_remn[phead_s[k]] + 1
+        // Stack invariants - csup
+        invariant sp > 0 ==> 0 <= csup && csup < |child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])|
+        invariant forall k: Int :: {csup_s[k]}
+            1 <= k && k < sp ==> 0 <= csup_s[k] && csup_s[k] < |child_index(T_remn, phead_s[k] + 1, phead_s[k] + 1 + T_remn[phead_s[k]])|
+        invariant sp > 0 && csup < |child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])| ==>
+            i == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup]
+        invariant forall k: Int :: {csup_s[k]}
+            1 <= k && k < sp && csup_s[k] < |child_index(T_remn, phead_s[k] + 1, phead_s[k] + 1 + T_remn[phead_s[k]])| ==>
+                i + remn + tremn_s[k] == child_index(T_remn, phead_s[k] + 1, phead_s[k] + 1 + T_remn[phead_s[k]])[csup_s[k]]
+        invariant sp > 0 ==>
+            csup < |child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])| &&
+            i == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup]
+        invariant forall k: Int :: {csup_s[k]}
+            1 <= k && k < sp ==>
+                csup_s[k] < |child_index(T_remn, phead_s[k] + 1, phead_s[k] + 1 + T_remn[phead_s[k]])| && 
+                i + remn + tremn_s[k] == child_index(T_remn, phead_s[k] + 1, phead_s[k] + 1 + T_remn[phead_s[k]])[csup_s[k]]
+        // Stack invariants - next
+        invariant forall k: Int :: {next_s[k]}
+            1 <= k && k < sp ==>
+                next_s[k] == T_recv[child_index(T_remn, phead_s[k] + 1, phead_s[k] + T_remn[phead_s[k]] + 1)[csup_s[k]]]
+        invariant sp > 0 ==> next == d || next == T_recv[child_index(T_remn, phead + 1, phead + T_remn[phead] + 1)[csup]]
+    {
+        // if we are at level 0, we reach a new MSC (tree)
+        if (level == 0) {
+            cur_msc := cur_msc + 1
+        }
+
+        var v_recv: Node
+        var v_outg: Node
+        var remn_last: Int
+
+        assert sp > 0 ==> i + remn == phead + T_remn[phead] + 1
+
+        // Case 1: we meet a new pcomp, represented by a negative number
+        if (T_node[i] == d) {
+            remn_last := remn - T_remn[i] - 1
+            remn := T_remn[i]
+            // No need to bound check v_recv and v_outg because otherwise it cannot satisfy an edge
+            // No notion of index, only the node
+            v_recv := T_recv[i]
+            v_outg := T_outg[i]
+            assert v_recv in T_node[i + 1 .. i + 1 + remn]
+            assert v_outg in T_node[i + 1 .. i + 1 + remn]
+
+            assert sp > 0 && csup + 1 == |child_index(T_remn, phead + 1, phead + T_remn[phead] + 1)| ==> remn_last == 0
+        }
+            
+        // Case 2: we meet a singleton vertex (ncomp)
+        else {
+            // Again, no notion of index, only the node
+            var v: Node := T_node[i]
+            // if we are at level 0, we reach a new MSC (singleton vertex)
+            // Verify that MSC[v] == current MSC, also record that v appears
+            // Don't need to verify this, this is done in the TbTs proof
+
+            // assert_zero(output->MSC[v] - cur_msc);
+            
+            // occ[v] = 1;
+            // NOTE: EnsureDisjoint() is implied through verifying that each node only has one MSC Number
+            
+            v_recv := v
+            v_outg := v
+            remn := remn - 1
+            // Assign a dummy value to remn_last to facilitate the proof
+            // This does not affect the program execution since the only
+            // place we need remn_last requires T_node[i] == d
+            remn_last := remn
+            
+            assert sp > 0 ==> i + remn + 1 == phead + T_remn[phead] + 1
+            assert sp > 0 && remn > 0 && csup + 1 < |child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])| && i == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup] ==>
+                i + T_remn[i] + 1 < phead + T_remn[phead] + 1 &&
+                i + 1 == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup + 1]
+            assert sp > 0 && csup + 1 == |child_index(T_remn, phead + 1, phead + T_remn[phead] + 1)| ==> remn_last == 0
+        }
+        csup := csup + 1
+
+        assert T_node[i] != d ==> remn == remn_last
+
+        // if we are at level 0, we are done. Otherwise record information to prove cyclic
+        // This part is shared by both cases, albeit with different v_recv and v_outg
+        if (level != 0) {
+            assert sp > 0
+            assert v_recv == T_recv[child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup - 1]]
+            if (head == d) {
+                head := v_recv
+            }
+            if (next != d) {
+                assert v_recv == next
+            }
+            assert i == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup - 1]
+            assert v_outg == T_outg[child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup - 1]]
+            // Prove the supplementary E edge is correct
+            // This part is abstracted using adj
+            // if (input->next_T[i] == NV) next = head;
+            // else next = input->next_T[i];
+            if (csup == |child_index(T_remn, phead + 1, phead + T_remn[phead] + 1)|) {
+                // NOTE: The proof that head == T_recv[child_index(T_remn, phead + 1, phead + T_remn[phead] + 1)[0]] is handled
+                // in the TeTs proof
+                next := T_recv[child_index(T_remn, phead + 1, phead + T_remn[phead] + 1)[0]]
+                assert remn_last == 0
+                assert next in adj(g, v_outg)
+            } else {
+                next := T_recv[child_index(T_remn, phead + 1, phead + T_remn[phead] + 1)[csup]]
+                assert next in adj(g, v_outg)
+            }
+            assert next in adj(g, v_outg)
+        }
+
+        // Prepare for entering next level if we are in a pcomp
+        if (T_node[i] == d) {
+            // store current level in stack if needed
+            // one should notice that if we are at level 0, then remn_last will always be < 0 at this state
+            if (remn_last != 0) {
+                assert sp > 0 ==> next == T_recv[child_index(T_remn, phead + 1, phead + T_remn[phead] + 1)[csup]]
+
+                // Update tremn
+                tremn_s:= update_tremn(tremn_s, remn_last)
+                // stack_push(level, head, next, remn_last)
+                level_s := level_s ++ Seq(level)
+                head_s := head_s ++ Seq(head)
+                next_s := next_s ++ Seq(next)
+                remn_s := remn_s ++ Seq(remn_last)
+                csup_s := csup_s ++ Seq(csup)
+                phead_s := phead_s ++ Seq(phead)
+                tremn_s := tremn_s ++ Seq(0)
+                assert sp > 0 && csup < |child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])| ==>
+                    csup_s[sp] < |child_index(T_remn, phead_s[sp] + 1, phead_s[sp] + 1 + T_remn[phead_s[sp]])|
+                assert (sp > 0 && csup < |child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])| &&
+                    i == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup - 1] &&
+                    (forall k: Int :: {csup_s[k]}
+                        1 <= k && k < sp && csup_s[k] < |child_index(T_remn, phead_s[k] + 1, phead_s[k] + 1 + T_remn[phead_s[k]])| ==>
+                            i + remn + 1 + tremn_s[k] == child_index(T_remn, phead_s[k] + 1, phead_s[k] + 1 + T_remn[phead_s[k]])[csup_s[k]]))==>
+                    child_index(T_remn, phead + 1, phead + 1 + T_remn[phead]) == child_index(T_remn, phead_s[sp] + 1, phead_s[sp] + 1 + T_remn[phead_s[sp]]) &&
+                    i + remn + 1 + tremn_s[sp] == child_index(T_remn, phead_s[sp] + 1, phead_s[sp] + 1 + T_remn[phead_s[sp]])[csup_s[sp]] &&
+                    forall k: Int :: {csup_s[k]}
+                        1 <= k && k <= sp && csup_s[k] < |child_index(T_remn, phead_s[k] + 1, phead_s[k] + 1 + T_remn[phead_s[k]])| ==>
+                            i + remn + 1 + tremn_s[k] == child_index(T_remn, phead_s[k] + 1, phead_s[k] + 1 + T_remn[phead_s[k]])[csup_s[k]]
+                assert sp > 0 ==> next_s[sp] == T_recv[child_index(T_remn, phead_s[sp] + 1, phead_s[sp] + T_remn[phead_s[sp]] + 1)[csup_s[sp]]]
+                assert (sp > 0 && forall k: Int :: {next_s[k]}
+                    1 <= k && k < sp ==>
+                        next_s[k] == T_recv[child_index(T_remn, phead_s[k] + 1, phead_s[k] + T_remn[phead_s[k]] + 1)[csup_s[k]]]) ==>
+                    forall k: Int :: {next_s[k]}
+                        1 <= k && k <= sp ==>
+                            next_s[k] == T_recv[child_index(T_remn, phead_s[k] + 1, phead_s[k] + T_remn[phead_s[k]] + 1)[csup_s[k]]]
+                sp := sp + 1
+            }
+            level := level + 1
+            head := d
+            next := d
+            csup := 0
+            phead := i
+            assert csup < |child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])|          
+            assert T_remn[phead] > 0 && phead + 1 + T_remn[phead] <= |T_remn| &&
+                (forall k: Int :: {T_remn[k], T_remn[phead]}
+                    phead + 1 <= k && k < phead + 1 + T_remn[phead] ==>
+                        0 <= T_remn[k] && k + T_remn[k] < phead + 1 + T_remn[phead]) &&
+                i + 1 == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup]
+        }
+
+        assert sp > 0 && remn > 0 && 1 <= csup && csup - 1 < |child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])| && i == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup - 1] ==>
+            csup < |child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])| &&
+            i + 1 == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup]
+
+        // Reset level if remn reaches 0
+        if (level != 0 && remn == 0) {
+            assert T_node[i] != d
+            assert remn == remn_last
+            // stack_pop(level, head, next, remn)
+            sp := sp - 1
+            level := level_s[sp]
+            head := head_s[sp]
+            next := next_s[sp]
+            remn := remn_s[sp]
+            csup := csup_s[sp]
+            phead := phead_s[sp]
+            assert (sp > 0 && csup_s[sp] < |child_index(T_remn, phead_s[sp] + 1, phead_s[sp] + 1 + T_remn[phead_s[sp]])| &&
+                    i + 1 + tremn_s[sp] == child_index(T_remn, phead_s[sp] + 1, phead_s[sp] + 1 + T_remn[phead_s[sp]])[csup_s[sp]]) ==>
+                        (csup < |child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])| &&
+                        i + 1 == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup])
+            // Update tremn
+            tremn_s:= update_tremn(tremn_s, -1 * remn)
+            // Pop
+            level_s := level_s[..sp]
+            head_s := head_s[..sp]
+            next_s := next_s[..sp]
+            remn_s := remn_s[..sp]
+            csup_s := csup_s[..sp]
+            phead_s := phead_s[..sp]
+            tremn_s := tremn_s[..sp]
+            
+            assert sp > 0 ==> next == T_recv[child_index(T_remn, phead + 1, phead + T_remn[phead] + 1)[csup]]
+        }
+        i := i + 1
+
+        assert sp > 0 && T_node[i - 1] == d ==>
+            csup == 0 &&
+            i == child_index(T_remn, phead + 1, phead + 1 + T_remn[phead])[csup]
+    }
+    // assert level == 0
+
+    // Verify that every vertex appears
+    // for (i = 0; i < MAX_V; i++) {
+        // if (i < NV) assert_zero(occ[i] == 1);
+    // }
+    // NOTE: EnsureDisjoint() is implied through verifying that each node only has one MSC Number
+
+    // ----
+    // EnsureOutGoingToOlder
+    // output->MSCnum = cur_msc + 1;
+    // cur_msc = output->MSC[0];
+    // i = 0; j = 0;
+    // int tmp;
+    // int ebi0 = input->edgeB[0];
+    // int ebi1 = input->edgeB[1];
+    // for (tmp = 0; tmp < MAX_E + MAX_V; tmp++) {
+        // if (i < NV) {
+            // if (j == ebi1) {
+                // i++;
+                // cur_msc = output->MSC[i];
+                // ebi0 = ebi1;
+                // if (i < NV) ebi1 = input->edgeB[i + 1];
+            // }
+            // else {
+                // assert_zero(output->MSC[input->edges[j]] > cur_msc);
+                // j++;
+            // }
+        // }
+    // }
+    // ----
+}

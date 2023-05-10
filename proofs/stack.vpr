@@ -1,0 +1,87 @@
+import "IArray.vpr"
+import "stack_value.vpr"
+
+field sarray: IArray
+field sp: Int
+field sv: SValue
+
+predicate stack_seg(array: IArray, i: Int, j: Int) {
+  0 <= i && i <= len(array) && 0 <= j && j <= len(array) && 
+  (i < j ==> acc(slot(array, j - 1).sv) && stack_seg(array, i, j - 1)) &&
+  (i > j ==> acc(slot(array, j).sv) && stack_seg(array, i, j + 1))
+}
+
+predicate stack(s: Ref) {
+  acc(s.sarray) && acc(s.sp) && 0 <= s.sp && s.sp <= len(s.sarray) &&
+  stack_seg(s.sarray, 0, s.sp) && stack_seg(s.sarray, len(s.sarray), s.sp)
+}
+
+function stack_size(s: Ref): Int
+  requires stack(s)
+  ensures result >= 0
+{
+  unfolding stack(s) in s.sp
+}
+
+function stack_capacity(s: Ref): Int
+  requires stack(s)
+  ensures result >= 0
+{
+  unfolding stack(s) in len(s.sarray)
+}
+
+function stack_seg_contents(array: IArray, i: Int): Seq[SValue]
+  requires stack_seg(array, 0, i)
+  ensures |result| == i
+{
+  i == 0 ? Seq() : unfolding stack_seg(array, 0, i) in stack_seg_contents(array, i - 1) ++ Seq(slot(array, i - 1).sv)
+}
+
+function stack_contents(s: Ref): Seq[SValue]
+  requires stack(s)
+  ensures |result| == stack_size(s)
+{
+  unfolding stack(s) in stack_seg_contents(s.sarray, s.sp)
+}
+
+method push(s: Ref, elem: SValue)
+  requires stack(s) && stack_size(s) < stack_capacity(s)
+  ensures stack(s) && stack_contents(s) == old(stack_contents(s)) ++ Seq(elem)
+  ensures stack_capacity(s) == old(stack_capacity(s))
+{
+  unfold stack(s)
+  unfold stack_seg(s.sarray, len(s.sarray), s.sp)
+  slot(s.sarray, s.sp).sv := elem
+  s.sp := s.sp + 1
+  fold stack_seg(s.sarray, 0, s.sp)
+  fold stack(s)
+}
+
+method pop(s: Ref)
+  returns (elem: SValue)
+  requires stack(s) && 0 < stack_size(s)
+  ensures stack(s) && old(stack_contents(s)) == stack_contents(s) ++ Seq(elem)
+  ensures stack_capacity(s) == old(stack_capacity(s))
+{
+  unfold stack(s)
+  unfold stack_seg(s.sarray, 0, s.sp)
+  elem := slot(s.sarray, s.sp - 1).sv
+  s.sp := s.sp - 1
+  fold stack_seg(s.sarray, len(s.sarray), s.sp)
+  fold stack(s)
+}
+
+method stack_update_tremn(s: Ref, k: Int)
+  requires stack(s) && stack_size(s) <= stack_capacity(s)
+  ensures stack(s) && stack_capacity(s) == old(stack_capacity(s)) && stack_size(s) == old(stack_size(s))
+  ensures forall i: Int :: {stack_contents(s)[i]} {old(stack_contents(s)[i])}
+    i >= 0 && i < |stack_contents(s)| ==> stack_contents(s)[i] == update_tremn(old(stack_contents(s)[i]), k)
+
+{
+  var elem: SValue
+  if (stack_size(s) > 0) {
+    elem := pop(s)
+    stack_update_tremn(s, k)
+    push(s, update_tremn(elem, k))
+  }
+}

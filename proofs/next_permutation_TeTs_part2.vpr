@@ -1,0 +1,163 @@
+// This TeTs proof is separated into 2 parts to shorten the proof time.
+// Part1 infers all useful invariants from T_b, which is referred to is_next_permutation_tb
+// Part1 also proves that d is a permutation of c
+// Part2 uses is_next_permutation_tb to infer other specs in the WLS.
+
+import "IArray.vpr"
+
+function contents_of_seg_old(a: IArray, l: Int, r: Int) : Set[Int] 
+// gives contents of array as a set with l inclusive, r exclusive
+    requires access_read(a)
+    requires 0 <= l
+    requires r <= len(a)
+    ensures r <= l ==> result == Set()
+        // Viper doesn't unfold recursive definitions all the way, it just unfolds one step of the induction
+        // So, we need to explicitly give it the base case
+    ensures forall i: Int :: {slot(a,i).val} l <= i && i < r ==> slot(a,i).val in result
+{
+  l >= r ? Set() : Set(slot(a, r-1).val) union contents_of_seg_old(a, l, r-1)
+}
+
+// ensures that the array C has a next permutation
+define have_next_perm(c, n)
+    exists i: Int :: i >= 0 && i < n - 1 && slot(c, i).val < slot(c, i+1).val
+
+// i is the first index where the next permutation differs from the current array
+// Observation for i is that c[i] < c[i + 1] && c[k] > c[k + 1] for all k > i
+define is_i(i, c, n)
+    i >= 0 && i < n - 1 && slot(c, i).val < slot(c, i+1).val &&
+    forall p: Int, q: Int :: {slot(c, p).val, slot(c, q).val}
+        i < p && p < q && q < n ==> slot(c, p).val > slot(c, q).val
+
+// j is the index where we swap item i with
+// Observation for j is that c[j] > c[i] && c[j + 1] < c[i], if c[j + 1] exists
+define is_j(i, j, c, n)
+    j > i && j < n && slot(c, j).val > slot(c, i).val &&
+    forall k1: Int :: {slot(c, k1).val}
+        k1 > i && k1 < n ==> slot(c, k1).val >= slot(c, j).val || slot(c, k1).val < slot(c, i).val
+
+// Basic relationship between d and c
+define is_d_p0(i, j, c, d)
+    (forall k1: Int :: {slot(d, k1).val}
+        k1 > i && k1 < n && n - k1 + i != j ==> slot(d, k1).val == slot(c, n - k1 + i).val) &&
+    slot(d, n - j + i).val == slot(c, i).val
+
+// d is a permutation of c
+define is_d_p1(c, d)
+    contents_of_seg_old(d, 0, n) == contents_of_seg_old(c, 0, n) &&
+    distinct_up_to(d, n)
+
+// d[k] = c[k] for all k < i; d[i] = c[j]; d[k] < d[k+1] for all k > i
+define is_d_p2(i, j, c, d)
+    (forall k1: Int :: {slot(c, k1).val} {slot(d, k1).val}
+        k1 >= 0 && k1 < i ==> slot(d, k1).val == slot(c, k1).val) &&
+    slot(d, i).val == slot(c, j).val &&
+    (forall k1: Int, k2: Int :: {slot(d, k1).val, slot(d, k2).val}
+        i < k1 && k1 < k2 && k2 < n ==> slot(d, k1).val < slot(d, k2).val)
+
+// Verify that d is the next permutation of c
+// Observation for next_permutation is that
+//  we swap item i and j, and then reverse everything after index i
+// To do so, we need the supplimentary i, j,
+// and an intermediate array c1 to record the state after item i and j are swapped
+define is_next_permutation_tb(i, j, c, d, n)
+    is_i(i, c, n) && is_j(i, j, c, n) && is_d_p0(i, j, c, d) && is_d_p1(c, d) && is_d_p2(i, j, c, d)
+
+define is_perm_index(cc, n)
+    |cc| == n &&
+    (forall k: Int :: {cc[k]}
+        0 <= k && k < n ==> 0 <= cc[k] && cc[k] < n) &&
+    (forall k1: Int, k2: Int :: {cc[k1], cc[k2]}
+        0 <= k1 && k1 < n && 0 <= k2 && k2 < n && k1 != k2 ==> cc[k1] != cc[k2])
+
+// Function returns the index that i determines cc != d, where cc is a permutation of d
+// If cc < d, return -i - 1 such that cc[0 .. i] == d[0 .. i] && cc[i] < d[i]
+// If cc == d, return 0
+// If cc > d, return i + 1 such that cc[0 .. i] == d[0 .. i] && cc[i] > d[i]
+// Note that cc[i] is an abbreviation of c[cc[i]]
+function compare_c(n: Int, i: Int, cc: Seq[Int], c: IArray, d: IArray): Int
+    requires access_read(c)
+    requires c != d ==> access_read(d)
+    requires 1 < n && n <= len(c) && n <= len(d)
+    requires is_perm_index(cc, n)
+    requires 0 <= i && i <= n
+    ensures result >= -n && result <= n
+    // Result ==> Relationship between cc and d
+    ensures result == 0 ==> forall k: Int :: {cc[k]} {slot(d, k).val}
+        i <= k && k < n ==> slot(c, cc[k]).val == slot(d, k).val
+    ensures result < 0 ==>
+        slot(c, cc[-1 * result - 1]).val < slot(d, -1 * result - 1).val &&
+        forall k: Int :: {cc[k]} {slot(d, k).val}
+            i <= k && k < -1 * result - 1 ==> slot(c, cc[k]).val == slot(d, k).val
+    ensures result > 0 ==>
+        slot(c, cc[result - 1]).val > slot(d, result - 1).val &&
+        forall k: Int :: {cc[k]} {slot(d, k).val}
+            i <= k && k < result - 1 ==> slot(c, cc[k]).val == slot(d, k).val
+{
+    i == n ? 0
+    : slot(c, cc[i]).val == slot(d, i).val ? compare_c(n, i + 1, cc, c, d)
+    : slot(c, cc[i]).val > slot(d, i).val ? i + 1
+    : -1 * i - 1
+}
+
+define lte_c(n, cc, c)
+    compare_c(n, 0, cc, c, c) <= 0
+define gte_d(n, cc, c, d)
+    compare_c(n, 0, cc, c, d) >= 0
+define is_next_permutation_spec(n, c, d)
+    forall cc: Seq[Int] ::
+        is_perm_index(cc, n) ==> lte_c(n, cc, c) || gte_d(n, cc, c, d)
+
+method next_permutation_sp(i: Int, j: Int, c: IArray, d: IArray, n: Int)
+    requires access_read(c) && access_read(d) && c != d
+    requires 1 < n && n <= len(c) && n <= len(d)
+    requires distinct_up_to(c, n) && have_next_perm(c, n)
+    requires i >= 0 && j > i && j < n
+    requires is_next_permutation_tb(i, j, c, d, n)
+    ensures access_read(c) && access_read(d)
+    ensures is_next_permutation_spec(n, c, d)
+{
+    // Use cc to generate all permutations of c
+    // Instead of permutating the values in c, we permutate the indexes
+    // cc = {0, 1, 2, ... n} ==> cc == c
+
+    // We first prove that if cc[0 .. i] != [0 .. i], then cc <= c || cc >= d
+    assert forall cc: Seq[Int], k2: Int :: {cc[k2]}
+        (is_perm_index(cc, n) && 0 <= k2 && k2 < i && slot(c, cc[k2]).val < slot(c, k2).val &&
+            forall k1: Int, k3: Int :: {cc[k1], slot(c, k3).val} {slot(c, k1).val, slot(c, k3).val} 0 <= k1 && k1 < k2 && k3 == cc[k1] ==> slot(c, k3).val == slot(c, k1).val) ==>
+                compare_c(n, 0, cc, c, c) == -1 * k2 - 1 && lte_c(n, cc, c)
+    assert forall cc: Seq[Int], k2: Int :: {cc[k2]}
+        (is_perm_index(cc, n) && 0 <= k2 && k2 < i && slot(c, cc[k2]).val > slot(c, k2).val &&
+            forall k1: Int, k3: Int :: {cc[k1], slot(c, k3).val} {slot(c, k1).val, slot(c, k3).val} 0 <= k1 && k1 < k2 && k3 == cc[k1] ==> slot(c, k3).val == slot(c, k1).val) ==>
+                compare_c(n, 0, cc, c, d) == k2 + 1 && gte_d(n, cc, c, d)
+
+    assert forall cc: Seq[Int], k2: Int :: {cc[k2]}
+        (is_perm_index(cc, n) && 0 <= k2 && k2 < i && cc[k2] != k2 &&
+            forall k1: Int :: {cc[k1]} 0 <= k1 && k1 < k2 ==> cc[k1] == k1) ==>
+                slot(c, cc[k2]).val != slot(c, k2).val &&
+                (forall k1: Int, k3: Int :: {cc[k1], slot(c, k3).val} {slot(c, k1).val, slot(c, k3).val} 0 <= k1 && k1 < k2 && k3 == cc[k1] ==> slot(c, k3).val == slot(c, k1).val) &&
+                lte_c(n, cc, c) || gte_d(n, cc, c, d)
+    assert forall cc: Seq[Int], k2: Int :: {cc[k2]}
+        is_perm_index(cc, n) && 0 <= k2 && k2 < i && cc[k2] != k2 ==>
+            lte_c(n, cc, c) || gte_d(n, cc, c, d)
+
+    // Now prove that if cc[0 .. i] == [0 .. i] && cc[i] != c[i] && cc[i] != c[j], then cc <= c || cc >= d
+    assert forall cc: Seq[Int] ::
+        is_perm_index(cc, n) && (forall k1: Int :: {cc[k1]} 0 <= k1 && k1 < i ==> cc[k1] == k1) && cc[i] != i && cc[i] != j ==>
+            lte_c(n, cc, c) || gte_d(n, cc, c, d)
+
+    // Next prove that if cc[0 .. i] == [0 .. i] && cc[i] == c[i], then cc <= c
+    assert forall cc: Seq[Int] ::
+        is_perm_index(cc, n) && (forall k1: Int :: {cc[k1]} 0 <= k1 && k1 <= i ==> cc[k1] == k1) ==>
+            lte_c(n, cc, c)
+
+    // Finally, if cc[0 .. i] == [0 .. i] && cc[i] == c[j], then cc >= d
+    assert forall cc: Seq[Int] ::
+        is_perm_index(cc, n) && (forall k1: Int :: {cc[k1]} 0 <= k1 && k1 < i ==> cc[k1] == k1) && cc[i] == j ==>
+            ((forall k2: Int :: {cc[k2]} i < k2 && k2 < n ==>
+                (cc[k2] < i ==> cc[k2] == cc[cc[k2]]) && (cc[k2] == j ==> cc[k2] == cc[cc[i]]) && i <= cc[k2] && cc[k2] < n && cc[k2] != j) &&
+            (forall k2: Int :: {cc[k2]} i < k2 && k2 < n && cc[k2] != i ==>
+                (i < cc[k2] && cc[k2] < n && cc[k2] != j && slot(c, cc[k2]).val == slot(d, n - cc[k2] + i).val)) &&
+            (forall k2: Int :: {cc[k2]} i < k2 && k2 < n && cc[k2] == i ==> slot(c, cc[k2]).val == slot(d, n - j + i).val) &&
+            gte_d(n, cc, c, d))
+}

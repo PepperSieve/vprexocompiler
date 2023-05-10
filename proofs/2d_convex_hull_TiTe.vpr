@@ -1,0 +1,346 @@
+// The actual X_Prod and in_ord requires non-linear arithmetics, which is beyond Viper's
+// ability to prove. We therefore convert them into abstract algebraic types.
+// Please refer to 2d_convex_hull_TiTb_prop for proofs that our non-linear arithmetics
+// possess the properties described below
+import "IArray.vpr"
+
+field node: Node
+
+define access_node(array)
+  forall j: Int :: {slot(array,j).node} 0 <= j && j < len(array) ==> acc(slot(array,j).node)
+
+define access_read_node(array)
+  forall j: Int :: {slot(array,j).node} 0 <= j && j < len(array) ==> acc(slot(array,j).node, 2/3)
+
+domain Node {
+    function in_ord(ref: Node, n1: Node, n2: Node): Bool
+    function x_prod(n1: Node, n2: Node, n3: Node): Int
+    function inward_bend(n1: Node, n2: Node, n3: Node): Bool
+    function outward_bend(n1: Node, n2: Node, n3: Node): Bool
+
+    axiom no_three_nodes_on_one_line {
+      forall k1: Node, k2: Node, k3: Node :: {x_prod(k1, k2, k3)}
+        x_prod(k1, k2, k3) != 0
+    }
+
+    axiom inward_bend_def {
+      forall k1: Node, k2: Node, k3: Node :: {inward_bend(k1, k2, k3)} {x_prod(k1, k2, k3)}
+        inward_bend(k1, k2, k3) == x_prod(k1, k2, k3) < 0
+    }
+
+    axiom outward_bend_def {
+      forall k1: Node, k2: Node, k3: Node :: {outward_bend(k1, k2, k3)} {x_prod(k1, k2, k3)}
+        outward_bend(k1, k2, k3) == x_prod(k1, k2, k3) > 0
+    }
+
+    axiom in_ord_propagate {
+      forall ref: Node, k1: Node, k2: Node, k3: Node :: {in_ord(ref, k1, k2), in_ord(ref, k2, k3)}
+        in_ord(ref, k1, k2) && in_ord(ref, k2, k3) ==> in_ord(ref, k1, k3)
+    }
+
+    axiom inward_bend_propagate_1 {
+      forall ref: Node, k1: Node, k2: Node, k3: Node, k4: Node ::
+        {in_ord(ref, k1, k2), in_ord(ref, k2, k3), in_ord(ref, k3, k4)}
+        in_ord(ref, k1, k2) && in_ord(ref, k2, k3) && in_ord(ref, k3, k4) && inward_bend(k1, k2, k4) && inward_bend(k2, k3, k4) ==>
+          inward_bend(k1, k3, k4)
+    }
+
+    axiom inward_bend_propagate_2 {
+      forall ref: Node, k1: Node, k2: Node, k3: Node, k4: Node ::
+        {in_ord(ref, k1, k2), in_ord(ref, k2, k3), in_ord(ref, k3, k4)}
+        in_ord(ref, k1, k2) && in_ord(ref, k2, k3) && in_ord(ref, k3, k4) && inward_bend(k1, k2, k3) && inward_bend(k1, k3, k4) ==>
+          inward_bend(k1, k2, k4)
+    }
+
+    axiom ref_plus_2n_bend_out {
+      forall ref: Node, k1: Node, k2: Node :: {in_ord(ref, k1, k2)}
+        in_ord(ref, k1, k2) ==> outward_bend(ref, k1, k2) && outward_bend(k1, k2, ref)
+    }
+}
+
+define arr_in_ord(N, n)
+    (forall k1: Int, k2: Int :: {slot(N, k1).node, slot(N, k2).node}
+      0 <= k1 && k1 < k2 && k2 < n ==>
+        slot(N, k1).node != slot(N, k2).node) &&
+    (forall k2: Int, k3: Int :: {slot(N, k2).node, slot(N, k3).node}
+      1 <= k2 && k2 < k3 && k3 < n ==>
+        in_ord(slot(N, 0).node, slot(N, k2).node, slot(N, k3).node))
+
+// The N array replaces x and y arrays
+// The stack_N array replaces stack_x and stack_y arrays
+method td_convex_hull(n: Int, N: IArray, stack_N: IArray, in_c: IArray, next: IArray)
+    returns (ss: Int)
+    requires access_read_node(N) && access_node(stack_N) && access(in_c) && access_node(next)
+    requires 3 <= n && n <= len(N) && n <= len(stack_N) && n <= len(in_c) && n <= len(next)
+    requires arr_in_ord(N, n)
+    ensures access_read_node(N) && access_node(stack_N) && access(in_c) && access_node(next)
+{
+    // Use x1, y1, x2, y2 to minimize RAM access
+    // Use next_N, N1, N2 to replace x's and y's
+    var i: Int
+    var next_N: Node
+    var N1: Node
+    var N2: Node
+    var prod: Int
+    N1 := slot(N, 0).node; slot(stack_N, 0).node := N1
+    N2 := slot(N, 1).node; slot(stack_N, 1).node := N2
+    // update in_c and next
+    slot(in_c, 0).val := 1
+    slot(in_c, 1).val := 1
+    // Create a sequence stack_ind to record which node each element in stack represents
+    var stack_ind: Seq[Int] := Seq(0) ++ Seq(1)
+    ss := 2
+    i := 2
+
+    while (i < n)
+        invariant access_read_node(N) && access_node(stack_N) && access(in_c) && access_node(next)
+        invariant arr_in_ord(N, n)
+        invariant i >= 2 && 2 <= ss && ss <= i && i <= n
+        invariant i > 2 ==> ss >= 3
+
+        // Verify the correspondece of stack_ind and stack
+        invariant |stack_ind| == ss
+        invariant stack_ind[0] == 0 && forall k: Int :: {stack_ind[k]}
+          k >= 1 && k < ss ==> stack_ind[k] >= 1 && stack_ind[k] < i
+        invariant forall k1: Int, k2: Int :: {stack_ind[k1], stack_ind[k2]}
+          0 <= k1 && k1 < k2 && k2 < ss ==> stack_ind[k1] < stack_ind[k2]
+        invariant forall k: Int :: {slot(stack_N, k).node} {stack_ind[k]}
+          k >= 0 && k < ss ==> slot(stack_N, k).node == slot(N, stack_ind[k]).node
+        invariant stack_ind[ss-1] + 1 == i
+
+        // items in stack forms a convex hull
+        invariant N1 == slot(stack_N, ss - 2).node
+        invariant N2 == slot(stack_N, ss - 1).node
+        invariant forall k1: Int, k2: Int, k3: Int :: {slot(stack_N, k1).node, slot(stack_N, k2).node, slot(stack_N, k3).node}
+          0 <= k1 && k1 + 1 == k2 && k2 + 1 == k3 && k3 < ss ==>
+            outward_bend(slot(stack_N, k1).node, slot(stack_N, k2).node, slot(stack_N, k3).node)
+        // items not in stack are bended inwards
+        invariant forall k1: Int, k2: Int, k3: Int :: {stack_ind[k1], slot(N, k2).node, stack_ind[k3]}
+          0 <= k1 && k1 + 1 == k3 && k3 < ss && stack_ind[k1] < k2 && k2 < stack_ind[k3] ==>
+            inward_bend(slot(N, stack_ind[k1]).node, slot(N, k2).node, slot(N, stack_ind[k3]).node)
+        
+        // Verify in_c
+        invariant forall k1: Int :: {stack_ind[k1]}
+          0 <= k1 && k1 < ss ==> slot(in_c, stack_ind[k1]).val == 1
+        invariant forall k1: Int, k2: Int, k3: Int :: {stack_ind[k1], slot(in_c, k2).val, stack_ind[k3]}
+          0 <= k1 && k1 + 1 == k3 && k3 < ss && stack_ind[k1] < k2 && k2 < stack_ind[k3] ==>
+            slot(in_c, k2).val == 0
+        invariant forall k1: Int :: {slot(in_c, k1).val}
+          0 <= k1 && k1 < i && slot(in_c, k1).val == 1 ==> k1 in stack_ind
+    {
+        next_N := slot(N, i).node
+        prod := x_prod(N1, N2, next_N)
+
+        while (prod < 0)
+            invariant access_read_node(N) && access_node(stack_N) && access(in_c) && access_node(next)
+            invariant arr_in_ord(N, n)
+            invariant i >= 2 && 2 <= ss && ss <= i && i <= n
+
+            // Verify the correspondece of stack_ind and stack
+            invariant |stack_ind| == ss
+            invariant next_N == slot(N, i).node
+            invariant stack_ind[0] == 0 && forall k: Int :: {stack_ind[k]}
+              k >= 1 && k < ss ==> stack_ind[k] >= 1 && stack_ind[k] < i
+            invariant forall k1: Int, k2: Int :: {stack_ind[k1], stack_ind[k2]}
+              0 <= k1 && k1 < k2 && k2 < ss ==> stack_ind[k1] < stack_ind[k2]
+            invariant forall k: Int :: {slot(stack_N, k).node} {stack_ind[k]}
+              k >= 0 && k < ss ==> slot(stack_N, k).node == slot(N, stack_ind[k]).node
+
+            // items in stack forms a convex hull
+            invariant prod == x_prod(N1, N2, next_N)
+            invariant N1 == slot(stack_N, ss - 2).node
+            invariant N2 == slot(stack_N, ss - 1).node
+            invariant forall k1: Int, k2: Int, k3: Int :: {slot(stack_N, k1).node, slot(stack_N, k2).node, slot(stack_N, k3).node}
+              0 <= k1 && k1 + 1 == k2 && k2 + 1 == k3 && k3 < ss ==>
+                outward_bend(slot(stack_N, k1).node, slot(stack_N, k2).node, slot(stack_N, k3).node)
+            // items not in stack are bended inwards
+            invariant forall k2: Int :: {slot(N, k2).node}
+              stack_ind[ss-1] < k2 && k2 < i ==>
+                inward_bend(N2, slot(N, k2).node, next_N)
+            invariant forall k1: Int, k2: Int, k3: Int :: {stack_ind[k1], slot(N, k2).node, stack_ind[k3]}
+              0 <= k1 && k1 + 1 == k3 && k3 < ss && stack_ind[k1] < k2 && k2 < stack_ind[k3] ==>
+                inward_bend(slot(N, stack_ind[k1]).node, slot(N, k2).node, slot(N, stack_ind[k3]).node)
+            
+            // Verify in_c
+            invariant forall k1: Int :: {stack_ind[k1]}
+              0 <= k1 && k1 < ss ==> slot(in_c, stack_ind[k1]).val == 1
+            invariant forall k2: Int :: {slot(in_c, k2).val}
+              stack_ind[ss-1] < k2 && k2 < i ==> slot(in_c, k2).val == 0
+            invariant forall k1: Int, k2: Int, k3: Int :: {stack_ind[k1], slot(in_c, k2).val, stack_ind[k3]}
+              0 <= k1 && k1 + 1 == k3 && k3 < ss && stack_ind[k1] < k2 && k2 < stack_ind[k3] ==>
+                slot(in_c, k2).val == 0
+            invariant forall k1: Int :: {slot(in_c, k1).val}
+              0 <= k1 && k1 < i && slot(in_c, k1).val == 1 ==> k1 in stack_ind
+        {
+            ss := ss - 1
+            slot(in_c, stack_ind[ss]).val := 0
+            stack_ind := stack_ind[0..ss]
+            N2 := N1
+            N1 := slot(stack_N, ss-2).node
+            prod := x_prod(N1, N2, next_N)
+            assert ss == 2 ==> N1 == slot(N, 0).node && prod > 0
+        }
+        // -- End of Inner Loop --
+
+        assert ss >= 2
+        slot(stack_N, ss).node := next_N
+        slot(in_c, i).val := 1
+        ss := ss + 1
+        stack_ind := stack_ind ++ Seq(i)
+        N1 := N2
+        N2 := next_N
+        i := i + 1
+    }
+    assert stack_ind[ss-1] == n - 1
+    assert slot(in_c, n-1).val == 1
+    
+    // Update Next
+    i := 0
+    while (i < ss - 1)
+        invariant access_read_node(N) && access_node(stack_N) && access(in_c) && access_node(next)
+        invariant arr_in_ord(N, n)
+        invariant i >= 0 && |stack_ind| == ss && 3 <= ss && ss <= n
+
+        // Verify the correspondece of stack_ind and stack
+        invariant stack_ind[0] == 0 && forall k: Int :: {stack_ind[k]}
+          k >= 1 && k < ss ==> stack_ind[k] >= 1 && stack_ind[k] < n
+        invariant forall k1: Int, k2: Int :: {stack_ind[k1], stack_ind[k2]}
+          0 <= k1 && k1 < k2 && k2 < ss ==> stack_ind[k1] < stack_ind[k2]
+        invariant forall k: Int :: {slot(stack_N, k).node} {stack_ind[k]}
+          k >= 0 && k < ss ==> slot(stack_N, k).node == slot(N, stack_ind[k]).node
+
+        // items in stack forms a convex hull
+        invariant forall k1: Int, k2: Int, k3: Int :: {slot(stack_N, k1).node, slot(stack_N, k2).node, slot(stack_N, k3).node}
+          0 <= k1 && k1 + 1 == k2 && k2 + 1 == k3 && k3 < ss ==>
+            outward_bend(slot(stack_N, k1).node, slot(stack_N, k2).node, slot(stack_N, k3).node)
+        // items not in stack are bended inwards
+        invariant forall k1: Int, k2: Int, k3: Int :: {stack_ind[k1], slot(N, k2).node, stack_ind[k3]}
+          0 <= k1 && k1 + 1 == k3 && k3 < ss && stack_ind[k1] < k2 && k2 < stack_ind[k3] ==>
+            inward_bend(slot(N, stack_ind[k1]).node, slot(N, k2).node, slot(N, stack_ind[k3]).node)
+            
+        // Verify in_c
+        invariant forall k1: Int :: {stack_ind[k1]}
+          0 <= k1 && k1 < ss ==> slot(in_c, stack_ind[k1]).val == 1
+        invariant forall k1: Int, k2: Int, k3: Int :: {stack_ind[k1], slot(in_c, k2).val, stack_ind[k3]}
+          0 <= k1 && k1 + 1 == k3 && k3 < ss && stack_ind[k1] < k2 && k2 < stack_ind[k3] ==>
+            slot(in_c, k2).val == 0
+        invariant forall k1: Int :: {slot(in_c, k1).val}
+          0 <= k1 && k1 < n && slot(in_c, k1).val == 1 ==> k1 in stack_ind
+        
+        // Verify next
+        invariant forall k1: Int, k3: Int :: {stack_ind[k1], stack_ind[k3]}
+          0 <= k1 && k1 < i && k3 == k1 + 1 ==>
+            k1 < ss && stack_ind[k1] >= 0 && stack_ind[k1] < n &&
+            k3 < ss && stack_ind[k3] >= 0 && stack_ind[k3] < n &&
+            slot(next, stack_ind[k1]).node == slot(N, stack_ind[k3]).node
+    {
+        slot(next, stack_ind[i]).node := slot(N, stack_ind[i+1]).node
+        i := i + 1
+    }
+    slot(next, n-1).node := slot(N, 0).node
+
+    // ---
+    // Beginning of TB
+    // ---
+
+    var N0: Node := slot(N, 0).node
+    // nx --> next_x, lx --> last_x
+    var nN: Node := slot(next, 0).node
+    var lN: Node := slot(N, 0).node
+
+    // The first point must be in the convex hull
+    assert N0 == slot(stack_N, 0).node
+
+    var Ni: Node
+    // count: which point in stack are we dealing with?
+    var count: Int := 0
+
+    i := 1
+    while (i < maxsize())
+        invariant access_read_node(N) && access_node(stack_N) && access(in_c) && access_node(next)
+        invariant arr_in_ord(N, n)
+        invariant i > 0 && |stack_ind| == ss && 3 <= ss && ss <= n
+
+        // Verify the correspondece of stack_ind and stack
+        invariant stack_ind[0] == 0 && forall k: Int :: {stack_ind[k]}
+          k >= 1 && k < ss ==> stack_ind[k] >= 1 && stack_ind[k] < n
+        invariant forall k1: Int, k2: Int :: {stack_ind[k1], stack_ind[k2]}
+          0 <= k1 && k1 < k2 && k2 < ss ==> stack_ind[k1] < stack_ind[k2]
+        invariant forall k: Int :: {slot(stack_N, k).node} {stack_ind[k]}
+          k >= 0 && k < ss ==> slot(stack_N, k).node == slot(N, stack_ind[k]).node
+        // items in stack forms a convex hull
+        invariant forall k1: Int, k2: Int, k3: Int :: {slot(stack_N, k1).node, slot(stack_N, k2).node, slot(stack_N, k3).node}
+          0 <= k1 && k1 + 1 == k2 && k2 + 1 == k3 && k3 < ss ==>
+            outward_bend(slot(stack_N, k1).node, slot(stack_N, k2).node, slot(stack_N, k3).node)
+        // items not in stack are bended inwards
+        invariant forall k1: Int, k2: Int, k3: Int :: {stack_ind[k1], slot(N, k2).node, stack_ind[k3]}
+          0 <= k1 && k1 + 1 == k3 && k3 < ss && stack_ind[k1] < k2 && k2 < stack_ind[k3] ==>
+            inward_bend(slot(N, stack_ind[k1]).node, slot(N, k2).node, slot(N, stack_ind[k3]).node)  
+        // Verify in_c
+        invariant forall k1: Int :: {stack_ind[k1]}
+          0 <= k1 && k1 < ss ==> slot(in_c, stack_ind[k1]).val == 1
+        invariant forall k1: Int, k2: Int, k3: Int :: {stack_ind[k1], slot(in_c, k2).val, stack_ind[k3]}
+          0 <= k1 && k1 + 1 == k3 && k3 < ss && stack_ind[k1] < k2 && k2 < stack_ind[k3] ==>
+            slot(in_c, k2).val == 0
+        invariant forall k1: Int :: {slot(in_c, k1).val}
+          0 <= k1 && k1 < n && slot(in_c, k1).val == 1 ==> k1 in stack_ind
+        // Verify next
+        invariant forall k1: Int, k3: Int :: {stack_ind[k1], stack_ind[k3]}
+          0 <= k1 && k1 < ss - 1 && k3 == k1 + 1 ==>
+            slot(next, stack_ind[k1]).node == slot(N, stack_ind[k3]).node
+        invariant slot(next, n-1).node == slot(N, 0).node
+
+        // --
+        // Invariants for proving TB
+        invariant N0 == slot(stack_N, 0).node && N0 == slot(N, 0).node
+        // invariants for "assert Ni == slot(stack_N, count).node"
+        invariant count >= 0 && count < ss
+        invariant i > stack_ind[count]
+        invariant forall k1: Int :: {stack_ind[k1]}
+          0 <= k1 && k1 <= count && k1 < ss ==> stack_ind[k1] < i
+        invariant count < ss - 1 ==> i <= stack_ind[count + 1]
+        invariant forall k1: Int :: {stack_ind[k1]}
+          count < k1 && k1 < ss ==> i <= stack_ind[k1]
+        // invariants for "assert Ni == nN"
+        invariant count < ss - 1 ==> nN == slot(N, stack_ind[count + 1]).node
+        invariant count == ss - 1 ==> nN == slot(N, 0).node
+        // invariants for "assert outward_bend(lN, Ni, nN)" && "assert inward_bend(lN, Ni, nN)"
+        invariant lN == slot(N, stack_ind[count]).node
+        // invariants for assertions after the loop
+        invariant i >= n ==> count == ss - 1
+
+    {
+        if (i < n) {
+            Ni := slot(N, i).node
+            // Inside if case: vertex i is on the convex hull
+            if (Ni == nN) {
+                assert i == stack_ind[count + 1]
+                assert slot(in_c, i).val == 1
+                
+                // Verify that the point in stack is correct
+                count := count + 1
+                assert i in stack_ind
+                assert count < ss
+                assert i == stack_ind[count]
+                assert i == n - 1 ==> count == ss - 1
+                assert Ni == slot(stack_N, count).node
+
+                // Verify that an outward angle is formed
+                nN := slot(next, i).node
+                assert count == ss - 1 ==> nN == N0 && in_ord(N0, lN, Ni)
+                assert count < ss - 1 ==> nN == slot(stack_N, count+1).node
+                assert outward_bend(lN, Ni, nN)
+                
+                // Update last
+                lN := Ni
+            }
+            // Inside else case: vertex i is NOT on the convex hull
+            else {
+                assert inward_bend(lN, Ni, nN)
+            }
+        }
+        i := i + 1
+    }
+    assert N0 == nN
+    assert ss == count + 1
+}

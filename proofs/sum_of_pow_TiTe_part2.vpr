@@ -1,0 +1,140 @@
+// Please verify using Carbon!
+
+// I separate this TiTe proof into 2 parts:
+// Part 1 infers all useful assertions that can be derived from T_i.
+// Part 2 uses these assertions (through assumes) to prove that T_b holds.
+
+// Carbon seems to have trouble proving some of the invariants in Part 1,
+// while Silicon is painfully slow proving Part 2.
+// So, I decide to separate the proof into 2 parts and use different
+// backend solver to prove them.
+
+import "sum_of_pow_prop.vpr"
+
+method sum_of_powers(r: Int, k: Int, x: IArray, y: IArray, cor_y: IArray)
+    requires 0 < k && 0 < r && r <= max_r()
+    requires access(x) && access(y) && access(cor_y)
+    requires len(x) == max_r() + 1 && len(y) == max_r() + 1 && len(cor_y) == max_r() + 1
+    ensures access(x) && access(y) && access(cor_y)
+{
+    var x1: Int
+    var y1: Int
+    var tmp: Int
+    var x2: Int
+    var i: Int
+
+    assume 0 <= i && i <= x2 + 1 - x1
+
+    assume x1 >= 0
+    assume 2 * pow(x1 - 1, k) < r
+    assume 2 * pow(x1, k) >= r
+    assume pow(x2, k) <= r
+    assume pow(x2 + 1, k) > r
+    assume x2 <= max_r()
+
+    assume forall k1: Int :: {slot(cor_y, k1).val}
+        0 <= k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) <= r
+    assume forall k1: Int :: {slot(cor_y, k1).val}
+        0 <= k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val + 1, k) > r
+        
+    assume forall k1: Int :: {slot(x, k1).val}
+        0 <= k1 && k1 < i ==> x1 <= slot(x, k1).val && slot(x, k1).val < x2 + 1
+    assume forall k1: Int, k2: Int :: {slot(x, k1).val, slot(x, k2).val}
+        0 <= k1 && k1 < k2 && k2 < i ==> slot(x, k1).val < slot(x, k2).val
+
+    assume forall k1: Int :: {slot(x, k1).val} {slot(y, k1).val}
+        0 <= k1 && k1 < i ==> pow(slot(x, k1).val, k) + pow(slot(y, k1).val, k) == r
+    assume forall k1: Int :: {slot(x, k1).val} {slot(y, k1).val}
+        0 <= k1 && k1 < i ==> x1 <= slot(x, k1).val && slot(x, k1).val < x2 + 1 &&
+                slot(y, k1).val == slot(cor_y, slot(x, k1).val - x1).val
+    assume i == 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+        0 <= k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+    assume i > 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+        0 <= k1 && k1 < slot(x, 0).val - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+    assume i > 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+        slot(x, i - 1).val - x1 < k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+    assume forall k1: Int, k2: Int, k3: Int :: {slot(x, k1).val, slot(x, k2).val, slot(cor_y, k3).val}
+        0 <= k1 && k1 + 1 == k2 && k2 < i && slot(x, k1).val - x1 < k3 && k3 < slot(x, k2).val - x1 ==>
+            pow(x1 + k3, k) + pow(slot(cor_y, k3).val, k) < r
+
+    // Beginning of T_b
+    assert x1 >= 0
+    // We actually don't need x1 != 0.
+    // However, the TbTs proof would be much more difficult without this.
+    if (x1 != 0) {
+        assert 2 * pow(x1 - 1, k) < r
+    }
+    assert 2 * pow(x1, k) >= r
+    assert pow(x2, k) <= r
+    assert pow(x2 + 1, k) > r
+
+    var j: Int := 0
+    var count: Int := 0
+    while (j < max_r() + 1) 
+        invariant j >= 0
+        invariant access(x) && access(y) && access(cor_y)
+        invariant x2 <= max_r()
+
+        // invariants for cor_y
+        invariant forall k1: Int :: {slot(cor_y, k1).val}
+            0 <= k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) <= r
+        invariant forall k1: Int :: {slot(cor_y, k1).val}
+            0 <= k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val + 1, k) > r
+        
+        // invariants for x and y arrays
+        invariant forall k1: Int :: {slot(x, k1).val}
+            0 <= k1 && k1 < i ==> x1 <= slot(x, k1).val && slot(x, k1).val < x2 + 1
+        invariant forall k1: Int, k2: Int :: {slot(x, k1).val, slot(x, k2).val}
+            0 <= k1 && k1 < k2 && k2 < i ==> slot(x, k1).val < slot(x, k2).val
+
+        invariant forall k1: Int :: {slot(x, k1).val} {slot(y, k1).val}
+            0 <= k1 && k1 < i ==> pow(slot(x, k1).val, k) + pow(slot(y, k1).val, k) == r
+        invariant forall k1: Int :: {slot(x, k1).val} {slot(y, k1).val}
+            0 <= k1 && k1 < i ==> x1 <= slot(x, k1).val && slot(x, k1).val < x2 + 1 &&
+                slot(y, k1).val == slot(cor_y, slot(x, k1).val - x1).val
+
+        invariant i == 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+            0 <= k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+        invariant i > 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+            0 <= k1 && k1 < slot(x, 0).val - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+        invariant i > 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+            slot(x, i - 1).val - x1 < k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+        invariant forall k1: Int, k2: Int, k3: Int :: {slot(x, k1).val, slot(x, k2).val, slot(cor_y, k3).val}
+            0 <= k1 && k1 + 1 == k2 && k2 < i && slot(x, k1).val - x1 < k3 && k3 < slot(x, k2).val - x1 ==>
+                pow(x1 + k3, k) + pow(slot(cor_y, k3).val, k) < r
+        
+        // Invariants for proving T_b
+        // Invariants on count
+        invariant 0 <= count
+        invariant count <= i ==> forall k1: Int :: {slot(x, k1).val}
+            0 <= k1 && k1 < count ==> slot(x, k1).val < x1 + j
+        invariant i != 0 && count == i ==> forall k1: Int :: {slot(cor_y, k1).val}
+            slot(x, count - 1).val - x1 < k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+        invariant count == i && j < x2 + 1 - x1 ==> pow(x1 + j, k) + pow(slot(cor_y, j).val, k) < r
+        invariant count <= i
+
+        // Invariants on x
+        invariant count < i ==> j <= slot(x, count).val - x1
+        invariant count < i ==> pow(slot(x, count).val, k) + pow(slot(y, count).val, k) == r
+        invariant count < i ==> forall k1: Int :: {slot(cor_y, k1).val}
+            j <= k1 && k1 < slot(x, count).val - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+    {   
+        if (x1 + j <= x2) { // ie if x1+j is a valid candidate (w/in range)
+            var tmp1: Int := pow(x1 + j, k) // trying out x1+j as x to see if it has a sol
+            
+            var tmp2: Int := pow(slot(cor_y, j).val, k) // seeing if corr y gives sol
+
+            assert tmp1 + tmp2 <= r
+            assert tmp1 + pow(slot(cor_y, j).val + 1, k) > r
+
+            if (tmp1 + tmp2 == r) { // if it gives a sol, check that the sol is recorded
+                assert count < i
+                assert slot(x, count).val == x1 + j
+                assert slot(y, count).val == slot(cor_y, j).val
+                count := count + 1
+            }
+        }
+        j := j + 1
+    }
+    var out_size: Int := count
+}

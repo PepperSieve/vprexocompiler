@@ -1,0 +1,374 @@
+// Please refer to kmp_search_motiv on information about LPS_MAT
+
+import "IArray.vpr"
+
+// LPS_MAT[i, j] = k ==> pat[k] != pat[i = j + k + 1], j > lps[i]
+domain LPS_MAT {
+  function set_mat(lm: LPS_MAT, i: Int, j: Int, k: Int, m: Int): LPS_MAT
+  function get_mat(lm: LPS_MAT, i: Int, j: Int): Int
+
+  axiom LPS_MAT_get_def {
+    forall lm: LPS_MAT, m: Int, i: Int, j: Int, k: Int, k1: Int ::
+      k1 >= i && k1 < m ==> get_mat(set_mat(lm, i, j, k, m), k1, k1 - i + j) == k
+  }
+  axiom LPS_MAT_get_untouched {
+    forall lm: LPS_MAT, m: Int, i: Int, j: Int, k: Int, i2: Int, j2: Int ::
+      i2 < i || i2 - i != j2 - j ==> get_mat(set_mat(lm, i, j, k, m), i2, j2) == get_mat(lm, i2, j2)
+  }
+}
+
+// match asserts a MATCH starting at index s in TXT
+// M is the length of PAT and N is the length of TXT
+define match(pat, m, txt, n, s)
+    m > 0 && m <= n && m <= len(pat) && n > 0 && n <= len(txt) && s >= 0 && s < n &&
+    forall i: Int :: {slot(pat, i).val, slot(txt, i).val} i >= 0 && i < m ==> slot(pat, i).val == slot(txt, s+i).val
+
+// mismatch asserts a MISMATCH starting at index s in TXT
+// M is the length of PAT and N is the length of TXT
+define mismatch(pat, m, txt, n, s)
+    m > 0 && m <= n && m <= len(pat) && n > 0 && n <= len(txt) && s >= 0 && s < n &&
+    exists i: Int :: i >= 0 && i < m ==> slot(pat, i).val != slot(txt, s+i).val
+
+// first_match asserts that a MATCH occurs at index s in TXT,
+// and no matches occur before index s
+// If no match occurs, s == n
+define first_match(pat, m, txt, n, s)
+    m > 0 && m <= n && m <= len(pat) && n > 0 && n <= len(txt) && s >= 0 &&
+    (s == n ||
+    (s < n && match(pat, m, txt, n, s) &&
+    forall j: Int :: {slot(pat, j).val, slot(txt, j).val} j >= 0 && j < s ==> mismatch(pat, m, txt, n, j)))
+
+// Main function: verify the kmp search sp method
+// M is the length of PAT and N is the length of TXT
+// let's view lps as an input
+// output_ind is the output of the program, which differs slightly from ind in case of no match found
+
+// A function to copy lps(i1, j1 ~ j2) to lps(i2, j1 ~ j2), j1, j2 inclusive
+// copy_lps_mat applies set_lps_mat
+function copy_lps_mat(lm: LPS_MAT, i1: Int, i2: Int, j1: Int, j2: Int, m: Int): LPS_MAT
+    requires i1 < i2 && i2 < m && j1 <= j2
+    ensures forall ip: Int, jp: Int ::
+      ip >= i2 && ip < m && jp >= j1 && jp <= j2 ==>
+        get_mat(result, ip, jp  + ip - i2) == get_mat(result, i1, jp)
+    ensures forall ip: Int, jp: Int ::
+      ip < i2 || jp < ip - i2 + j1 || jp > ip - i2 + j2 ==> get_mat(result, ip, jp) == get_mat(lm, ip, jp)
+{
+    j1 == j2 ? set_mat(lm, i2, j1, get_mat(lm, i1, j1), m)
+             : set_mat(copy_lps_mat(lm, i1, i2, j1 + 1, j2, m), i2, j1, get_mat(lm, i1, j1), m)
+}
+
+// A function to handle assignments of b when updating j to lps[j-1]
+// input: j-1 and lps[j-1] + 1
+function update_b(lm: LPS_MAT, b: Seq[Int], j: Int, lpsj: Int): Seq[Int]
+    requires j >= 0 && lpsj >= 0 && lpsj <= j
+    ensures |result| == |b| + j - lpsj + 1
+    ensures forall k: Int :: {result[k]}
+      k >= 0 && k < |b| ==> result[k] == b[k]
+    ensures forall k: Int :: {result[k]}
+      k >= |b| && k < |result| ==> result[k] == get_mat(lm, j, j - k + |b|)
+{
+    lpsj == j ? b ++ Seq(get_mat(lm, j, lpsj))
+              : update_b(lm, b, j, lpsj + 1) ++ Seq(get_mat(lm, j, lpsj))
+}
+
+// b is the array used by T_B. We construct b ourselves through T_I.
+// To make the proof easier, let b be a sequence
+// Use lc = lps_comp to denote where a mismatch would occur if we attempt to make lps[i] larger
+// i.e. lps[i] < i ==> pat[lc[i]] != pat[i + lc[i]]
+method kmp_search(pat: IArray, m: Int, txt: IArray, n: Int, lps: IArray)
+    requires access_read(pat) && access_read(txt) && access(lps)
+    requires m > 0 && m <= n && m == len(pat) && m == len(lps) && n > 0 && n == len(txt)
+    requires 2 * m <= maxsize() && 2 * n <= maxsize()
+    ensures access_read(pat) && access_read(txt) && access(lps)
+{
+    var ind: Int
+    var ln: Int := 0
+    slot(lps, 0).val := 0
+
+    var i: Int := 1
+    var k: Int := 0
+    var LM: LPS_MAT
+    // LPS loop
+    while (k < maxsize())
+      invariant k >= 0 && i >= 1
+      invariant access_read(pat) && access_read(txt) && access(lps)
+      invariant ln >= 0 && ln < i && ln < m &&
+        (forall k1: Int :: {slot(lps, k1).val}
+        k1 >= 0 && k1 < i && k1 < m ==> slot(lps, k1).val >= 0 && slot(lps, k1).val <= k1)
+
+      // i >= m when the loop terminates
+      invariant k > (i-1) + (i-1) - ln ==> i >= m
+
+      // Invariants on LPS
+      // lps[k] <= k
+      invariant forall k1: Int :: {slot(lps, k1).val}
+        k1 >= 0 && k1 < i && k1 < m ==> slot(lps, k1).val <= k1
+      // pat[k - lps[k] + 1 .. k] = pat[0 .. lps[k] - 1] &&
+      // lps[k] != k ==> pat[lps[k]] != pat[k]
+      invariant (i >= 1 && i < m ==> forall k4: Int, k5: Int :: {slot(pat, k4).val, slot(pat, k5).val}
+        k4 >= 0 && k4 < ln && k5 == i - ln + k4 ==> slot(pat, k4).val == slot(pat, k5).val) &&
+        (forall k1: Int, k2: Int, k3: Int :: {slot(lps, k1).val, slot(pat, k2).val, slot(pat, k3).val}
+        k1 >= 0 && k1 < i && k1 < m && k2 >= 0 && k2 < slot(lps, k1).val && k3 == k1 - slot(lps, k1).val + k2 + 1 ==>
+        slot(pat, k2).val == slot(pat, k3).val)
+      
+      // Invariants on LM
+      // lps[k + 1] <= lps[k] + 1
+      invariant i > 1 && i <= m ==> i - 1 - ln >= i - 1 - slot(lps, i-1).val
+      invariant forall k1: Int, k2: Int :: {slot(lps, k1).val, slot(lps, k2).val}
+        0 <= k1 && k1 + 1 == k2 && k2 < i && k2 < m ==>
+          slot(lps, k2).val <= slot(lps, k1).val + 1
+      // bound check on LM
+      invariant (forall k1: Int, k2: Int ::
+        k1 >= 1 && k1 < i && k1 < m && k2 > slot(lps, k1).val && k2 <= k1 ==>
+          get_mat(LM, k1, k2) >= 0 && get_mat(LM, k1, k2) < k2) &&
+        (forall k1: Int, k2: Int ::
+          k1 >= i && k1 < m && k2 > k1 - i + ln + 1 && k2 <= k1 ==>
+            get_mat(LM, k1, k2) >= 0 && get_mat(LM, k1, k2) < k2)
+      // i - ln >= k - lps[k] for all k < i
+      invariant forall k1: Int :: {slot(lps, k1).val}
+        0 <= k1 && k1 < i && k1 < m ==> i - ln - 1 >= k1 - slot(lps, k1).val
+      // lps_mat[k1, k1] == lps_mat[k2, k2] for all k1, k2
+      invariant ln < i - 1 ==> forall k1: Int, k2: Int, k3: Int, k4: Int :: {get_mat(LM, k1, k3), get_mat(LM, k2, k4)}
+        i <= k1 && k1 < k2 && k2 < m && k3 > k1 - i + ln + 1 && k3 <= k1 && k4 == k3 - k1 + k2 ==>
+          get_mat(LM, k1, k3) == get_mat(LM, k2, k4)
+      invariant forall k1: Int, k2: Int, k3: Int, k4: Int :: {get_mat(LM, k1, k3), get_mat(LM, k2, k4)}
+        0 <= k1 && k1 < i && k1 < k2 && k2 < m && slot(lps, k1).val < k1 && k3 > slot(lps, k1).val && k3 <= k1 && k4 == k3 - k1 + k2 ==>
+          get_mat(LM, k1, k3) == get_mat(LM, k2, k4)
+      // lps[k1] < k1 ==> forall lps[k1] < k3 <= k1, lm[k1 + 1, k3 + 1] < k3
+      invariant forall k1: Int, k3: Int ::
+        0 <= k1 && k1 + 1 < i && k1 + 1 < m && slot(lps, k1).val < k1 && k3 > slot(lps, k1).val && k3 <= k1 ==>
+          get_mat(LM, k1+1, k3+1) == get_mat(LM, k1, k3) && get_mat(LM, k1+1, k3+1) < k3
+      // definition of LM
+      invariant (forall k1: Int, k2: Int ::
+          k1 >= 1 && k1 < i && k1 < m && k2 > slot(lps, k1).val && k2 <= k1 ==>
+           slot(pat, get_mat(LM, k1, k2)).val != slot(pat, k1 - k2 + get_mat(LM, k1, k2) + 1).val) &&
+        (forall k1: Int, k2: Int ::
+          k1 >= i && k1 < m && k2 > k1 - i + ln + 1 && k2 <= k1 ==>
+            slot(pat, get_mat(LM, k1, k2)).val != slot(pat, k1 - k2 + get_mat(LM, k1, k2) + 1).val)
+    {
+        if (i < m) {
+            if (slot(pat, i).val == slot(pat, ln).val) {
+                ln := ln + 1
+                slot(lps, i).val := ln
+                i := i + 1
+            } else {
+                LM := set_mat(LM, i, ln+1, ln, m)
+                if (ln != 0) {
+                    assert forall k4: Int :: {slot(pat, k4).val}
+                      k4 >= 0 && k4 < slot(lps, ln - 1).val ==>
+                        slot(pat, k4).val == slot(pat, ln - slot(lps, ln - 1).val + k4).val
+                    if (ln - 1 > slot(lps, ln - 1).val) {
+                        assert forall k2: Int ::
+                          slot(lps, ln - 1).val + 1 < k2 && k2 <= ln ==>
+                            get_mat(LM, ln, k2) == get_mat(LM, ln-1, k2-1) && get_mat(LM, ln, k2) < k2 - 1
+                        LM := copy_lps_mat(LM, ln, i, slot(lps, ln - 1).val + 2, ln, m)
+                        // assertion required by LPS
+                        assert forall k1: Int, k2: Int ::
+                          k1 >= i && k1 < m && k2 > k1 - i + slot(lps, ln - 1).val + 1 && k2 <= ln + k1 - i ==>
+                            get_mat(LM, k1, k2) == get_mat(LM, ln, k2 - k1 + i)
+                        // assertion required by LM bound check
+                        assert forall k1: Int, k2: Int ::
+                          k1 >= i && k1 < m && k2 > slot(lps, ln - 1).val + 1 && k2 <= ln ==>
+                            get_mat(LM, ln, k2) == get_mat(LM, k1, k2 + k1 - i)
+                        // assertions required by LM
+                        // pat[i - ln]..pat[i - 1] == pat[0]..pat[ln - 1]
+                        // pat[ln - k + LM[ln, k] + 1] != pat[LM[ln, k]]
+                        // if LM[ln, k] < k - 1, then
+                        // pat[i - k + LM[ln, k] + 1] != pat[LM[ln, k]]
+                        // pat[i - k + LM[i, k] + 1] != pat[LM[i, k]]
+                        assert forall k1: Int, k2: Int ::
+                          k1 >= i && k1 < m && k2 > slot(lps, ln - 1).val + 1 && k2 <= ln ==>
+                            slot(pat, get_mat(LM, ln, k2)).val == slot(pat, get_mat(LM, k1, k2 + k1 - i)).val
+                        assert forall k1: Int, k2: Int ::
+                          k1 >= i && k1 < m && k2 > slot(lps, ln - 1).val + 1 && k2 <= ln ==>
+                            slot(pat, i - k2 + get_mat(LM, ln, k2) + 1).val == slot(pat, ln - k2 + get_mat(LM, ln, k2) + 1).val
+                        assert forall k2: Int :: {get_mat(LM, ln, k2)}
+                          k2 > slot(lps, ln).val && k2 <= ln ==>
+                            slot(pat, get_mat(LM, ln, k2)).val == slot(pat, i - ln + get_mat(LM, ln, k2)).val
+                    }
+                    ln := slot(lps, ln - 1).val
+                } else {
+                    slot(lps, i).val := 0
+                    i := i + 1
+                }
+            }
+        }
+        k := k + 1
+    }
+
+    var b: Seq[Int] := Seq()
+    i := 0
+    var j: Int := 0
+    var jm1: Int
+    var found: Int := 0
+    var oldbsize: Int
+    k := 0
+    // MAIN loop
+    while (k < maxsize())
+      invariant k >= 0 && i >= 0 && j >= 0 && j <= i && j <= m
+      invariant access_read(pat) && access_read(txt) && access(lps)
+      // lps and lm
+      invariant forall k1: Int :: {slot(lps, k1).val}
+        k1 >= 0 && k1 < m ==> slot(lps, k1).val >= 0 && slot(lps, k1).val <= k1
+      invariant forall k1: Int, k2: Int, k3: Int :: {slot(lps, k1).val, slot(pat, k2).val, slot(pat, k3).val}
+        k1 >= 0 && k1 < m && k2 >= 0 && k2 < slot(lps, k1).val && k3 == k1 - slot(lps, k1).val + k2 + 1 ==>
+          slot(pat, k2).val == slot(pat, k3).val
+      invariant forall k1: Int, k2: Int ::
+        k1 >= 1 && k1 < m && k2 > slot(lps, k1).val && k2 <= k1 ==>
+          get_mat(LM, k1, k2) >= 0 && get_mat(LM, k1, k2) < k2
+      invariant forall k1: Int, k2: Int ::
+        k1 >= 1 && k1 < m && k2 > slot(lps, k1).val && k2 <= k1 ==>
+          slot(pat, get_mat(LM, k1, k2)).val != slot(pat, k1 - k2 + get_mat(LM, k1, k2) + 1).val
+    
+      // PAT[0..j) = TXT[i-j+1..i)
+      invariant i < n ==> forall k1: Int, k2: Int :: {slot(pat, k1).val, slot(txt, k2).val}
+        k1 >= 0 && k1 < j && k2 == i - j + k1 ==> slot(pat, k1).val == slot(txt, k2).val
+      invariant i < n ==> |b| == i - j
+      invariant forall k1: Int :: {b[k1]}
+        k1 >= 0 && k1 < |b| ==> b[k1] >= 0 && b[k1] < m
+      invariant i < n ==> forall k1: Int :: {b[k1]}
+        k1 >= 0 && k1 < i - j && k1 + m <= n ==> slot(txt, k1 + b[k1]).val != slot(pat, b[k1]).val
+      
+      // Loop Post Conditions - Mismatch
+      invariant found == 1 ==> i > n && |b| == ind && ind <= n - m
+      invariant found == 1 ==> forall k1: Int :: {b[k1]}
+        k1 >= 0 && k1 < ind ==> b[k1] >= 0 && b[k1] < m
+      invariant found == 1 ==> forall k1: Int :: {b[k1]}
+        k1 >= 0 && k1 < ind ==> slot(txt, k1 + b[k1]).val != slot(pat, b[k1]).val
+      invariant j == m ==> i == n + 1
+      invariant i >= n && found == 0 ==> j < m && |b| > n - m
+      invariant i >= n && found == 0 ==> forall k1: Int :: {b[k1]}
+        k1 >= 0 && k1 <= n - m ==> b[k1] >= 0 && b[k1] < m
+      invariant i >= n && found == 0 ==> forall k1: Int :: {b[k1]}
+        k1 >= 0 && k1 <= n - m ==> slot(txt, k1 + b[k1]).val != slot(pat, b[k1]).val
+      
+      // Loop Post Condition - Match
+      invariant found == 1 ==> j == m &&
+        forall k1: Int, k2: Int :: {slot(pat, k1).val, slot(txt, k2).val}
+          k1 >= 0 && k1 < m && k2 == ind + k1 ==> slot(pat, k1).val == slot(txt, k2).val
+
+      // Loop Bound Condition: k == maxsize() ==> i >= n
+      invariant i < n ==> k <= i + i - j
+      invariant i < n ==> k <= 2 * i
+      invariant i < n ==> k < maxsize()
+      invariant k == maxsize() ==> i >= n
+
+      // Found must be 0 or 1
+      invariant found == 0 || found == 1
+    {
+        if (i < n) {
+            // Case of a mismatch
+            if (j < m) {
+                if (slot(pat, j).val != slot(txt, i).val) {
+                    b := b ++ Seq(j)
+                    if (j != 0) {
+                        if (j - slot(lps, j - 1).val >= 2) {
+                            jm1 := j - 1
+                            b := update_b(LM, b, jm1, slot(lps, jm1).val + 1)
+                            assert forall k1: Int :: {get_mat(LM, jm1, k1)}
+                              k1 >= i - j + 1 && k1 < i - slot(lps, jm1).val ==>
+                                b[k1] >= 0 && b[k1] < i - k1 &&
+                                slot(pat, b[k1]).val != slot(pat, jm1 - i + k1 + b[k1] + 1).val
+                        }
+                        assert forall k1: Int:: {slot(pat, k1).val}
+                          k1 >= 0 && k1 < slot(lps, j - 1).val ==>
+                            slot(pat, k1).val == slot(pat, j - slot(lps, j - 1).val + k1).val
+                        j := slot(lps, j - 1).val
+                    }
+                    else {
+                        i := i + 1
+                    }
+                }
+                // Case of a match
+                else {
+                    j := j + 1
+                    i := i + 1
+                }
+            }
+            // We find a solution
+            if (j == m) {
+                ind := i - m
+                found := 1
+                i := n + 1
+                assert |b| == ind
+            } 
+        }
+        k := k + 1
+    }
+
+    assert found == 1 ==> ind <= n - m
+    if (found == 0) {
+        ind := n
+    }
+
+    assert i >= n
+    assert ind == n ==> found == 0
+    assert ind <= n - m ==> found == 1
+    assert ind <= n - m ==> |b| == ind &&
+      forall k1: Int :: {b[k1]} k1 >= 0 && k1 < ind ==>
+        b[k1] >= 0 && b[k1] < m && slot(txt, k1 + b[k1]).val != slot(pat, b[k1]).val
+    assert ind == n ==>|b| >= n - m &&
+      forall k1: Int :: {b[k1]} k1 >= 0 && k1 <= n - m ==>
+        b[k1] >= 0 && b[k1] < m && slot(txt, k1 + b[k1]).val != slot(pat, b[k1]).val
+    
+    // Convert IND to IND_COMP, which corresponds to INPUT->IND in T_B
+    if (ind == n) {
+      ind := n - m + 1
+    }
+    assert |b| >= ind &&
+      forall k1: Int :: {b[k1]} k1 >= 0 && k1 < ind ==>
+        b[k1] >= 0 && b[k1] < m && slot(txt, k1 + b[k1]).val != slot(pat, b[k1]).val
+    
+    // MATCH Condition
+    assert ind <= n - m ==> found == 1 &&
+      forall k1: Int, k2: Int :: {slot(pat, k1).val, slot(txt, k2).val}
+        k1 >= 0 && k1 < m && k2 == ind + k1 ==> slot(pat, k1).val == slot(txt, k2).val
+    /* END OF T_I */
+
+    // ---
+    /* BEGIN OF T_B */
+    assert ind >= 0 && ind <= n - m + 1
+    i := 0
+    var bi: Int
+    var output_ind: Int
+    // Verify Mismatch
+    while (i < maxsize())
+      invariant access_read(pat) && access_read(txt)
+      invariant i >= 0
+      invariant |b| >= ind &&
+        forall k1: Int :: {b[k1]} k1 >= 0 && k1 < ind ==>
+          b[k1] >= 0 && b[k1] < m && slot(txt, k1 + b[k1]).val != slot(pat, b[k1]).val
+      invariant ind <= n - m ==>
+        forall k1: Int, k2: Int :: {slot(pat, k1).val, slot(txt, k2).val}
+          k1 >= 0 && k1 < m && k2 == ind + k1 ==> slot(pat, k1).val == slot(txt, k2).val
+    {
+        if (i < ind) {
+            bi := b[i]
+            assert bi >= 0 && bi < m
+            assert slot(pat, bi).val != slot(txt, i+bi).val
+        }
+        i := i + 1
+    }
+
+    i := 0
+    // Verify Match
+    if (ind != n - m + 1) {
+        while (i < maxsize())
+          invariant access_read(pat) && access_read(txt)
+          invariant i >= 0
+          invariant ind <= n - m ==>
+            forall k1: Int, k2: Int :: {slot(pat, k1).val, slot(txt, k2).val}
+              k1 >= 0 && k1 < m && k2 == ind + k1 ==> slot(pat, k1).val == slot(txt, k2).val
+          invariant ind <= n - m
+          invariant forall k1: Int, k2: Int :: {slot(pat, k1).val, slot(txt, k2).val}
+            k1 >= 0 && k1 < m && k2 == ind + k1 ==> slot(pat, k1).val == slot(txt, k2).val
+        {
+            if (i < m) {
+                assert slot(pat, i).val == slot(txt, ind+i).val
+            }
+            i := i + 1
+        }
+        output_ind := ind
+    }
+    output_ind := n
+}

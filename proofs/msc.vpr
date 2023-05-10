@@ -1,0 +1,818 @@
+// Dijkstra's Maximal Strongly Connected (MSC) Algorithm
+
+// The (unspecified) type from which nodes of graphs are drawn
+domain Node { }
+
+domain Graph {
+  // The nodes of the graph g
+  function nodes(g: Graph) : Set[Node]
+
+  // The edges of the graph g, i.e. (n1, n2) is an edge in g iff n2 in adj(g, n1) 
+  function adj(g: Graph, n: Node) : Set[Node]
+  
+  // All target nodes of edges in a graph g are nodes in g
+  axiom nodeAdj {
+    forall g: Graph, n: Node :: {adj(g, n)} n in nodes(g) ==> adj(g, n) subset nodes(g)  
+  }
+
+}
+
+// Datatype used to encode witnesses for strongly connected components in a graph
+// type Comp = pcomp(start: Node, cycl: Comp, end: Node) | ccomp(left: Comp, right: Comp) | ncomp(n: Node)
+// - pcomp(start, cycl, end) encodes a path from 'start' to 'end' that is connected by a cycle 'cycl'
+// - ccomp(left, right) encodes a path segment consisting of two connected paths 'left' and 'right'
+// - ncomp(n) encodes a path/cycle consisting of a single node 'n'
+domain Comp {
+  function pcomp(start: Node, cycl: Comp, end: Node) : Comp
+  function pcomp_start(c: Comp) : Node
+  function pcomp_end(c: Comp) : Node
+  function pcomp_cycl(c: Comp) : Comp
+
+  function ccomp(left: Comp, right: Comp) : Comp
+  function ccomp_left(c: Comp) : Comp
+  function ccomp_right(c: Comp) : Comp
+
+  function ncomp(n: Node) : Comp
+  function ncomp_node(c: Comp) : Node
+  
+  // Constructor types 
+  function type (c : Comp) : Int 
+  unique function typeof_pcomp () : Int
+  unique function typeof_ccomp () : Int
+  unique function typeof_ncomp () : Int
+
+  axiom pcompInjective {
+    forall start: Node, cycl: Comp, end: Node ::
+      {pcomp(start, cycl, end)}
+         pcomp_start(pcomp(start, cycl, end)) == start
+      && pcomp_cycl(pcomp(start, cycl, end)) == cycl
+      && pcomp_end(pcomp(start, cycl, end)) == end
+  }
+
+  axiom ccompInjective {
+    forall left: Comp, right: Comp ::
+      {ccomp(left, right)}
+         ccomp_left(ccomp(left, right)) == left
+      && ccomp_right(ccomp(left, right)) == right      
+  }
+
+  axiom ncompInjective {
+    forall n: Node :: {ncomp(n)}
+      ncomp_node(ncomp(n)) == n
+  }
+
+  axiom type_of_pcomp {
+    forall start: Node, cycl: Comp, end: Node ::
+      {pcomp(start, cycl, end)}
+      type(pcomp(start, cycl, end)) == typeof_pcomp()
+  }  
+
+  axiom type_of_ccomp {
+    forall left: Comp, right: Comp ::
+      {ccomp(left, right)}
+      type(ccomp(left, right)) == typeof_ccomp()
+  }  
+
+  axiom type_of_ncomp {
+    forall n: Node ::
+      {ncomp(n)}
+      type(ncomp(n)) == typeof_ncomp()
+  }
+
+  axiom type_existence {
+    forall c: Comp :: {type(c)} type(c) == typeof_pcomp() || type(c) == typeof_ncomp() || type(c) == typeof_ccomp()
+  }
+}
+
+// Compute the nodes of the path encoded by c
+function comp_nodes(c: Comp) : Set[Node] {
+  type(c) == typeof_pcomp() ?
+    comp_nodes(pcomp_cycl(c)) :
+  type(c) == typeof_ccomp() ?
+    comp_nodes(ccomp_left(c)) union comp_nodes(ccomp_right(c))
+  : Set(ncomp_node(c))
+}
+
+// Compute the adjacency set of the nodes of the path encoded by c
+function comp_adj(g: Graph, c: Comp) : Set[Node] {
+  type(c) == typeof_pcomp() ?
+    comp_adj(g, pcomp_cycl(c)) :
+  type(c) == typeof_ccomp() ?
+    comp_adj(g, ccomp_left(c)) union comp_adj(g, ccomp_right(c))
+  : adj(g, ncomp_node(c))
+}
+
+// Compute the start node of the path encoded by c
+function comp_start(c: Comp) : Node {
+  type(c) == typeof_pcomp() ?
+    pcomp_start(c) : 
+  type(c) == typeof_ccomp() ? 
+    comp_start(ccomp_left(c)) :
+    ncomp_node(c)
+}
+
+// Compute the end node of the path encoded by c
+function comp_end(c: Comp) : Node 
+{
+  type(c) == typeof_pcomp() ?
+    pcomp_end(c) : 
+  type(c) == typeof_ccomp() ? 
+    comp_end(ccomp_right(c)) :    
+    ncomp_node(c)
+
+}
+
+// Predicate that checks whether c encodes a cycle in graph g
+function comp_cycle(g: Graph, c: Comp) : Bool {
+  type(c) == typeof_pcomp() ?
+    pcomp_start(c) in comp_nodes(pcomp_cycl(c)) &&
+    pcomp_end(c) in comp_nodes(pcomp_cycl(c)) &&
+    pcomp_start(c) in adj(g, pcomp_end(c)) &&  
+    comp_cycle(g, pcomp_cycl(c))
+  : type(c) == typeof_ccomp() ?
+    comp_start(ccomp_left(c)) in adj(g, comp_end(ccomp_right(c))) &&  
+    comp_start(ccomp_right(c)) in adj(g, comp_end(ccomp_left(c))) &&
+    comp_path(g, ccomp_left(c)) && 
+    comp_path(g, ccomp_right(c))
+  : ncomp_node(c) in nodes(g)
+} 
+
+// Predicate that checks whether c encodes a path in graph g
+function comp_path(g: Graph, c: Comp) : Bool {
+  type(c) == typeof_pcomp() ?
+    pcomp_start(c) in comp_nodes(pcomp_cycl(c)) &&
+    pcomp_end(c) in comp_nodes(pcomp_cycl(c)) &&
+    comp_cycle(g, pcomp_cycl(c))
+  : type(c) == typeof_ccomp() ?
+      comp_start(ccomp_right(c)) in adj(g, comp_end(ccomp_left(c))) &&
+      comp_path(g, ccomp_left(c)) && 
+      comp_path(g, ccomp_right(c))
+    : ncomp_node(c) in nodes(g)
+}
+
+// Pairs of source node / target node set (representing the edges of a node in the graph)
+domain Edges {
+  function edges(src: Node, trgs: Set[Node]) : Edges
+
+  function edges_src(e: Edges) : Node
+  function edges_trgs(e: Edges) : Set[Node]
+
+  axiom edgesInjective {
+    forall src: Node, trgs: Set[Node] :: 
+      {edges(src, trgs)} 
+        edges_src(edges(src, trgs)) == src && 
+        edges_trgs(edges(src, trgs)) == trgs  
+  }
+
+  axiom edgesSurjective {
+    forall e: Edges :: {edges_src(e)} {edges_trgs(e)} 
+      edges(edges_src(e), edges_trgs(e)) == e
+  }
+
+}
+
+// Compute the union of all target node sets of the sequence of edge sets es
+function edges_adj(es: Seq[Edges]) : Set[Node] {
+  |es| > 0 ? edges_trgs(es[|es|-1]) union edges_adj(es[..|es|-1]) : Set()
+}
+
+// Lemma relating two edge sequences es1 and es2 with their concatenation es1 ++ es2
+method lem_edges_concat(es1: Seq[Edges], es2: Seq[Edges])
+  ensures edges_adj(es1 ++ es2) == edges_adj(es1) union edges_adj(es2)
+{
+  if (|es2| > 0) {
+    assert edges_adj(es2) == edges_trgs(es2[|es2|-1]) union edges_adj(es2[..|es2|-1])
+    lem_edges_concat(es1, es2[..|es2|-1])
+
+    assert es1 ++ es2 == (es1 ++ es2[..|es2|-1]) ++ Seq(es2[|es2|-1])
+    assert es1 ++ es2[..|es2|-1] == (es1 ++ es2)[..|es1 ++ es2|-1]
+    assert edges_adj(es1 ++ es2) == edges_trgs(es2[|es2|-1]) union edges_adj(es1 ++ es2[..|es2|-1])
+  } 
+}
+
+
+// The elements of the chains constructed by the MSC algorithm. These are pairs (c, es) where 
+// * c encodes non-empty cycle. That is, c witnesses that the nodes in c form a strong component
+// * es are the edge sets for the nodes in c that still need to be processed
+domain Elem {
+  function elem(inn: Node, outn: Node, c: Comp, es: Seq[Edges]) : Elem
+  function elem_inn(e: Elem) : Node
+  function elem_outn(e: Elem) : Node
+  function elem_sc(e: Elem) : Comp
+  function elem_adj(e: Elem) : Seq[Edges]
+
+  axiom elemInjective {
+    forall inn: Node, outn: Node, c: Comp, es: Seq[Edges] :: 
+      {elem(inn, outn, c, es)} 
+        elem_inn(elem(inn, outn, c, es)) == inn && 
+        elem_outn(elem(inn, outn, c, es)) == outn && 
+        elem_sc(elem(inn, outn, c, es)) == c && 
+        elem_adj(elem(inn, outn, c, es)) == es 
+  }
+
+  axiom elemSurjective {
+    forall e: Elem :: {elem_inn(e)} {elem_outn(e)} {elem_sc(e)} {elem_adj(e)} 
+      elem(elem_inn(e), elem_outn(e), elem_sc(e), elem_adj(e)) == e
+  }
+}
+
+// Computes set of nodes occurring on path p
+function path_nodes(p: Seq[Node]) : Set[Node]
+{
+  |p| > 0 ? Set(p[0]) union path_nodes(p[1..]) : Set[Node]() 
+}
+
+// Computes the set of nodes adjacent to nodes on path p in graph g
+function path_adj(g: Graph, p: Seq[Node]) : Set[Node]
+{
+  |p| > 0 ? adj(g, p[0]) union path_adj(g, p[1..]) : Set[Node]()
+}
+
+// Expresses that p is a path in graph g
+function path(g: Graph, p: Seq[Node]) : Bool 
+  ensures path(g, Seq())
+  ensures |p| == 1 ==> path(g, p)
+{
+  (|p| > 0 ==> p[0] in nodes(g) && path(g, p[1..]))
+  && (|p| > 1 ==> p[1] in adj(g, p[0]))
+}
+
+// Lemma stating that all target nodes of edges leaving nodes in a path p of g are nodes in g
+method lem_path_adj_nodes(g: Graph, p: Seq[Node])
+  requires path(g, p)
+  ensures path_adj(g, p) subset nodes(g)
+{
+  if (|p| > 0) {
+    lem_path_adj_nodes(g, p[1..])
+  }
+}
+
+//  Lemma stating that more nodes in a path also yield larger sets of target nodes
+method lem_path_adj_subset(g: Graph, p: Seq[Node], q: Seq[Node])
+  requires path_nodes(p) subset path_nodes(q)
+  ensures path_adj(g, p) subset path_adj(g, q)
+{
+  if (|p| > 0) {
+    assert |q| > 0
+    if (p[0] != q[0]) {
+      assert path_nodes(Seq(p[0])) == Set(p[0]) union path_nodes(Seq(p[0])[1..])
+      lem_path_adj_subset(g, Seq(p[0]), q[1..])
+    } 
+    lem_path_adj_subset(g, p[1..], q)
+  }
+}
+
+method lem_path_adj_equal(g: Graph, p: Seq[Node], q: Seq[Node])
+  requires path_nodes(p) == path_nodes(q)
+  ensures path_adj(g, p) == path_adj(g, q)
+{
+  lem_path_adj_subset(g, p, q)
+  lem_path_adj_subset(g, q, p)
+}
+
+// Lemma relating two paths p and q with their concatenation p ++ q
+method lem_path_concat(g: Graph, p: Seq[Node], q: Seq[Node])
+  requires path(g, p) && path(g, q)
+  requires (|p| > 0 && |q| > 0) ==> q[0] in adj(g, p[|p|-1])
+  ensures path(g, p) && path(g, q)
+  ensures path(g, p ++ q) && path_nodes(p ++ q) == path_nodes(p) union path_nodes(q)
+  ensures path_adj(g, p ++ q) == path_adj(g, p) union path_adj(g, q)
+{
+  if (|p| > 0) {
+    lem_path_concat(g, p[1..], q)
+    assert path_nodes(Seq(p[0]) ++ (p[1..] ++ q)) == Set(p[0]) union path_nodes((Seq(p[0]) ++ (p[1..] ++ q))[1..])
+    assert (Seq(p[0]) ++ (p[1..] ++ q))[1..] == p[1..] ++ q
+    assert Seq(p[0]) ++ (p[1..] ++ q) == p ++ q
+  } 
+}
+
+// Lemma relating a path p ++ q with its constituent paths p and q (TODO: merge with previous lemma)
+method lem_path_split(g: Graph, p: Seq[Node], q: Seq[Node])
+  requires path(g, p ++ q)
+  ensures path(g, p ++ q) && path(g, p) && path(g, q) && path_nodes(p ++ q) == path_nodes(p) union path_nodes(q)
+  ensures path_adj(g, p ++ q) == path_adj(g, p) union path_adj(g, q)
+  ensures (|p| > 0 && |q| > 0) ==> q[0] in adj(g, p[|p|-1])
+{
+  if (|p| > 0) {
+    assert path_nodes(p ++ q) == (Set((p ++ q)[0]) union path_nodes((p ++ q)[1..]))
+    assert p[1..] ++ q == (p ++ q)[1..]
+    lem_path_split(g, p[1..], q)
+    assert path_nodes(Seq(p[0]) ++ (p[1..] ++ q)) == Set(p[0]) union path_nodes((Seq(p[0]) ++ (p[1..] ++ q))[1..])
+    assert (Seq(p[0]) ++ (p[1..] ++ q))[1..] == p[1..] ++ q
+    assert path_nodes(Seq(p[0]) ++ (p[1..] ++ q)) == Set(p[0]) union path_nodes(p[1..] ++ q)
+    assert Seq(p[0]) ++ (p[1..] ++ q) == p ++ q
+  } 
+}
+
+// Helper function that rotates a cyclic path p1 ++ p2 containing a node w1 until w1 is at the head.
+// The returned paths q1 and q2 satisfy that q1 ++ q2 is the desired rotation of p1 ++ p2.
+// The node w2 is the original head of p1 ++ p2, which is also guaranteed to be the last node in q1.
+method rotate_until(g: Graph, p1: Seq[Node], p2: Seq[Node], w1: Node, w2: Node) 
+  returns (q1: Seq[Node], q2: Seq[Node])
+  requires |p1| > 0 && path(g, p1 ++ p2) && (p1 ++ p2)[0] == (p1 ++ p2)[|p1 ++ p2|-1]  
+  requires w1 in path_nodes(p1) && p1[|p1|-1] == w2
+  ensures path(g, q1 ++ q2) && path_nodes(p1 ++ p2) == path_nodes(q1 ++ q2)
+  ensures |q1| > 0 && q1[0] == w1 && (q1 ++ q2)[|(q1 ++ q2)|-1] == w1 && q1[|q1|-1] == w2
+{  
+  if (w1 == p1[0]) {
+    q1 := p1
+    q2 := p2
+ } else {
+    assert w1 in path_nodes(p1[1..])
+    assert p1[1..] ++ (p2 ++ Seq(p1[1])) == (p1[1..] ++ p2) ++ Seq(p1[1]) 
+    assert p1[1..] ++ p2 == (p1 ++ p2)[1..]
+    lem_path_concat(g, p1[1..] ++ p2, Seq(p1[1]))
+    q1, q2 := rotate_until(g, p1[1..], p2 ++ Seq(p1[1]), w1, w2)
+    assert path_nodes(p1 ++ p2) == Set(p1[0]) union path_nodes((p1 ++ p2)[1..])
+    assert p1[1..] ++ p2 == (p1 ++ p2)[1..]
+    assert (p1 ++ p2)[1..] == (p1 ++ p2)[1..|p1 ++ p2|-1] ++ Seq((p1[1..] ++ p2)[|p1[1..] ++ p2|-1])
+    lem_path_split(g, (p1 ++ p2)[1..|p1 ++ p2|-1], Seq((p1[1..] ++ p2)[|p1[1..] ++ p2|-1]))
+    assert path_nodes(p1[1..] ++ p2) == path_nodes((p1 ++ p2)[1..|p1 ++ p2|-1]) union path_nodes(Seq((p1[1..] ++ p2)[|p1[1..] ++ p2|-1]))
+    
+    lem_path_split(g, p1[1..] ++ p2, Seq(p1[1]))
+    assert path_nodes(Seq(p1[1])) == Set(p1[1]) union path_nodes(Seq(p1[1])[1..])
+  }
+}
+
+// Expresses that p represents a strongly connected component in graph g.
+define is_sc(g, p)
+  path(g, p) && |p| > 0 && p[0] == p[|p|-1]
+
+// Expresses that component p represents a strongly connected component in graph g.
+// If b is false, then p only needs to be a non-empty path in g.
+define is_sc_comp(g, p, b)  
+  b ? comp_cycle(g, p) : comp_path(g, p)
+
+// Expresses that p represents a maximal strongly connected component in graph g
+define is_msc(g, p)
+  is_sc(g, p)
+  && (forall q: Seq[Node] :: (path(g, q) && |q| > 0 && q[0] in path_nodes(p) && q[|q|-1] in path_nodes(p)) ==> path_nodes(q) subset path_nodes(p))
+
+// Expresses that mscs is a sequence of MSCs in graph g
+predicate msc_seq(g: Graph, mscs: Seq[Seq[Node]]) {
+  |mscs| > 0 ==> is_msc(g, mscs[|mscs|-1]) && msc_seq(g, mscs[..|mscs|-1])
+}
+
+// Expresses that c is a strong component in graph g
+// with nodes in vs2 and outgoing edges targeting only (cadj union vs1) 
+define msc_comp(g, c, cadj, vs1, vs2, b)
+  is_sc_comp(g, c, b)
+  && comp_adj(g, c) subset (cadj union vs1 union comp_nodes(c))
+  && comp_nodes(c) subset vs2
+
+
+// Expresses that mscs is a "directed" sequence of strongly connected components in graph g, covering nodes vs1
+predicate msc_comp_seq(g: Graph, mscs: Seq[Comp], vs1: Set[Node])
+{
+  |mscs| > 0 ? msc_comp(g, mscs[|mscs|-1], Set(), vs1, vs1, true)
+               && msc_comp_seq(g, mscs[..|mscs|-1], vs1 setminus comp_nodes(mscs[|mscs|-1])) 
+             : vs1 == Set()
+}
+
+// Expresses that c is a strong component in graph g
+// with nodes in vs1 and outgoing edges targeting only vs1.
+// (similar to msc_comp above, but using an explicit path c as a witness for the strong component)
+define msc_path(g, c, vs1)
+  is_sc(g, c)
+  && path_adj(g, c) subset vs1
+  && path_nodes(c) subset vs1
+
+// Expresses that mscs is a "directed" sequence of strongly connected components in graph g, covering nodes vs1
+// (like msc_comp_seq above, but using explicit paths as witnesses for the strong components)
+predicate msc_path_seq(g: Graph, mscs: Seq[Seq[Node]], vs1: Set[Node])
+{
+  |mscs| > 0 ? msc_path(g, mscs[|mscs|-1], vs1)
+               && msc_path_seq(g, mscs[..|mscs|-1], vs1 setminus path_nodes(mscs[|mscs|-1])) 
+             : vs1 == Set()
+}
+
+// Auxiliary lemma used in the proof of lem_msc_codes below
+method lem_msc_path_closed(g: Graph, mscs: Seq[Seq[Node]], q: Seq[Node], vs1: Set[Node])
+  requires msc_path_seq(g, mscs, vs1)
+  requires path(g, q) && |q| > 0 && q[0] in vs1 && !(q[|q|-1] in vs1)
+  ensures false
+{
+  unfold msc_path_seq(g, mscs, vs1)
+  if (|mscs| > 0) {
+    var c: Seq[Node]
+    c := mscs[|mscs|-1]
+    if (q[0] in path_nodes(c)) {
+      assert path_nodes(Seq(q[0])) == Set(q[0]) union path_nodes(Seq(q[0])[1..])
+      lem_path_adj_subset(g, Seq(q[0]), c)
+      fold msc_path_seq(g, mscs, vs1)
+      lem_msc_path_closed(g, mscs, q[1..], vs1)
+    } else {
+      assert !(q[0] in path_nodes(mscs[|mscs|-1]))
+      lem_msc_path_closed(g, mscs[..|mscs|-1], q, vs1 setminus path_nodes(mscs[|mscs|-1]))
+    } 
+  }
+}
+
+// Auxiliary lemma used in the proof of lem_msc_path_seq_implies_msc_seq below
+method lem_msc_closed(g: Graph, mscs: Seq[Seq[Node]], q: Seq[Node], vs1: Set[Node])
+  requires |mscs| > 0
+  requires |q| > 0 && q[0] in path_nodes(mscs[|mscs|-1]) && q[|q|-1] in path_nodes(mscs[|mscs|-1])
+  requires path(g, q) && msc_path_seq(g, mscs, vs1)
+  ensures path_nodes(q) subset path_nodes(mscs[|mscs|-1])
+  ensures msc_path_seq(g, mscs, vs1)
+{
+  if (|q| > 1) {
+    assert path_nodes(Seq(q[0])) == Set(q[0]) union path_nodes(Seq(q[0])[1..])
+    lem_path_adj_subset(g, Seq(q[0]), mscs[|mscs|-1])
+    assert q[1] in path_adj(g, mscs[|mscs|-1])
+    assert unfolding msc_path_seq(g, mscs, vs1) in q[1] in vs1
+    if (q[1] in path_nodes(mscs[|mscs|-1])) {
+      lem_msc_closed(g, mscs, q[1..], vs1)
+    } else {
+      unfold msc_path_seq(g, mscs, vs1)
+      lem_msc_path_closed(g, mscs[..|mscs|-1], q[1..], vs1 setminus path_nodes(mscs[|mscs|-1]))
+    }
+  } else {
+    assert path_nodes(q) == Set(q[0]) union path_nodes(q[1..])
+  }
+}
+
+// Lemma stating that directed sequences of strong components are maximal strong components
+// (The induction step in the proof relates to Theorem 2a in Dijkstra's book.)
+method lem_msc_path_seq_implies_msc_seq(g: Graph, mscs: Seq[Seq[Node]], vs1: Set[Node])
+  requires msc_path_seq(g, mscs, vs1)
+  ensures msc_seq(g, mscs)
+{
+  if (|mscs| > 0) {
+    var p: Seq[Node]
+    p := mscs[|mscs|-1]
+    // prove: forall q: Seq[Node] :: (path(g, q) && |q| > 0 && q1[0] in path_nodes(p) && q[|q|-1] in path_nodes(p)) ==> path_nodes(q) subset path_nodes(p)
+    var q: Seq[Node]
+    if (path(g, q) && |q| > 0 && q[0] in path_nodes(p) && q[|q|-1] in path_nodes(p)) {
+      lem_msc_closed(g, mscs, q, vs1)
+    }
+    unfold msc_path_seq(g, mscs, vs1)
+    assert (path(g, q) && |q| > 0 && q[0] in path_nodes(p) && q[|q|-1] in path_nodes(p)) ==> path_nodes(q) subset path_nodes(p)
+    // end prove. Can now assume forall q: ...
+    assume forall q1: Seq[Node] :: (path(g, q1) && |q1| > 0 && q1[0] in path_nodes(p) && q1[|q1|-1] in path_nodes(p)) ==> path_nodes(q1) subset path_nodes(p)
+    lem_msc_path_seq_implies_msc_seq(g, mscs[..|mscs|-1], vs1 setminus path_nodes(mscs[|mscs|-1]))
+    fold msc_seq(g, mscs)
+  } else {
+    fold msc_seq(g, Seq())
+  }
+}
+
+// Lemma / function that decodes a Comp witness of a path into an actual path
+method lem_decode_path(g: Graph, c: Comp)
+  returns (p: Seq[Node])
+  requires comp_path(g, c) 
+  ensures path(g, p) && |p| > 0 && comp_nodes(c) == path_nodes(p) && comp_adj(g, c) == path_adj(g, p)
+  ensures p[0] == comp_start(c) && p[|p|-1] == comp_end(c)
+{
+  if (type(c) == typeof_ccomp()) {
+      var pl: Seq[Node]
+      pl := lem_decode_path(g, ccomp_left(c))
+      var pr: Seq[Node]
+      pr := lem_decode_path(g, ccomp_right(c))
+      p := pl ++ pr
+      lem_path_concat(g, pl, pr)
+      assert path_nodes(p) == path_nodes(pl ++ pr)
+      lem_path_adj_equal(g, pl ++ pr, p)
+  } else {
+    if (type(c) == typeof_pcomp()) {
+      var pc: Seq[Node]
+      pc := lem_decode_cycle(g, pcomp_cycl(c))
+      var p1: Seq[Node]
+      var p2: Seq[Node]
+      p1, p2 := rotate_until(g, pc, Seq(), pcomp_end(c), pc[0]) 
+      var p11: Seq[Node]
+      var p21: Seq[Node]
+      p11, p21 := rotate_until(g, p1 ++ p2, Seq(), pcomp_start(c), pcomp_end(c)) 
+      p := p11 ++ p21 ++ p11[1..]
+      lem_path_split(g, p11, p21)
+      lem_path_concat(g, p11 ++ p21, p11[1..])
+      lem_path_adj_equal(g, p, pc)
+    } else {
+      p := Seq(ncomp_node(c))
+      assert path_nodes(p) == Set(ncomp_node(c)) union path_nodes(p[1..])
+      assert path_adj(g, p) == adj(g, ncomp_node(c)) union path_adj(g, p[1..])
+    }
+  }
+}
+
+// Lemma / function that decodes a Comp witness of a cycle into an actual cyclic path
+method lem_decode_cycle(g: Graph, c: Comp)
+  returns (p: Seq[Node])
+  requires comp_cycle(g, c) 
+  ensures is_sc(g, p) && comp_nodes(c) == path_nodes(p) && comp_adj(g, c) == path_adj(g, p)
+  ensures p[0] == comp_start(c)
+{
+  if (type(c) == typeof_ccomp()) {
+      var pl: Seq[Node]
+      pl := lem_decode_path(g, ccomp_left(c))
+      var pr: Seq[Node]
+      pr := lem_decode_path(g, ccomp_right(c))
+      p := pl ++ pr ++ Seq(pl[0])
+      lem_path_concat(g, pl, pr)
+      assert path_nodes(Seq(pl[0])) == Set(pl[0]) union path_nodes(Seq(pl[0])[1..])
+      lem_path_concat(g, pl ++ pr, Seq(pl[0]))
+      assert path_nodes(p) == path_nodes(pl ++ pr)
+      lem_path_adj_equal(g, pl ++ pr, p)
+  } else {
+    if (type(c) == typeof_pcomp()) {
+      var pc: Seq[Node]
+      pc := lem_decode_cycle(g, pcomp_cycl(c))
+      var p1: Seq[Node]
+      var p2: Seq[Node]
+      p1, p2 := rotate_until(g, pc, Seq(), pcomp_start(c), pc[0]) 
+      p := p1 ++ p2
+      lem_path_adj_equal(g, p, pc)
+    } else {
+      p := Seq(ncomp_node(c))
+      assert path_nodes(p) == Set(ncomp_node(c)) union path_nodes(p[1..])
+      assert path_adj(g, p) == adj(g, ncomp_node(c)) union path_adj(g, p[1..])
+    }
+  }
+}
+
+
+method lem_msc_comp_seq_implies_msc_path_seq(g: Graph, mscs: Seq[Comp], vs1: Set[Node])
+  returns (mscs1: Seq[Seq[Node]])
+  requires msc_comp_seq(g, mscs, vs1)
+  ensures msc_path_seq(g, mscs1, vs1)
+{
+  unfold msc_comp_seq(g, mscs, vs1)
+  if (|mscs| > 0) {
+    var p : Seq[Node]
+    var mscst : Seq[Seq[Node]]
+    mscst := lem_msc_comp_seq_implies_msc_path_seq(g, mscs[..|mscs|-1], vs1 setminus comp_nodes(mscs[|mscs|-1]))
+    p := lem_decode_cycle(g, mscs[|mscs|-1])
+    
+    mscs1 := mscst ++ Seq(p)
+    fold msc_path_seq(g, mscs1, vs1)
+  } else {
+    mscs1 := Seq()
+    fold msc_path_seq(g, mscs1, vs1)
+  }
+}  
+
+// Theorem stating that directed sequences of strongly connected components are sequences of MSCs
+method thm_msc_comp_seq_implies_msc_seq(g: Graph, mscs: Seq[Comp])
+  returns (mscs1: Seq[Seq[Node]])
+  requires msc_comp_seq(g, mscs, nodes(g))
+  ensures msc_seq(g, mscs1)
+{
+  mscs1 := lem_msc_comp_seq_implies_msc_path_seq(g, mscs, nodes(g))
+  lem_msc_path_seq_implies_msc_seq(g, mscs1, nodes(g))
+}
+
+
+// Expresses that e is a valid element of the chain of strong components constructed by the MSC algorithm
+// succ is the node in the next younger component preceeding e in the chain to which e connects via an edge
+// vs1 is the set of nodes already identified as MSCs, 
+// vs2 is the set of nodes of the subchain starting in e (i.e. all nodes that are in e or components older than e)
+// if b is true then e is a strong component, otherwise e is just a path in g.
+define valid_elem(g, e, succ, vs1, vs2, b)
+  elem_inn(e) in comp_nodes(elem_sc(e)) 
+  && elem_outn(e) in comp_nodes(elem_sc(e)) 
+  && edges_adj(elem_adj(e)) subset comp_adj(g, elem_sc(e))
+  && (forall i: Int :: 0 <= i && i < |elem_adj(e)| ==> edges_trgs(elem_adj(e)[i]) subset adj(g, edges_src(elem_adj(e)[i])))
+  && (forall i: Int :: 0 <= i && i < |elem_adj(e)| ==> edges_src(elem_adj(e)[i]) in comp_nodes(elem_sc(e)))
+  && msc_comp(g, elem_sc(e), Set(succ) union edges_adj(elem_adj(e)), vs1, vs2, b)
+
+
+// Expresses that scs is a valid (sub)chain.
+predicate chain_rec(g: Graph, scs: Seq[Elem], succ: Node, vs1: Set[Node], vs2: Set[Node])
+{
+  |scs| > 0 ? valid_elem(g, scs[|scs|-1], succ, vs1, vs2, true)
+              && succ in adj(g, elem_outn(scs[|scs|-1]))
+              && chain_rec(g, scs[..|scs|-1], elem_inn(scs[|scs|-1]), vs1, vs2 setminus comp_nodes(elem_sc(scs[|scs|-1])))
+            : vs2 == Set()
+}
+
+
+// The key invariant of the chain scs in the MSC algorithm
+// The set vs1 contains the nodes that are already covered by MSCs
+// The set vs2 is the union of all the nodes in the components of scs 
+define chain(g, scs, vs1, vs2)
+  |scs| > 0 ? valid_elem(g, scs[|scs|-1], elem_inn(scs[|scs|-1]), vs1, vs2, true)
+              && chain_rec(g, scs[..|scs|-1], elem_inn(scs[|scs|-1]), vs1, vs2 setminus comp_nodes(elem_sc(scs[|scs|-1]))) 
+             : vs2 == Set[Node]()
+
+// Lemma stating that the chain_rec predicate is monotone in vs1
+method lem_chain_rec_mono_v1(g: Graph, scs: Seq[Elem], succ: Node, vs1: Set[Node], vs2: Set[Node], vs11: Set[Node])
+  requires chain_rec(g, scs, succ, vs1, vs2) && vs1 subset vs11
+  ensures chain_rec(g, scs, succ, vs11, vs2)
+{
+  unfold chain_rec(g, scs, succ, vs1, vs2)
+  if (|scs| > 0) {    
+    lem_chain_rec_mono_v1(g, scs[..|scs|-1], elem_inn(scs[|scs|-1]), vs1, vs2 setminus comp_nodes(elem_sc(scs[|scs|-1])), vs11)
+  }
+  fold chain_rec(g, scs, succ, vs11, vs2)
+}
+
+// Choose an element from the set vs if non-empty
+function select(vs: Set[Node]) : Node
+  ensures result in vs || vs == Set()
+
+// Dijkstra's MSC algorithm
+method msc(g: Graph)
+  returns (mscs: Seq[Seq[Node]])
+  ensures msc_seq(g, mscs)
+{
+  fold msc_comp_seq(g, Seq(), Set())
+  var mscs1: Seq[Comp]
+  mscs1 := msc_outer(g, Seq(), Set(), nodes(g))
+  mscs := thm_msc_comp_seq_implies_msc_seq(g, mscs1)
+}
+
+// Outer loop of MSC algorithm
+// * mscs is the sequence of MSCs that have already been found. The set of its nodes is vs1.
+// * vs3 is the set of nodes that have not yet been added to a component.
+method msc_outer(g: Graph, mscs: Seq[Comp], vs1: Set[Node], vs3: Set[Node])
+  returns (mscs1: Seq[Comp])
+  requires msc_comp_seq(g, mscs, vs1)
+  requires nodes(g) == vs1 union vs3 && vs1 intersection vs3 == Set()
+  ensures msc_comp_seq(g, mscs1, nodes(g))
+{
+  var v: Node
+  v := select(vs3)
+
+  if (v in vs3) {
+    var c : Comp
+    c := ncomp(v)
+    var e : Elem
+    e := elem(v, v, c, Seq(edges(v, adj(g, v))))
+    
+    var vs11 : Set[Node]
+    var vs31 : Set[Node]
+    fold chain_rec(g, Seq[Elem](), elem_inn(e), vs1, Set())
+    assert edges_adj(Seq(edges(v, adj(g, v)))) == adj(g, v) union edges_adj(Seq(edges(v, adj(g, v)))[1..])
+    mscs1, vs11, vs31 :=  msc_inner(g, mscs, Seq(e), vs1, Set(v), vs3 setminus Set(v))
+    mscs1 := msc_outer(g, mscs1, vs11, vs31)
+  } else {
+    mscs1 := mscs
+  }
+}
+
+// Inner loop of MSC algorithm
+// * mscs is the sequence of MSCs that have already been found. The set of its nodes is vs1.
+// * scs is the chain of components currently being processed. The set of its nodes is vs2.
+// * vs3 is the set of nodes that have not yet been added to a component.
+method msc_inner(g: Graph, mscs: Seq[Comp], scs: Seq[Elem], vs1: Set[Node], vs2: Set[Node], vs3: Set[Node])
+  returns (mscs1: Seq[Comp], vs11: Set[Node], vs31: Set[Node])
+  requires msc_comp_seq(g, mscs, vs1)
+  requires chain(g, scs, vs1, vs2)
+  requires nodes(g) == vs1 union vs3 union vs2 
+  requires vs1 intersection (vs2 union vs3) == Set()
+  requires vs2 intersection vs3 == Set()
+  ensures msc_comp_seq(g, mscs1, vs11)
+  ensures nodes(g) == vs11 union vs31
+  ensures vs11 intersection vs31 == Set()
+ { 
+  if (|scs| > 0) {
+    // Chain is nonempty: extract the last element e = (c, cadj) from the chain.
+    var e: Elem
+    e := scs[|scs| - 1]
+    var c: Comp
+    c := elem_sc(e)
+
+    var es: Seq[Edges]
+    es := elem_adj(e)
+    
+    if (|es| > 0) {
+      var trgs: Set[Node]
+      trgs := edges_trgs(es[|es|-1])
+      var v: Node
+      v := edges_src(es[|es|-1])
+
+      var w: Node
+      w := select(trgs)
+
+      if (w in trgs) {
+        // There is an unprocessed edge (v,w) for v in c.
+
+        // Update e by removing w from cadj
+        var e1: Elem
+        var es1: Seq[Edges]
+        es1 := es[..|es|-1] ++ Seq(edges(v, trgs setminus Set(w)))
+        e1 := elem(elem_inn(e), v, c, es1)
+
+        assert es1[..|es1|-1] == es[..|es|-1]
+        assert edges_adj(es) == edges_trgs(es[|es|-1]) union edges_adj(es[..|es|-1])
+        assert edges_adj(es1) == edges_trgs(es1[|es1|-1]) union edges_adj(es1[..|es1|-1])
+        
+        if (w in vs1) {
+          // w is already in an MSC: skip
+          var new_scs: Seq[Elem]
+          new_scs := scs[..|scs|-1] ++ Seq(e1)
+          mscs1, vs11, vs31 := msc_inner(g, mscs, new_scs, vs1, vs2, vs3)
+        } else {
+          if (w in vs2) {
+            // w is in a component of the chain: compact
+            var new_scs: Seq[Elem]
+            if (w in comp_nodes(c)) {
+              new_scs := scs[..|scs|-1] ++ Seq(e1)
+              mscs1, vs11, vs31 := msc_inner(g, mscs, new_scs, vs1, vs2, vs3)
+            } else {
+              var c1: Comp
+              c1 := pcomp(elem_inn(e), c, v)
+              new_scs := compact(g, w, scs[..|scs|-1], c1, es, vs1, vs2)
+              mscs1, vs11, vs31 := msc_inner(g, mscs, new_scs, vs1, vs2, vs3)
+            }
+          } else {
+            // w is in vs3: extend the chain with a new component ew containing w.
+            var cw : Comp
+            cw := ncomp(w)
+            var ew : Elem
+            ew := elem(w, w, cw, Seq(edges(w, adj(g, w))))
+            var new_scs: Seq[Elem]
+            new_scs := scs[..|scs|-1] ++ Seq(e1)
+          
+            assert edges_adj(Seq(edges(w, adj(g, w)))) == adj(g, w) union edges_adj(Seq(edges(w, adj(g, w)))[1..])
+            fold chain_rec(g, new_scs, w, vs1, vs2)
+          
+            mscs1, vs11, vs31 := msc_inner(g, mscs, new_scs ++ Seq(ew), vs1, vs2 union Set(w), vs3 setminus Set(w))
+          }
+        } 
+      } else {
+        // No edges left to process for node v in c.
+        // Update e by removing the last edge set
+        var e1: Elem
+        var es1: Seq[Edges]
+        es1 := es[..|es|-1]
+        e1 := elem(elem_inn(e), v, c, es1)
+        mscs1, vs11, vs31 := msc_inner(g, mscs, scs[..|scs|-1] ++ Seq(e1), vs1, vs2, vs3)
+      }
+    } else {
+      // There are no unprocessed edges left for c: move c from scs to mscs
+      vs11 := vs1 union comp_nodes(c)
+      var vs21 : Set[Node]
+      vs21 := vs2 setminus comp_nodes(c)
+      mscs1 := mscs ++ Seq(c)
+      fold msc_comp_seq(g, mscs1, vs11)
+      lem_chain_rec_mono_v1(g, scs[..|scs|-1], elem_inn(e), vs1, vs2 setminus comp_nodes(c), vs11)
+      unfold chain_rec(g, scs[..|scs|-1], elem_inn(e), vs11, vs2 setminus comp_nodes(c))
+      mscs1, vs11, vs31 := msc_inner(g, mscs1, scs[..|scs|-1], vs11, vs21, vs3)
+    }
+
+  } else {
+    // Chain is empty: return to outer loop
+    mscs1 := mscs
+    vs11 := vs1
+    vs31 := vs3
+  }
+}
+
+
+
+method compact(g: Graph, w: Node, scs: Seq[Elem], c: Comp, es: Seq[Edges], vs1: Set[Node], vs2: Set[Node])
+  returns (new_scs: Seq[Elem])
+  requires w in vs2 setminus comp_nodes(c) && w in adj(g, comp_end(c))
+  requires comp_path(g, c) && |es| > 0
+  requires chain_rec(g, scs, comp_start(c), vs1, vs2 setminus comp_nodes(c))
+  requires valid_elem(g, elem(comp_start(c), comp_end(c), c, es), comp_start(c), vs1, vs2, false)
+  ensures chain(g, new_scs, vs1, vs2)
+{
+  unfold chain_rec(g, scs, comp_start(c), vs1, vs2 setminus comp_nodes(c))
+
+  var e1: Elem
+  e1 := scs[|scs| - 1]
+
+  var es1: Seq[Edges]
+  es1 := elem_adj(e1) ++ es
+  lem_edges_concat(elem_adj(e1), es)   
+
+  if (w in comp_nodes(elem_sc(e1))) {
+    var c1: Comp 
+    c1 := ccomp(pcomp(w, elem_sc(e1), elem_outn(e1)), c)
+
+    assert comp_start(ccomp_right(c1)) in adj(g, comp_end(ccomp_left(c1))) &&
+      comp_path(g, ccomp_left(c1)) && 
+      comp_start(ccomp_left(c1)) in comp_nodes(ccomp_left(c1)) && 
+      comp_end(ccomp_left(c1)) in comp_nodes(ccomp_left(c1)) &&
+      comp_path(g, ccomp_right(c1))
+
+    var trgs: Set[Node]
+    trgs := edges_trgs(es1[|es1|-1])
+    var v: Node
+    v := edges_src(es1[|es1|-1])
+    var es2: Seq[Edges]
+    es2 := es1[..|es1|-1] ++ Seq(edges(v, trgs setminus Set(w)))
+
+    e1 := elem(elem_inn(e1), v, c1, es1)
+ 
+    assert comp_nodes(c1) == comp_nodes(ccomp_left(c1)) union comp_nodes(ccomp_right(c1))
+    assert comp_adj(g, c1) == comp_adj(g, ccomp_left(c1)) union comp_adj(g, ccomp_right(c1))
+    
+    new_scs := scs[..|scs|-1] ++ Seq(e1)
+  } else {  
+    var c1: Comp 
+    c1 := ccomp(pcomp(elem_inn(e1), elem_sc(e1), elem_outn(e1)), c)
+
+    assert comp_start(ccomp_right(c1)) in adj(g, comp_end(ccomp_left(c1))) &&
+      comp_path(g, ccomp_left(c1)) && 
+      comp_start(ccomp_left(c1)) in comp_nodes(ccomp_left(c1)) && 
+      comp_end(ccomp_left(c1)) in comp_nodes(ccomp_left(c1)) &&
+      comp_path(g, ccomp_right(c1))
+
+    assert comp_adj(g, c1) == comp_adj(g, ccomp_left(c1)) union comp_adj(g, ccomp_right(c1))
+
+    new_scs := compact(g, w, scs[..|scs|-1], c1, es1, vs1, vs2)
+  }
+}

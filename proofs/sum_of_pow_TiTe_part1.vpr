@@ -1,0 +1,197 @@
+// Please verify using Silicon!
+
+// I separate this TiTe proof into 2 parts:
+// Part 1 infers all useful assertions that can be derived from T_i.
+// Part 2 uses these assertions (through assumes) to prove that T_b holds.
+
+// Carbon seems to have trouble proving some of the invariants in Part 1,
+// while Silicon is painfully slow proving Part 2.
+// So, I decide to separate the proof into 2 parts and use different
+// backend solver to prove them.
+
+import "sum_of_pow_prop.vpr"
+
+method sum_of_powers(r: Int, k: Int, x: IArray, y: IArray, cor_y: IArray)
+    requires 0 < k && 0 < r && r <= max_r()
+    requires access(x) && access(y) && access(cor_y)
+    requires len(x) == max_r() + 1 && len(y) == max_r() + 1 && len(cor_y) == max_r() + 1
+    ensures access(x) && access(y) && access(cor_y)
+{
+    // Beginning of T_i
+    var x1: Int := 0
+    var y1: Int := 0
+    var tmp: Int := 0
+
+    assert 2 * pow(max_r(), k) >= r
+    while (tmp < max_r())
+        invariant access(x) && access(y)
+        invariant 0 <= x1 && y1 == x1 && x1 <= tmp
+        invariant x1 > 0 ==> 2 * pow(x1 - 1, k) < r
+        invariant x1 < tmp ==> 2 * pow(x1, k) >= r
+    {
+        if (pow(x1, k) + pow(y1, k) < r) {
+            x1 := x1 + 1
+            y1 := y1 + 1
+        }
+        tmp := tmp + 1
+    }
+    assert x1 > 0
+    assert 2 * pow(x1 - 1, k) < r
+    assert 2 * pow(x1, k) >= r
+    
+    // To prove x1 - 1 < max_r()
+    assert pow(x1 - 1, k) < pow(r, k)
+    pow_monotonic(max_r(), r, k)
+    assert pow(x1 - 1, k) < pow(max_r(), k)
+    if (x1 - 1 >= max_r()) {
+        root_monotonic_strict(x1 - 1, max_r(), k)
+    }
+    assert x1 <= max_r()
+
+    // Store value of x1 for check in T_b
+    // Use x2 to replace x1 in the following code
+    var x2: Int := x1
+    
+    // To prove invariant x2^k + (y1 + 1)^k > r
+    assert pow(x2, k) + pow(y1, k) >= r
+    pow_monotonic_strict(y1 + 1, y1, k)
+    assert pow(y1 + 1, k) > pow(y1, k)
+    assert pow(x2, k) + pow(y1 + 1, k) > r
+
+    var i: Int := 0
+    tmp := 0
+
+    assert y1 <= x1 && y1 <= x2
+    assert y1 + 1 > 0
+    assert pow(x2 - 1, k) <= r
+    assert x2 - 1 <= max_r()
+    assert x2 - y1 < tmp ==> pow(x2, k) > r
+    while (tmp < 2 * (max_r() + 1))
+        invariant access(x) && access(y) && access(cor_y)
+        invariant 2 * pow(x1 - 1, k) < r
+        invariant 2 * pow(x1, k) >= r && 1 <= x1 && x1 <= max_r()
+
+        invariant 0 <= i && i <= x2 - x1 && x2 - x1 <= tmp
+
+        // invariants for y1
+        invariant y1 <= x1 && y1 <= x2
+        invariant y1 + 1 > 0
+        invariant x2 - y1 <= tmp
+
+        // invariants for x2
+        invariant pow(x2 - 1, k) <= r
+        invariant x2 - 1 <= max_r()
+        // The inner "if" branch is executed x1 - y1 times
+        // The inner "else" branch is executed x2 - x1 times
+        invariant x2 - y1 < tmp ==> pow(x2, k) > r
+
+        // invariants for cor_y
+        invariant forall k1: Int :: {slot(cor_y, k1).val}
+            0 <= k1 && k1 < x2 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) <= r
+        invariant pow(x2, k) + pow(y1 + 1, k) > r
+        invariant forall k1: Int :: {slot(cor_y, k1).val}
+            0 <= k1 && k1 < x2 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val + 1, k) > r
+        
+        // invariants for x and y arrays
+        invariant forall k1: Int :: {slot(x, k1).val}
+            0 <= k1 && k1 < i ==> x1 <= slot(x, k1).val && slot(x, k1).val < x2
+        invariant forall k1: Int, k2: Int :: {slot(x, k1).val, slot(x, k2).val}
+            0 <= k1 && k1 < k2 && k2 < i ==> slot(x, k1).val < slot(x, k2).val
+
+        invariant forall k1: Int :: {slot(x, k1).val} {slot(y, k1).val}
+            0 <= k1 && k1 < i ==> pow(slot(x, k1).val, k) + pow(slot(y, k1).val, k) == r
+        invariant forall k1: Int :: {slot(x, k1).val} {slot(y, k1).val}
+            0 <= k1 && k1 < i ==> x1 <= slot(x, k1).val && slot(x, k1).val < x2 &&
+                slot(y, k1).val == slot(cor_y, slot(x, k1).val - x1).val      
+
+        invariant i == 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+            0 <= k1 && k1 < x2 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+        invariant i > 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+            0 <= k1 && k1 < slot(x, 0).val - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+        invariant i > 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+            slot(x, i - 1).val - x1 < k1 && k1 < x2 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+        invariant forall k1: Int, k2: Int, k3: Int :: {slot(x, k1).val, slot(x, k2).val, slot(cor_y, k3).val}
+            0 <= k1 && k1 + 1 == k2 && k2 < i && slot(x, k1).val - x1 < k3 && k3 < slot(x, k2).val - x1 ==>
+                pow(x1 + k3, k) + pow(slot(cor_y, k3).val, k) < r
+    {
+        if (pow(x2, k) <= r) {
+            // To prove x2 <= max_r()
+            assert pow(x2, k) <= pow(r, k)
+            if (x2 > max_r()) {
+                root_monotonic_strict(x2, max_r(), k)
+            }
+            assert x2 <= max_r()
+
+            if (pow(x2, k) + pow(y1, k) > r) {
+                assert pow(y1, k) > 0
+                if (y1 == 0) {
+                    assert pow(y1, k) == 0
+                }
+                assert y1 != 0
+                y1 := y1 - 1
+            }
+            else {
+                // Add y1 to cor_y
+                assert 0 <= x2 - x1 && x2 - x1 < max_r() + 1
+                slot(cor_y, x2 - x1).val := y1
+                if (pow(x2, k) + pow(y1, k) == r) {
+                    slot(x, i).val := x2
+                    slot(y, i).val := y1
+                    i := i + 1
+                    x2 := x2 + 1
+                    assert i >= 2 ==> forall k1: Int :: {slot(cor_y, k1).val}
+                        slot(x, i - 2).val - x1 < k1 && k1 < slot(x, i - 1).val - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+                }
+                else {
+                    x2 := x2 + 1
+                }
+                // To prove invariant x2^k + (y1 + 1)^k > r
+                pow_monotonic_strict(x2, x2 - 1, k)
+                assert pow(x2, k) > pow(x2 - 1, k)
+                pow_monotonic_strict(y1 + 1, y1, k)
+                assert pow(y1 + 1, k) > pow(y1, k)
+                assert pow(x2, k) + pow(y1 + 1, k) > r
+            }
+        }
+        tmp := tmp + 1
+    }
+    var out_size: Int := i
+    assert pow(x2 - 1, k) <= r
+    assert pow(x2, k) > r
+    x2 := x2 - 1
+    // End of T_i
+
+    assert 0 <= i && i <= x2 + 1 - x1
+
+    assert x1 >= 0
+    assert 2 * pow(x1 - 1, k) < r
+    assert 2 * pow(x1, k) >= r
+    assert pow(x2, k) <= r
+    assert pow(x2 + 1, k) > r
+    assert x2 <= max_r()
+
+    assert forall k1: Int :: {slot(cor_y, k1).val}
+        0 <= k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) <= r
+    assert forall k1: Int :: {slot(cor_y, k1).val}
+        0 <= k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val + 1, k) > r
+        
+    assert forall k1: Int :: {slot(x, k1).val}
+        0 <= k1 && k1 < i ==> x1 <= slot(x, k1).val && slot(x, k1).val < x2 + 1
+    assert forall k1: Int, k2: Int :: {slot(x, k1).val, slot(x, k2).val}
+        0 <= k1 && k1 < k2 && k2 < i ==> slot(x, k1).val < slot(x, k2).val
+
+    assert forall k1: Int :: {slot(x, k1).val}
+        0 <= k1 && k1 < i ==> pow(slot(x, k1).val, k) + pow(slot(y, k1).val, k) == r
+    assert forall k1: Int :: {slot(y, k1).val}
+        0 <= k1 && k1 < i ==> x1 <= slot(x, k1).val && slot(x, k1).val < x2 + 1 &&
+                slot(y, k1).val == slot(cor_y, slot(x, k1).val - x1).val
+    assert i == 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+        0 <= k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+    assert i > 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+        0 <= k1 && k1 < slot(x, 0).val - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+    assert i > 0 ==> forall k1: Int :: {slot(cor_y, k1).val}
+        slot(x, i - 1).val - x1 < k1 && k1 < x2 + 1 - x1 ==> pow(x1 + k1, k) + pow(slot(cor_y, k1).val, k) < r
+    assert forall k1: Int, k2: Int, k3: Int :: {slot(x, k1).val, slot(x, k2).val, slot(cor_y, k3).val}
+        0 <= k1 && k1 + 1 == k2 && k2 < i && slot(x, k1).val - x1 < k3 && k3 < slot(x, k2).val - x1 ==>
+            pow(x1 + k3, k) + pow(slot(cor_y, k3).val, k) < r
+}

@@ -1,0 +1,213 @@
+import "IArray.vpr"
+
+function max_r(): Int
+
+function pow(x: Int, k: Int) : Int
+    requires k >= 0 
+    ensures x >= 0 ==> pow(x, k) >= 0
+    ensures x > 0 ==> pow(x, k) > 0
+    ensures x == 0 ==> pow(x, k) == 0
+    ensures x < 0 && k % 2 == 0 ==> pow(x, k) > 0
+    ensures x < 0 && k % 2 == 1 ==> pow(x, k) < 0
+{
+    k == 0 ? 1 : k == 1 ? x : x * pow(x, k-1) // two base cases for easier code below
+}
+
+method pow_ge_base(a: Int, k: Int)
+    requires a >= 0 && k > 0
+    ensures pow(a,k) >= a
+{
+    if (k == 1) {
+        assert pow(a, 1) >= a
+    } else {
+        pow_ge_base(a, k-1)
+        assert a * pow(a, k-1) >= a
+    }
+}
+
+method pow_monotonic(a: Int, b: Int, k: Int)
+    requires a >= 0 && b >= 0 && k > 0
+    requires a >= b
+    ensures pow(a,k) >= pow(b,k)
+{
+    if (k == 1) {
+        assert pow(a,1) >= pow(b,1)
+    } else {
+        pow_monotonic(a, b, k-1)
+        assert a*pow(a,k-1) >= b*pow(b,k-1)
+    }
+}
+
+method pow_monotonic_strict(a: Int, b: Int, k: Int)
+    requires a >= 0 && b >= 0 && k > 0
+    requires a > b
+    ensures pow(a, k) > pow(b, k)
+{
+    if (k == 1) {
+        assert pow(a, 1) > pow(b, 1)
+    } else {
+        pow_monotonic_strict(a, b, k-1)
+        assert a*pow(a, k-1) > b*pow(b, k-1)
+    }
+}
+
+method pow_monotonic_strict_quant_gt(p: Int, k: Int)
+    requires k > 0
+    ensures forall q: Int :: {pow(q, k)} 
+    p < q && p >= 0 ==> pow(p, k) < pow(q, k)
+{
+    var q: Int 
+    if (p < q && p >= 0){
+        pow_monotonic_strict(q,p,k)
+        assert pow(p, k) < pow(q, k)
+    }
+    assert p < q && p >= 0 ==> pow(p, k) < pow(q, k)
+    assume forall g: Int, h: Int :: {pow(g,k), pow(h,k)} 
+        g < h && g >= 0 ==> pow(g, k) < pow(h, k) 
+}
+
+method pow_monotonic_strict_quant_lt(q: Int, k: Int)
+    requires k > 0
+    ensures forall p: Int :: {pow(p, k)} 
+    p < q && p >= 0 ==> pow(p, k) < pow(q, k)
+{
+    var p: Int 
+    if (p < q && p >= 0){
+        pow_monotonic_strict(q,p,k)
+        assert pow(p, k) < pow(q, k)
+    }
+    assert p < q && p >= 0 ==> pow(p, k) < pow(q, k)
+    assume forall g: Int, h: Int :: {pow(g ,k), pow(h ,k)} 
+        g < h && g >= 0 ==> pow(g, k) < pow(h, k) 
+}
+
+method pow_monotonic_strict_quant(k: Int)
+    requires k > 0
+    ensures forall p: Int, q: Int :: {pow(p, k), pow(q, k)} 
+    p < q && p >= 0 ==> pow(p, k) < pow(q, k)
+{
+    var p: Int
+    var q: Int 
+    if (p < q && p >= 0){
+        pow_monotonic_strict(q,p,k)
+        assert pow(p, k) < pow(q, k)
+    }
+    assert p < q && p >= 0 ==> pow(p, k) < pow(q, k)
+    assume forall g: Int, h: Int :: {pow(g,k), pow(h,k)} 
+        g < h && g >= 0 ==> pow(g, k) < pow(h, k) 
+}
+
+method pow_monotonic_neg_even(a: Int, b: Int, k: Int)
+    requires a <= 0 && b <= 0 && k > 0
+    requires a > b && k % 2 == 0
+    ensures pow(a, k) < pow(b, k)
+{
+    if (k == 2) {
+        pow_monotonic_neg_odd(a, b, 1)
+        assert a * pow(a, 1) < b * pow(b, 1)
+    } else {
+        pow_monotonic_neg_odd(a, b, k-1)
+        assert a * pow(a, k-1) < b * pow(b, k-1)
+    }
+}
+
+method pow_monotonic_neg_odd(a: Int, b: Int, k: Int)
+    requires a <= 0 && b <= 0 && k > 0
+    requires a > b && k % 2 == 1
+    ensures pow(a, k) <= 0 && pow(b, k) <= 0
+    ensures pow(a, k) > pow(b, k)
+{
+    if (k == 1) {
+        assert pow(a, 1) > pow(b, 1)
+        assert pow(a, 1) <= 0 && pow(b, 1) <= 0
+    } else {
+        pow_monotonic_neg_even(a, b, k-1)
+        assert a * pow(a, k-1) > b * pow(b, k-1)
+        assert a * pow(a, k-1) <= 0 && b * pow(b, k-1) <= 0
+    }
+}
+
+method pow_monotonic_nonneg(a: Int, k: Int)
+    requires k > 0 && pow(a, k) < pow(a + 1, k)
+    requires pow(a + 1, k) > 0
+    ensures a >= 0
+{
+    if (k % 2 == 0) {
+        if (a < 0) {
+            pow_monotonic_neg_even(a + 1, a, k)
+        }
+        assert a >= 0
+    }
+    if (k % 2 == 1) {
+        if (a < 0) {
+            pow_monotonic_neg_odd(a + 1, a, k)
+        }
+        assert a >= 0
+    }
+    assert a >= 0
+}
+
+method root_monotonic_strict(a: Int, b: Int, k: Int)
+// proves pow(a,k) < pow(b,k) ==> a < b
+    requires a >= 0 && b >= 0 && k > 0
+    requires pow(a, k) < pow(b, k) && a >= b
+    ensures false
+{
+    pow_monotonic(a, b, k)
+}
+
+method root_monotonic(a: Int, b: Int, k: Int)
+// proves pow(a,k) <= pow(b,k) ==> a <= b
+    requires a >= 0 && b >= 0 && k > 0
+    requires pow(a, k) <= pow(b, k) && a > b
+    ensures false
+{
+    pow_monotonic_strict(a, b, k)
+}
+
+method pow_inj(k: Int)
+    requires k > 0
+    ensures forall x: Int, y: Int:: {pow(x, k), pow(y, k)}
+        x >= 0 && y >= 0 && pow(x, k) == pow(y, k) ==> x == y 
+{
+    var x: Int
+    var y: Int
+    assume x >= 0 && y >= 0
+    if (pow(x, k) == pow(y, k)){
+        assert pow(x, k) <= pow(y, k)
+        if (x > y){
+            root_monotonic(x, y, k)
+        }
+        assert x <= y
+        assert pow(y, k) <= pow(x, k)
+        if (y > x){
+            root_monotonic(y, x, k)
+        }
+        assert y <= x
+    }
+    assert x >= 0 && y >= 0 && pow(x, k) == pow(y, k) ==> x == y 
+    assume forall g: Int, h: Int :: {pow(g, k), pow(h, k)}
+        g >= 0 && h >= 0 && pow(g, k) == pow(h, k) ==> g == h
+}
+
+method unique_sol(x: Int, r: Int, k: Int, y: Int)
+    requires x >= 0 && y >= 0 && y <= x && k > 0 
+    requires pow(x,k) + pow(y,k) == r
+    ensures forall y1: Int :: {pow(y1,k)}
+        (0 <= y1 && y1 <= x && pow(x,k) + pow(y1,k) == r) ==> y1 == y
+{
+    var y1: Int
+    assume 0 <= y1 && y1 <= x
+    if (pow(x,k) + pow(y1,k) == r){
+        if (y1 != y){
+            assert pow(x,k) + pow(y,k) == r
+            assert pow(y,k) - pow(y1,k) == 0
+            assert pow(y,k) == pow(y1,k)
+            pow_inj(k)
+            assert false
+        }
+    }
+    assert (0 <= y1 && y1 <= x && pow(x,k) + pow(y1,k) == r) ==> y1 == y
+    assume forall t: Int :: {pow(t,k)}
+        (0 <= t && t <= x && pow(x,k) + pow(t,k) == r) ==> t == y
+}

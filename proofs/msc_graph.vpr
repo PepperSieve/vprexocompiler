@@ -1,0 +1,43 @@
+import "Tuples.vpr"
+
+/** Abstract data type representation for graphs
+
+    For a concrete implementation, see msc_graph_impl.vpr
+*/
+
+// The uninterpreted type from which nodes of graphs are drawn
+domain Node { }
+
+// The uninterpreted type for representing graphs
+domain Graph { }
+
+// Predicate that determines whether g is a well-formed graph
+function wf_graph(g: Graph): Bool
+
+// The nodes of a graph g
+function V(g: Graph): Set[Node]
+
+// The set of adjacent nodes of node s in graph g
+function adj(g: Graph, s: Node): Set[Node] 
+  requires wf_graph(g)
+  ensures result subset V(g)
+
+predicate graph_rep(grep: Ref)
+
+function graph(grep: Ref): Graph
+  requires acc(graph_rep(grep), wildcard)
+  ensures wf_graph(result)   
+
+
+method test(grep: Ref)
+  requires acc(graph_rep(grep), wildcard)
+  ensures acc(graph_rep(grep), wildcard)
+
+
+method foo(grep: Ref)
+  requires acc(graph_rep(grep), wildcard)
+  ensures acc(graph_rep(grep), wildcard)
+  ensures graph(grep) == old(graph(grep))
+{
+  test(grep)
+}

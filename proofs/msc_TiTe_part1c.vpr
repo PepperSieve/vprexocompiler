@@ -1,0 +1,336 @@
+// Convert an MSC tree into T array
+// Infers child_form_cycle
+
+import "TMaps.vpr"
+import "msc_comp.vpr"
+import "msc_child_index.vpr"
+
+function c_to_T_comp(g: Graph, c: Comp, b: Bool, d: Node): Seq[Comp]
+  requires wf_graph(g) && is_sc_comp(g, c, b)
+  requires !(d in comp_nodes(c))
+  ensures |result| >= 1
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==> type(result[i]) == typeof_pcomp() || type(result[i]) == typeof_ncomp()
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==> !(d in comp_nodes(result[i]))
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && type(result[i]) == typeof_ncomp() ==>
+      d != ncomp_node(result[i])
+  ensures type(result[|result| - 1]) == typeof_ncomp()
+{
+  type(c) == typeof_pcomp() ?
+    Seq(c) ++ c_to_T_comp(g, pcomp_cycl(c), true, d)
+  : type(c) == typeof_ccomp() ?
+    c_to_T_comp(g, ccomp_left(c), false, d) ++ c_to_T_comp(g, ccomp_right(c), false, d)
+  : Seq(c)
+}
+
+// Store a dummy node to T_node to indicate a pcomp
+// This is to correspond to the case of a negative in T
+function c_to_T_node(g: Graph, c: Comp, b: Bool, d: Node): Seq[Node]
+  requires wf_graph(g) && is_sc_comp(g, c, b)
+  requires !(d in comp_nodes(c))
+  ensures |result| >= 1
+  // Correspondence with comp_nodes & comp_adj
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && result[i] != d ==>
+      result[i] in comp_nodes(c)
+  ensures forall i: Int, n: Node ::
+    0 <= i && i < |result| && result[i] != d && n in adj(g, result[i]) ==>
+      n in comp_adj(g, c)
+  // Correspondence with T_comp
+  ensures |c_to_T_comp(g, c, b, d)| == |result|
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_ncomp() ==>
+      result[i] == ncomp_node(c_to_T_comp(g, c, b, d)[i])
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && result[i] == d ==>
+      type(c_to_T_comp(g, c, b, d)[i]) == typeof_pcomp()
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && result[i] != d ==>
+      type(c_to_T_comp(g, c, b, d)[i]) == typeof_ncomp()
+{
+  type(c) == typeof_pcomp() ?
+    Seq(d) ++ c_to_T_node(g, pcomp_cycl(c), true, d)
+  : type(c) == typeof_ccomp() ?
+    c_to_T_node(g, ccomp_left(c), false, d) ++ c_to_T_node(g, ccomp_right(c), false, d)
+  : Seq(ncomp_node(c))
+}
+
+function c_to_T_remn(g: Graph, c: Comp, b: Bool, d: Node): Seq[Int]
+  requires wf_graph(g) && is_sc_comp(g, c, b)
+  requires !(d in comp_nodes(c))
+  ensures |result| >= 1
+  ensures |c_to_T_comp(g, c, b, d)| == |result|
+  ensures type(c) != typeof_ccomp() ==> result[0] == |result| - 1
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==> 0 <= result[i] && i + result[i] < |result|
+  ensures forall i: Int, j: Int :: {result[i], result[j]}
+    0 <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_pcomp() && i < j && j <= i + result[i] ==>
+      0 <= result[j] && j + result[j] <= i + result[i]
+  ensures type(c) == typeof_pcomp() ==> result[0] > 0 && 1 + result[0] == |result|
+  ensures type(c) == typeof_ncomp() ==> result[0] == 0
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_pcomp() ==> result[i] > 0
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_ncomp() ==> result[i] == 0
+  // Invariants for Child Index
+  ensures type(c) == typeof_pcomp() ==>
+    |child_index_t(result, 0)| == 1 &&
+    comp_end(c) == comp_end(c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[|child_index_t(result, 0)| - 1]])  
+  ensures type(c) == typeof_ncomp() ==>
+    |child_index_t(result, 0)| == 1 &&
+    comp_end(c) == comp_end(c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[|child_index_t(result, 0)| - 1]])
+  ensures type(c) == typeof_ccomp() ==>
+    |child_index_t(result, 0)| == |child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)| + |child_index_t(c_to_T_remn(g, ccomp_right(c), false, d), 0)|
+  ensures type(c) == typeof_ccomp() ==>
+    forall i: Int :: {child_index_t(result, 0)[i]}
+      0 <= i && i < |child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)| ==>
+        i < |c_to_T_remn(g, ccomp_left(c), false, d)| &&
+        child_index_t(result, 0)[i] == child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)[i] &&
+        c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[i]] == c_to_T_comp(g, ccomp_left(c), false, d)[child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)[i]]
+  ensures type(c) == typeof_ccomp() ==>
+    forall i1: Int, i2: Int :: {child_index_t(result, 0)[i1], child_index_t(c_to_T_remn(g, ccomp_right(c), false, d), 0)[i2]}
+      0 <= i2 && i2 + |child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)| == i1 && i1 < |child_index_t(result, 0)| ==>
+        c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[i1]] == c_to_T_comp(g, ccomp_right(c), false, d)[child_index_t(c_to_T_remn(g, ccomp_right(c), false, d), 0)[i2]]
+  ensures type(c) == typeof_pcomp() ==>
+    forall i: Int :: {child_index_t(result, 1)[i]}
+      0 <= i && i < |child_index_t(result, 1)| ==>
+        c_to_T_comp(g, c, b, d)[child_index_t(result, 1)[i]] == c_to_T_comp(g, pcomp_cycl(c), true, d)[child_index_t(c_to_T_remn(g, pcomp_cycl(c), true, d), 0)[i]]
+  ensures type(c) == typeof_ccomp() ==>
+    forall head: Int, tail: Int, head2: Int, tail2: Int :: {child_index(result, head, tail), child_index(c_to_T_remn(g, ccomp_right(c), false, d), head2, tail2)}
+      (0 <= head2 && head2 < tail2 && tail2 <= |c_to_T_remn(g, ccomp_right(c), false, d)| &&
+      (forall j: Int :: {c_to_T_remn(g, ccomp_right(c), false, d)[j]}
+        head2 <= j && j < tail2 ==>
+          0 <= c_to_T_remn(g, ccomp_right(c), false, d)[j] &&
+          j + c_to_T_remn(g, ccomp_right(c), false, d)[j] < tail2) &&
+          head == head2 + |c_to_T_remn(g, ccomp_left(c), false, d)| &&
+          tail == tail2 + |c_to_T_remn(g, ccomp_left(c), false, d)|) ==>
+        |child_index(result, head, tail)| == |child_index(c_to_T_remn(g, ccomp_right(c), false, d), head2, tail2)| &&
+        (forall i: Int :: {child_index(result, head, tail)[i]}
+          0 <= i && i < |child_index(c_to_T_remn(g, ccomp_right(c), false, d), head2, tail2)| ==>
+            c_to_T_comp(g, c, b, d)[child_index(result, head, tail)[i]] == c_to_T_comp(g, ccomp_right(c), false, d)[child_index(c_to_T_remn(g, ccomp_right(c), false, d), head2, tail2)[i]])
+  ensures type(c) == typeof_pcomp() ==>
+    forall head: Int, tail: Int, head2: Int, tail2: Int :: {child_index(result, head, tail), child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), head2, tail2)}
+      (0 <= head2 && head2 < tail2 && tail2 <= |c_to_T_remn(g, pcomp_cycl(c), true, d)| &&
+      (forall j: Int :: {c_to_T_remn(g, pcomp_cycl(c), true, d)[j]}
+        head2 <= j && j < tail2 ==>
+          0 <= c_to_T_remn(g, pcomp_cycl(c), true, d)[j] &&
+          j + c_to_T_remn(g, pcomp_cycl(c), true, d)[j] < tail2) &&
+          head == head2 + 1 &&
+          tail == tail2 + 1) ==>
+        |child_index(result, head, tail)| == |child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), head2, tail2)| &&
+        (forall i: Int :: {child_index(result, head, tail)[i]}
+          0 <= i && i < |child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), head2, tail2)| ==>
+            c_to_T_comp(g, c, b, d)[child_index(result, head, tail)[i]] == c_to_T_comp(g, pcomp_cycl(c), true, d)[child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), head2, tail2)[i]])           
+  // Child form Cycle
+  ensures type(c) == typeof_ccomp() ==>
+    comp_start(c) == comp_start(c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[0]]) &&
+    comp_end(c) == comp_end(c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[|child_index_t(result, 0)| - 1]])
+  ensures type(c) == typeof_ccomp() && b ==>
+    comp_start(c_to_T_comp(g, ccomp_left(c), false, d)[child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)[0]]) in adj(g, comp_end(c_to_T_comp(g, ccomp_right(c), false, d)[child_index_t(c_to_T_remn(g, ccomp_right(c), false, d), 0)[|child_index_t(c_to_T_remn(g, ccomp_right(c), false, d), 0)| - 1]])) &&
+    c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[0]] == c_to_T_comp(g, ccomp_left(c), false, d)[child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)[0]] &&
+    c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[|child_index_t(result, 0)| - 1]] == c_to_T_comp(g, ccomp_right(c), false, d)[child_index_t(c_to_T_remn(g, ccomp_right(c), false, d), 0)[|child_index_t(c_to_T_remn(g, ccomp_right(c), false, d), 0)| - 1]] &&
+    child_form_cycle_t(g, c_to_T_comp(g, c, b, d), result)
+  ensures type(c) == typeof_pcomp() ==>
+    child_form_cycle(g, c_to_T_comp(g, c, b, d), result, 1, |result|)
+  ensures type(c) == typeof_ncomp() ==>
+    child_form_cycle_complete(g, c_to_T_comp(g, c, b, d), result)
+  ensures (type(c) == typeof_ccomp() &&
+    child_form_cycle_complete(g, c_to_T_comp(g, ccomp_left(c), false, d), c_to_T_remn(g, ccomp_left(c), false, d)) &&
+    child_form_cycle_complete(g, c_to_T_comp(g, ccomp_right(c), false, d), c_to_T_remn(g, ccomp_right(c), false, d))) ==>
+      (forall i: Int, i2: Int, i3: Int :: {result[i], child_index(result, i2, i3)}
+        (0 <= i && i < |c_to_T_remn(g, ccomp_left(c), false, d)| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_pcomp() && 
+        i2 == i + 1 && i3 == i + 1 + result[i]) ==>
+          child_form_cycle(g, c_to_T_comp(g, ccomp_left(c), false, d), c_to_T_remn(g, ccomp_left(c), false, d), i2, i3) &&
+          |child_index(result, i2, i3)| == |child_index(c_to_T_remn(g, ccomp_left(c), false, d), i2, i3)| &&
+          c_to_T_comp(g, c, b, d)[child_index(result, i2, i3)[0]] == c_to_T_comp(g, ccomp_left(c), false, d)[child_index(c_to_T_remn(g, ccomp_left(c), false, d), i2, i3)[0]] &&
+          c_to_T_comp(g, c, b, d)[child_index(result, i2, i3)[|child_index(result, i2, i3)| - 1]] == c_to_T_comp(g, ccomp_left(c), false, d)[child_index(c_to_T_remn(g, ccomp_left(c), false, d), i2, i3)[|child_index(result, i2, i3)| - 1]] &&
+          child_form_cycle(g, c_to_T_comp(g, c, b, d), result, i2, i3)) && 
+      (forall i: Int, i2: Int, i3: Int :: {result[i], child_index(result, i2, i3)}
+        (|c_to_T_remn(g, ccomp_left(c), false, d)| <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_pcomp() && 
+        i2 == i + 1 && i3 == i + 1 + result[i]) ==>
+          i3 - |c_to_T_remn(g, ccomp_left(c), false, d)| <= |c_to_T_remn(g, ccomp_right(c), false, d)| &&
+          child_form_cycle(g, c_to_T_comp(g, ccomp_right(c), false, d), c_to_T_remn(g, ccomp_right(c), false, d), i2 - |c_to_T_remn(g, ccomp_left(c), false, d)|, i3 - |c_to_T_remn(g, ccomp_left(c), false, d)|) &&    
+          (forall j: Int :: {child_index(result, i2, i3)[j]}
+            0 <= j && j < |child_index(result, i2, i3)| ==>
+              c_to_T_comp(g, c, b, d)[child_index(result, i2, i3)[j]] == c_to_T_comp(g, ccomp_right(c), false, d)[child_index(c_to_T_remn(g, ccomp_right(c), false, d), i2 - |c_to_T_remn(g, ccomp_left(c), false, d)|, i3 - |c_to_T_remn(g, ccomp_left(c), false, d)|)[j]]) &&
+          |child_index(result, i2, i3)| == |child_index(c_to_T_remn(g, ccomp_right(c), false, d), i2 - |c_to_T_remn(g, ccomp_left(c), false, d)|, i3 - |c_to_T_remn(g, ccomp_left(c), false, d)|)| &&
+          c_to_T_comp(g, c, b, d)[child_index(result, i2, i3)[0]] == c_to_T_comp(g, ccomp_right(c), false, d)[child_index(c_to_T_remn(g, ccomp_right(c), false, d), i2 - |c_to_T_remn(g, ccomp_left(c), false, d)|, i3 - |c_to_T_remn(g, ccomp_left(c), false, d)|)[0]] &&
+          c_to_T_comp(g, c, b, d)[child_index(result, i2, i3)[|child_index(result, i2, i3)| - 1]] == c_to_T_comp(g, ccomp_right(c), false, d)[child_index(c_to_T_remn(g, ccomp_right(c), false, d), i2 - |c_to_T_remn(g, ccomp_left(c), false, d)|, i3 - |c_to_T_remn(g, ccomp_left(c), false, d)|)[|child_index(result, i2, i3)| - 1]] &&
+          child_form_cycle(g, c_to_T_comp(g, c, b, d), result, i2, i3)) &&
+      child_form_cycle_complete(g, c_to_T_comp(g, c, b, d), result)
+  ensures (type(c) == typeof_pcomp() &&
+    child_form_cycle_complete(g, c_to_T_comp(g, pcomp_cycl(c), true, d), c_to_T_remn(g, pcomp_cycl(c), true, d))) ==>
+      child_form_cycle(g, c_to_T_comp(g, c, b, d), result, 1, 1 + result[0]) &&
+      (forall i: Int, i2: Int, i3: Int :: {result[i], child_index(result, i2, i3)}
+        (1 <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_pcomp() && 
+        i2 == i + 1 && i3 == i + 1 + result[i]) ==>
+          i3 - 1 <= |c_to_T_remn(g, pcomp_cycl(c), true, d)| &&
+          child_form_cycle(g, c_to_T_comp(g, pcomp_cycl(c), true, d), c_to_T_remn(g, pcomp_cycl(c), true, d), i2 - 1, i3 - 1) &&    
+          (forall j: Int :: {child_index(result, i2, i3)[j]}
+            0 <= j && j < |child_index(result, i2, i3)| ==>
+              c_to_T_comp(g, c, b, d)[child_index(result, i2, i3)[j]] == c_to_T_comp(g, pcomp_cycl(c), true, d)[child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), i2 - 1, i3 - 1)[j]]) &&
+          |child_index(result, i2, i3)| == |child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), i2 - 1, i3 - 1)| &&
+          c_to_T_comp(g, c, b, d)[child_index(result, i2, i3)[0]] == c_to_T_comp(g, pcomp_cycl(c), true, d)[child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), i2 - 1, i3 - 1)[0]] &&
+          c_to_T_comp(g, c, b, d)[child_index(result, i2, i3)[|child_index(result, i2, i3)| - 1]] == c_to_T_comp(g, pcomp_cycl(c), true, d)[child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), i2 - 1, i3 - 1)[|child_index(result, i2, i3)| - 1]] &&
+          child_form_cycle(g, c_to_T_comp(g, c, b, d), result, i2, i3)) &&
+      child_form_cycle_complete(g, c_to_T_comp(g, c, b, d), result)
+  ensures child_form_cycle_complete(g, c_to_T_comp(g, c, b, d), result)
+{
+  type(c) == typeof_pcomp() ?
+    Seq(|c_to_T_remn(g, pcomp_cycl(c), true, d)|) ++ c_to_T_remn(g, pcomp_cycl(c), true, d)
+  : type(c) == typeof_ccomp() ?
+    c_to_T_remn(g, ccomp_left(c), false, d) ++ c_to_T_remn(g, ccomp_right(c), false, d)
+  : Seq(0)
+}
+
+function c_to_T_recv(g: Graph, c: Comp, b: Bool, d: Node): Seq[Node]
+  requires wf_graph(g) && is_sc_comp(g, c, b)
+  requires !(d in comp_nodes(c))
+  ensures |result| >= 1
+  // Correspondence with T_comp
+  ensures |c_to_T_comp(g, c, b, d)| == |result|
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==>
+      result[i] == comp_start(c_to_T_comp(g, c, b, d)[i])
+{
+  type(c) == typeof_pcomp() ?
+    Seq(pcomp_start(c)) ++ c_to_T_recv(g, pcomp_cycl(c), true, d)
+  : type(c) == typeof_ccomp() ?
+    c_to_T_recv(g, ccomp_left(c), false, d) ++ c_to_T_recv(g, ccomp_right(c), false, d)
+  : Seq(ncomp_node(c))
+}
+
+function c_to_T_outg(g: Graph, c: Comp, b: Bool, d: Node): Seq[Node]
+  requires wf_graph(g) && is_sc_comp(g, c, b)
+  requires !(d in comp_nodes(c))
+  ensures |result| >= 1
+  // Correspondence with T_comp
+  ensures |c_to_T_comp(g, c, b, d)| == |result|
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==>
+      result[i] == comp_end(c_to_T_comp(g, c, b, d)[i])
+{
+  type(c) == typeof_pcomp() ?
+    Seq(pcomp_end(c)) ++ c_to_T_outg(g, pcomp_cycl(c), true, d)
+  : type(c) == typeof_ccomp() ?
+    c_to_T_outg(g, ccomp_left(c), false, d) ++ c_to_T_outg(g, ccomp_right(c), false, d)
+  : Seq(ncomp_node(c))
+}
+
+method msc_to_T(g: Graph, mscs: Seq[Comp], vs1: Set[Node], d: Node)
+  requires wf_graph(g)
+  requires msc_comp_seq(g, mscs, vs1)
+  // Don't want to deal with an empty array
+  requires |mscs| > 0
+  requires forall c: Comp :: c in mscs ==> !(d in comp_nodes(c))
+  // Can infer this from msc_comp_seq, but we list it explicitly for convenience
+  requires forall c: Comp :: c in mscs ==> is_sc_comp(g, c, true)
+  // The root of a MSC can NEVER BE A CCOMP
+  requires forall c: Comp :: c in mscs ==> !(type(c) == typeof_ccomp())
+  ensures wf_graph(g)
+{
+
+  var T_comp: Seq[Comp] := Seq()
+  var T_node: Seq[Node] := Seq()
+  var T_remn: Seq[Int] := Seq()
+  var T_recv: Seq[Node] := Seq()
+  var T_outg: Seq[Node] := Seq()
+
+  var T_remn_old: Seq[Int] := Seq()
+  var T_node_old: Seq[Node] := Seq()
+  var i: Int := 0
+  while (i < |mscs|)
+    invariant i >= 0 && i <= |mscs|
+
+    // --
+    // The following postcondition are used in msc_TiTb:
+    invariant |T_node| == |T_remn| && |T_node| == |T_recv| && |T_node| == |T_outg|
+    // T_Remn bound
+    invariant forall k: Int :: {T_remn[k]}
+      0 <= k && k < |T_remn| ==> 0 <= T_remn[k] && k + T_remn[k] < |T_remn|
+    invariant forall k: Int :: {T_remn[k]}
+      0 <= k && k < |T_remn| && T_node[k] == d ==> T_remn[k] > 0
+    invariant forall k1: Int, k2: Int :: {T_remn[k1], T_remn[k2]}
+      0 <= k1 && k1 < |T_remn| && T_node[k1] == d && k1 < k2 && k2 <= k1 + T_remn[k1] ==>
+        0 <= T_remn[k2] && k2 + T_remn[k2] <= k1 + T_remn[k1]
+    invariant forall k1: Int :: {T_remn[k1]}
+      0 <= k1 && k1 < |T_remn| && T_node[k1] != d ==> T_remn[k1] == 0
+    // Child Form Cycle
+    invariant forall k: Int, k2: Int, k3: Int :: // {T_remn[k], child_index(T_remn, k2, k3)}
+      (0 <= k && k < |T_remn| && T_node[k] == d && 
+      k2 == k + 1 && k3 == k + 1 + T_remn[k]) ==>
+        |child_index(T_remn, k2, k3)| > 0 &&
+        k2 <= child_index(T_remn, k2, k3)[0] && child_index(T_remn, k2, k3)[0] < k3 &&
+        child_form_cycle_post(g, T_remn, T_recv, T_outg, k2, k3)
+  {
+    T_node_old := T_node
+    T_remn_old := T_remn
+    assert forall k: Int, k2: Int, k3: Int :: // {T_remn[k], child_index(T_remn, k2, k3)}
+      (0 <= k && k < |T_remn_old| && T_node[k] == d && 
+      k2 == k + 1 && k3 == k + 1 + T_remn[k]) ==>
+        (forall j: Int :: {child_index(T_remn, k2, k3)[j]}
+          0 <= j && j < |child_index(T_remn, k2, k3)| ==>
+            k2 <= child_index(T_remn, k2, k3)[j] && child_index(T_remn, k2, k3)[j] < k3) &&
+        child_form_cycle_post(g, T_remn, T_recv, T_outg, k2, k3)
+    assert forall k: Int, k2: Int, k3: Int :: {c_to_T_remn(g, mscs[i], true, d)[k], child_index(c_to_T_remn(g, mscs[i], true, d), k2, k3)}
+      (0 <= k && k < |c_to_T_remn(g, mscs[i], true, d)| && c_to_T_node(g, mscs[i], true, d)[k] == d && 
+      k2 == k + 1 && k3 == k + 1 + c_to_T_remn(g, mscs[i], true, d)[k]) ==>
+        (forall j: Int :: {child_index(c_to_T_remn(g, mscs[i], true, d), k2, k3)[j]}
+          0 <= j && j < |child_index(c_to_T_remn(g, mscs[i], true, d), k2, k3)| ==>
+            k2 <= child_index(c_to_T_remn(g, mscs[i], true, d), k2, k3)[j] && child_index(c_to_T_remn(g, mscs[i], true, d), k2, k3)[j] < k3) &&
+        child_form_cycle_post(g, c_to_T_remn(g, mscs[i], true, d),  c_to_T_recv(g, mscs[i], true, d), c_to_T_outg(g, mscs[i], true, d), k2, k3)
+
+    T_comp := T_comp ++ c_to_T_comp(g, mscs[i], true, d)
+    T_node := T_node_old ++ c_to_T_node(g, mscs[i], true, d)
+    T_remn := T_remn ++ c_to_T_remn(g, mscs[i], true, d)
+    T_recv := T_recv ++ c_to_T_recv(g, mscs[i], true, d)
+    T_outg := T_outg ++ c_to_T_outg(g, mscs[i], true, d)
+    assert |T_remn| == |T_remn_old| + |c_to_T_remn(g, mscs[i], true, d)|
+    assert T_remn[..|T_remn_old|] == T_remn_old
+    assert T_remn[|T_remn| - |c_to_T_remn(g, mscs[i], true, d)|..] == c_to_T_remn(g, mscs[i], true, d)
+    assert forall k: Int, k2: Int, k3: Int :: // {T_remn[k], child_index(T_remn, k2, k3)}
+      (0 <= k && k < |T_remn_old| && T_node[k] == d && 
+      k2 == k + 1 && k3 == k + 1 + T_remn[k]) ==>
+        |child_index(T_remn, k2, k3)| == |child_index(T_remn_old, k2, k3)| &&
+        child_index(T_remn, k2, k3)[0] == child_index(T_remn_old, k2, k3)[0] &&
+        child_index(T_remn_old, k2, k3)[|child_index(T_remn, k2, k3)| - 1] == child_index(T_remn_old, k2, k3)[|child_index(T_remn_old, k2, k3)| - 1] &&
+        child_index(T_remn, k2, k3)[|child_index(T_remn, k2, k3)| - 1] == child_index(T_remn_old, k2, k3)[|child_index(T_remn, k2, k3)| - 1] &&
+        child_index(T_remn, k2, k3)[|child_index(T_remn, k2, k3)| - 1] == child_index(T_remn_old, k2, k3)[|child_index(T_remn_old, k2, k3)| - 1] &&
+        child_form_cycle_post(g, T_remn, T_recv, T_outg, k2, k3)
+    assert forall k: Int, k2: Int, k3: Int :: // {T_remn[k], child_index(T_remn, k2, k3)}
+      (|T_remn_old| <= k && k < |T_remn| && T_node[k] == d && 
+      k2 == k + 1 && k3 == k + 1 + T_remn[k]) ==>
+        |child_index(T_remn, k2, k3)| == |child_index(c_to_T_remn(g, mscs[i], true, d), k2 - |T_remn_old|, k3 - |T_remn_old|)| &&
+        child_index(T_remn, k2, k3)[0] == child_index(c_to_T_remn(g, mscs[i], true, d), k2 - |T_remn_old|, k3 - |T_remn_old|)[0] + |T_remn_old| &&
+        child_index(c_to_T_remn(g, mscs[i], true, d), k2 - |T_remn_old|, k3 - |T_remn_old|)[|child_index(T_remn, k2, k3)| - 1] == child_index(c_to_T_remn(g, mscs[i], true, d), k2 - |T_remn_old|, k3 - |T_remn_old|)[|child_index(c_to_T_remn(g, mscs[i], true, d), k2 - |T_remn_old|, k3 - |T_remn_old|)| - 1] &&
+        child_index(T_remn, k2, k3)[|child_index(T_remn, k2, k3)| - 1] == child_index(c_to_T_remn(g, mscs[i], true, d), k2 - |T_remn_old|, k3 - |T_remn_old|)[|child_index(T_remn, k2, k3)| - 1] + |T_remn_old| &&
+        child_index(T_remn, k2, k3)[|child_index(T_remn, k2, k3)| - 1] == child_index(c_to_T_remn(g, mscs[i], true, d), k2 - |T_remn_old|, k3 - |T_remn_old|)[|child_index(c_to_T_remn(g, mscs[i], true, d), k2 - |T_remn_old|, k3 - |T_remn_old|)| - 1] + |T_remn_old| &&
+        child_form_cycle_post(g, T_remn, T_recv, T_outg, k2, k3)
+    i := i + 1
+  }
+  
+  assert i > 0
+  assert wf_graph(g)
+  // --
+  // The following postcondition are used in msc_TiTb:
+  assert |T_node| == |T_remn| && |T_node| == |T_recv| && |T_node| == |T_outg|
+  // T_Remn bound
+  assert forall k: Int :: {T_remn[k]}
+    0 <= k && k < |T_remn| ==> 0 <= T_remn[k] && k + T_remn[k] < |T_remn|
+  assert forall k: Int :: {T_remn[k]}
+    0 <= k && k < |T_remn| && T_node[k] == d ==> T_remn[k] > 0
+  assert forall k1: Int, k2: Int :: {T_remn[k1], T_remn[k2]}
+    0 <= k1 && k1 < |T_remn| && T_node[k1] == d && k1 < k2 && k2 <= k1 + T_remn[k1] ==>
+      0 <= T_remn[k2] && k2 + T_remn[k2] <= k1 + T_remn[k1]
+  assert forall k1: Int :: {T_remn[k1]}
+    0 <= k1 && k1 < |T_remn| && T_node[k1] != d ==> T_remn[k1] == 0
+  // Child Form Cycle
+  assert forall k: Int, k2: Int, k3: Int :: // {T_remn[k], child_index(T_remn, k2, k3)}
+    (0 <= k && k < |T_remn| && T_node[k] == d && 
+    k2 == k + 1 && k3 == k + 1 + T_remn[k]) ==>
+      |child_index(T_remn, k2, k3)| > 0 &&
+      k2 <= child_index(T_remn, k2, k3)[0] && child_index(T_remn, k2, k3)[0] < k3 &&
+      child_form_cycle_post(g, T_remn, T_recv, T_outg, k2, k3)
+}

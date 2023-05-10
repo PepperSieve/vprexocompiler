@@ -1,0 +1,56 @@
+// This file proves all the properties of the nonlinear arithmetics
+// In 2d_convex_hull_TiTb, we create abstract algebraic types that posses these properties 
+import "IArray.vpr"
+
+define x_prod(x1, y1, x2, y2, x3, y3)
+    (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1)
+
+define outward_bend(x1, y1, x2, y2, x3, y3)
+    x_prod(x1, y1, x2, y2, x3, y3) >= 0
+
+define inward_bend(x1, y1, x2, y2, x3, y3)
+    x_prod(x1, y1, x2, y2, x3, y3) < 0
+
+// Ensure that the points are sorted such that the angle between the line that connects the target point and the reference point,
+// and the horizontal line that crosses the reference point, is always increasing
+// There are no points to the direct right of the reference point
+// There can be at most one point to the direct left of the reference point, hence y1 > y_ref
+define in_ord(x_ref, y_ref, x1, y1, x2, y2)
+    y1 > y_ref && y2 >= y_ref &&
+    // I convert (x1 - x_ref) / (y1 - y_ref) > (x2 - x_ref) / (y2 - y_ref) to
+    //   (x1 - x_ref) * (y2 - y_ref) > (x2 - x_ref) * (y1 - y_ref)
+    (x1 - x_ref) * (y2 - y_ref) > (x2 - x_ref) * (y1 - y_ref)
+
+define arr_in_ord(x, y, n)
+    forall k2: Int, k3: Int :: {slot(x, k2).val, slot(y, k2).val, slot(x, k3).val, slot(y, k3).val}
+      1 <= k2 && k2 < k3 && k3 < n ==>
+        in_ord(slot(x, 0).val, slot(y, 0).val, slot(x, k2).val, slot(y, k2).val, slot(x, k3).val, slot(y, k3).val)
+
+// in_ord(a, b) && in_ord(b, c) ==> in_ord(a, c)
+method in_ord_propagate(x_ref: Int, y_ref: Int, x1: Int, x2: Int, x3: Int, y1: Int, y2: Int, y3: Int)
+    requires in_ord(x_ref, y_ref, x1, y1, x2, y2)
+    requires in_ord(x_ref, y_ref, x2, y2, x3, y3)
+    ensures in_ord(x_ref, y_ref, x1, y1, x3, y3)
+{
+}
+
+// in_ord(a, b, c, d) && inward_bend(a, b, d) && inward_bend(b, c, d) ==> inward_bend(a, c, d)
+method inward_bend_propagate_1(x_ref: Int, y_ref: Int, x1: Int, x2: Int, x3: Int, x4: Int, y1: Int, y2: Int, y3: Int, y4: Int)
+    requires in_ord(x_ref, y_ref, x1, y1, x2, y2) && in_ord(x_ref, y_ref, x2, y2, x3, y3) && in_ord(x_ref, y_ref, x3, y3, x4, y4)
+    requires inward_bend(x1, y1, x2, y2, x4, y4) && inward_bend(x2, y2, x3, y3, x4, y4)
+    ensures inward_bend(x1, y1, x3, y3, x4, y4)
+{
+}
+
+// in_ord(a, b, c, d) && inward_bend(a, b, c) && inward_bend(a, c, d) ==> inward_bend(a, b, d)
+method inward_bend_propagate_2(x_ref: Int, y_ref: Int, x1: Int, x2: Int, x3: Int, x4: Int, y1: Int, y2: Int, y3: Int, y4: Int)
+    requires in_ord(x_ref, y_ref, x1, y1, x2, y2) && in_ord(x_ref, y_ref, x2, y2, x3, y3) && in_ord(x_ref, y_ref, x3, y3, x4, y4)
+    requires inward_bend(x1, y1, x2, y2, x3, y3) && inward_bend(x1, y1, x3, y3, x4, y4)
+    ensures inward_bend(x1, y1, x2, y2, x4, y4)
+{
+}
+
+// in_ord(a, b) ==> outward_bend(n[0], a, b) && outward_bend(a, b, n[0])
+method ref_plus_2n_bend_out(x_ref: Int, y_ref: Int, x1: Int, x2: Int, y1: Int, y2: Int)
+    requires in_ord(x_ref, y_ref, x1, y1, x2, y2)
+    ensures outward_bend(x_ref, y_ref, x1, y1, x2, y2) && outward_bend(x1, y1, x2, y2, x_ref, y_ref)

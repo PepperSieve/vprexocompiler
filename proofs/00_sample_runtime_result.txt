@@ -1,0 +1,52 @@
+A list of testing results of all proofs:
+
+Computer Spec:
+DELL Precision 3660
+CPU: Intel Core i7-12700K, 3.6GHz, 12 Cores, 20 Threads
+RAM: 32 GB
+
+Proof Name                      Backend         Proof Time (Seconds)
+merging_TeTs                    Carbon          76.5
+merging_TiTe                    Carbon          5.0
+
+find_min_TeTs                   Carbon          0.6
+find_min_TiTe                   Carbon          0.8
+
+binary_search_TeTs              Carbon          0.6
+binary_search_TiTe              Carbon          0.6
+
+kmp_search_TeTs                 Carbon          0.6
+kmp_search_TiTe                 Carbon          138.1
+
+next_permutation_TeTs_part1     Carbon          495.3
+next_permutation_TeTs_part2     Carbon          4.8
+next_permutation_TiTe           Carbon          466.4
+
+dutch_flag_TeTs                 Carbon          91.9
+dutch_flag_TiTe                 Carbon          507.6
+
+rr_sequence_find_TeTs           Carbon          7.1
+rr_sequence_find_TiTe           Carbon          25.1
+
+sum_of_pow_prop                 Silicon         1.6
+sum_of_pow_TeTs                 Carbon          23.3
+sum_of_pow_TiTe_part1           Silicon         364.0
+sum_of_pow_TiTe_part2           Carbon          22.7
+
+2d_convex_hull_TeTs             Carbon          12.6
+2d_convex_hull_TiTe_prop        Carbon          0.6
+2d_convex_hull_TiTe             Carbon          40.9
+
+msc_TeTs_part0a                 Carbon          308.6
+msc_TeTs_part0b                 Carbon          16.5
+msc_TeTs_part1                  Carbon          42.8
+msc_TeTs_part2                  Carbon          32.3
+msc_TeTs_part3                  Carbon          14.5
+msc_TiTe_prop                   Carbon          8.8
+msc_TiTe_part0                  Carbon          46.4
+msc_TiTe_part1a                 Carbon          148.9
+msc_TiTe_part1b                 Carbon          74.0
+msc_TiTe_part1c                 Carbon          99.9
+msc_TiTe_part2a                 Carbon          330.2
+msc_TiTe_part2b                 Carbon          154.9
+

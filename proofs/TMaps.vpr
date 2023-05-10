@@ -1,0 +1,62 @@
+domain TMap[Key,val] {
+  function select(m: TMap[Key,val], key: Key) : val
+  function store(m: TMap[Key,val], key: Key, value: val) : TMap[Key,val]
+
+  axiom select_store_same {
+    forall m: TMap[Key,val], k: Key, v: val :: {select(store(m,k,v),k)} select(store(m,k,v),k) == v
+  }
+
+  axiom select_store_diff {
+    forall m: TMap[Key,val], k1: Key, k2: Key, v : val :: {select(store(m,k1,v),k2)} {select(m,k2),store(m,k1,v)} 
+      k1 != k2 ==> select(store(m,k1,v),k2) == select(m,k2)
+  }
+
+  function TMapEqual(m1: TMap[Key,val], m2: TMap[Key,val]) : Bool
+
+  axiom observationally_equal {
+    forall m1: TMap[Key,val], m2: TMap[Key,val] :: {TMapEqual(m1,m2)} (forall k: Key :: select(m1,k) == select(m2,k)) ==> TMapEqual(m1,m2)
+  }
+
+  axiom extensionality {
+    forall m1: TMap[Key,val], m2: TMap[Key,val] :: {TMapEqual(m1,m2)} TMapEqual(m1,m2) ==> m1==m2
+  }
+
+  function constTMap(v: val) : TMap[Key,val]
+
+  axiom select_const {
+    forall k: Key, v: val :: {select(constTMap(v),k)} select(constTMap(v),k) == v
+  }
+
+  // chaining of TMaps representing functions
+  /*function pipe(m1:TMap[val,val], m2:TMap[val,val]) : TMap[val,val]
+  axiom selectPipe 
+  {
+    forall v:val, m1:TMap[val,val], m2:TMap[val,val] :: {select(pipe(m1,m2),v)}
+      select(pipe(m1,m2),v) == select(m2,select(m1,v))
+  }*/
+
+  function singTMap(k: Key, i: val, d: val) : TMap[Key, val]
+  /*axiom singTMapDef1 {
+   forall k1: Key, k2: Key, i: val, d: val :: {singTMap(k1, k2, i, d)} select(singTMap(k1, k2, i, d), k1, k2) == i
+  }*/
+  axiom singTMapDef {
+    forall k1: Key, k2: Key, i: val, d: val :: {select(singTMap(k1, i, d), k2)}
+      select(singTMap(k1, i, d), k2) == (k1 == k2 ? i : d)
+  }
+
+  // TODO: not sure this is needed any more?
+  // TODO also create select terms for dblTMap
+  //function dblTMap(x1: Key, i1: val, x2: Key, i2: val, d: val) : TMap[Key, val]
+  // axiom dblTMapDef1 {
+  //   forall x1: Key, i1: val, x2: Key, i2: val, d: val :: {dblTMap(x1, i1, x2, i2, d)}
+  //     select(dblTMap(x1, i1, x2, i2, d), x1) == i1
+  // }
+  // axiom dblTMapDef2 {
+  //   forall x1: Key, i1: val, x2: Key, i2: val, d: val :: {dblTMap(x1, i1, x2, i2, d)}
+  //     select(dblTMap(x1, i1, x2, i2, d), x2) == i2
+  // }
+  //axiom dblTMapDef {
+  //  forall x1: Key, i1: val, x2: Key, i2: val, d: val, y: Key :: {select(dblTMap(x1, i1, x2, i2, d), y)}
+  //    select(dblTMap(x1, i1, x2, i2, d), y) == (y == x1? i1 : (y == x2 ? i2 : d))
+  //}
+}

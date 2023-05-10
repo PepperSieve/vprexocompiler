@@ -1,0 +1,156 @@
+import "IArray.vpr"
+
+define outward_bend(x1, y1, x2, y2, x3, y3)
+    (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1) > 0
+
+define inward_bend(x1, y1, x2, y2, x3, y3)
+    (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1) < 0
+
+define last_in_hull
+    (forall k: Int :: k >= 1 && k < n ==> last_ind[k] >= 0 && last_ind[k] < n) &&
+    (forall k: Int :: k >= 1 && k < n ==> slot(in_c, last_ind[k]).val == 1) &&
+    (forall k1: Int, k2: Int :: k1 >= 1 && k1 < n && k2 > last_ind[k1] && k2 < k1 ==> slot(in_c, k2).val != 1)
+
+define next_in_hull
+    (forall k: Int :: k >= 1 && k < n ==> next_ind[k] >= 0 && next_ind[k] < n) &&
+    (forall k: Int :: k >= 1 && k < n ==> slot(in_c, next_ind[k]).val == 1) &&
+    (forall k1: Int :: k1 >= 1 && k1 < n && next_ind[k1] != 0 ==>
+        forall k2: Int :: k2 > k1 && k2 < next_ind[k1] ==> slot(in_c, k2).val != 1) &&
+    (forall k1: Int :: k1 >= 1 && k1 < n && next_ind[k1] == 0 ==>
+        forall k2: Int :: k2 > k1 && k2 < n ==> slot(in_c, k2).val != 1)
+
+function correct_angle(k: Int, n: Int, in_c: IArray, x: IArray, y: IArray, last_ind: Seq[Int], next_ind: Seq[Int]): Bool
+    requires access_read(x) && access_read(y) && access_read(in_c)
+    requires k <= n && n <= maxsize()
+    requires len(x) >= n && len(y) >= n && len(in_c) >= n
+    requires |last_ind| == k && |next_ind| == k
+{
+    k - 1 >= 1 ==>
+        (last_ind[k-1] >= 0 && last_ind[k-1] < n && next_ind[k-1] >= 0 && next_ind[k-1] < n &&
+        ((slot(in_c, k-1).val != 1 && inward_bend(slot(x, last_ind[k-1]).val, slot(y, last_ind[k-1]).val, slot(x, k-1).val, slot(y, k-1).val, slot(x, next_ind[k-1]).val, slot(y, next_ind[k-1]).val)) ||
+        (slot(in_c, k-1).val == 1 && outward_bend(slot(x, last_ind[k-1]).val, slot(y, last_ind[k-1]).val, slot(x, k-1).val, slot(y, k-1).val, slot(x, next_ind[k-1]).val, slot(y, next_ind[k-1]).val))) &&
+        k >= 2 ==> correct_angle(k-1, n, in_c, x, y, last_ind[0..k-1], next_ind[0..k-1]))
+}
+
+// To make the proof easier, provide the index of next_x in next_i
+// This should not be viewed as letting the prover providing extra information than in the
+// source code. One can interpret this as running the source code once before the proof,
+// record the indices where next_x is verified, and store that data in next_i.
+
+// in_c is a ghost variable inserted in T_E
+// in_c[i] == 1 ==> node i is on hull
+method td_convex_hull_sp(n: Int, x: IArray, y: IArray, in_c: IArray, next_x: IArray, next_y: IArray, next_i: IArray)
+    returns (last_ind: Seq[Int], next_ind: Seq[Int])
+    requires access_read(x) && access_read(y) && access_read(in_c) && access_read(next_x) && access_read(next_y) && access_read(next_i)
+    requires 3 <= n && n <= maxsize()
+    requires len(x) >= n && len(y) >= n && len(in_c) >= n && len(next_x) >= n && len(next_y) >= n && len(next_i) >= n
+
+    // This requirement is not in the actual code because the 0th vertex must be in the hull 
+    // regardless of in_c[0]
+    // There's, however, no notion of "must be in hull" except for defining in_c[0] here,
+    // hence the requirement
+    requires slot(in_c, 0).val == 1
+    // ss >= 3 is equivalent of saying next[0] exists
+    ensures access_read(x) && access_read(y) && access_read(in_c) && access_read(next_x) && access_read(next_y) && access_read(next_i)
+    ensures len(in_c) >= n && slot(in_c, 0).val == 1
+    ensures |last_ind| == n && |next_ind| == n
+    ensures last_in_hull && next_in_hull
+    ensures correct_angle(n, n, in_c, x, y, last_ind, next_ind)
+{
+    var x0: Int := slot(x, 0).val
+    var y0: Int := slot(y, 0).val
+    // nx --> next_x, lx --> last_x
+    var nx: Int := slot(next_x, 0).val
+    var ny: Int := slot(next_y, 0).val
+    var lx: Int := slot(x, 0).val
+    var ly: Int := slot(y, 0).val
+    var xi: Int
+    var yi: Int
+
+    // lind is tracks the index of current lx and ly
+    var lind: Int := 0
+    // last_ind sequence to record the index of lx and ly for each x and y
+    // Don't care about last_ind[0] since I know that the 0th element is in the hull
+    last_ind := Seq(-1)
+    // similarly, define nind and next_ind
+    var nind: Int := slot(next_i, 0).val
+    assume nind > 0 && nind < n && nx == slot(x, nind).val && ny == slot(y, nind).val
+    next_ind := Seq(nind)
+
+    var i: Int := 1
+    while (i < n)
+        invariant 1 <= i && i <= n
+        invariant access_read(x) && access_read(y) && access_read(in_c) && access_read(next_x) && access_read(next_y) && access_read(next_i)
+        invariant slot(in_c, 0).val == 1
+
+        // sequence properties
+        invariant forall a: Seq[Int], b: Int :: {a ++ Seq(b)} (a ++ Seq(b))[0..|a|] == a
+
+        // lind, last_ind[k] in bound
+        invariant |last_ind| == i
+        invariant lind >= 0 && lind < i && slot(x, lind).val == lx && slot(y, lind).val == ly && slot(in_c, lind).val == 1
+        invariant forall k: Int :: {last_ind[k]} k >= 1 && k < i ==> last_ind[k] >= 0 && last_ind[k] < i && slot(in_c, last_ind[k]).val == 1
+        // nind, next_ind[k] in bound
+        invariant |next_ind| == i
+        invariant (nind == 0 || nind >= i) && nind < n && nx == slot(x, nind).val && ny == slot(y, nind).val
+        invariant forall k: Int :: {next_ind[k]} k >= 0 && k < i ==> next_ind[k] >= 0 && next_ind[k] < n
+        invariant next_ind[|next_ind|-1] == nind && next_ind[i-1] == nind
+        invariant nx == slot(x, next_ind[i-1]).val && ny == slot(y, next_ind[i-1]).val           
+
+        // condition on last_ind
+        invariant (i - 1 >= 1 ==> forall k: Int :: k > lind && k < i ==> slot(in_c, k).val != 1) &&
+            forall k1: Int, k2: Int :: k1 >= 1 && k1 < i && k2 > last_ind[k1] && k2 < k1 ==> slot(in_c, k2).val != 1
+        
+        // condition on next_ind
+        invariant forall k: Int :: {next_ind[k]} k >= 1 && k < i - 1 && next_ind[k] != nind ==> next_ind[k] < i && next_ind[k] != 0
+        invariant forall k: Int :: {next_ind[k]} k >= 1 && k < i && next_ind[k] < i && next_ind[k] != 0 ==> slot(in_c, next_ind[k]).val == 1        
+        invariant forall k1: Int :: {next_ind[k1]} k1 >= 1 && k1 < i && next_ind[k1] == nind ==>
+            forall k2: Int :: {slot(in_c, k2)} k2 > k1 && k2 < i ==> slot(in_c, k2).val != 1
+        invariant forall k1: Int :: {next_ind[k1]} k1 >= 1 && k1 < i && next_ind[k1] < i && next_ind[k1] != 0 ==>
+            forall k2: Int :: {slot(in_c, k2)} k2 > k1 && k2 < next_ind[k1] ==> slot(in_c, k2).val != 1
+
+        // condition on angle
+        invariant correct_angle(1, n, in_c, x, y, last_ind[0..1], next_ind[0..1])
+        invariant correct_angle(i - 1, n, in_c, x, y, last_ind[0..i-1], next_ind[0..i-1]) ==> correct_angle(i, n, in_c, x, y, last_ind, next_ind)
+        invariant forall k: Int :: k >= i && k <= i ==> correct_angle(k, n, in_c, x, y, last_ind[0..k], next_ind[0..k])
+        invariant correct_angle(i, n, in_c, x, y, last_ind[0..i], next_ind[0..i])
+        invariant correct_angle(i, n, in_c, x, y, last_ind, next_ind)
+
+    {
+        last_ind := last_ind ++ Seq(lind)
+        xi := slot(x, i).val
+        yi := slot(y, i).val
+        // Inside if case: vertex i is on the convex hull
+        if (nind == i) {
+            assume nx == xi
+            assume ny == yi
+            assume slot(in_c, i).val == 1
+            nx := slot(next_x, i).val
+            ny := slot(next_y, i).val
+            nind := slot(next_i, i).val
+            assume nind >= 0 && nind < n && nx == slot(x, nind).val && ny == slot(y, nind).val
+            assume nind > i || nind == 0
+            assume outward_bend(lx, ly, xi, yi, nx, ny)
+            lx := xi
+            ly := yi
+            lind := i
+            assert correct_angle(i - 1, n, in_c, x, y, last_ind[0..i-1], next_ind[0..i-1]) ==> correct_angle(i, n, in_c, x, y, last_ind[0..i], next_ind[0..i])
+        }
+        // Inside else case: vertex i is NOT on the convex hull
+        else {
+            assume slot(in_c, i).val != 1
+            assume inward_bend(lx, ly, xi, yi, nx, ny)
+            assert correct_angle(i - 1, n, in_c, x, y, last_ind[0..i-1], next_ind[0..i-1]) ==> correct_angle(i, n, in_c, x, y, last_ind[0..i], next_ind[0..i])
+        }
+        next_ind := next_ind ++ Seq(nind)
+        i := i + 1
+    }
+    assume nx == slot(x, 0).val
+    assume ny == slot(y, 0).val
+    assume nind == 0
+    assert forall k: Int :: {next_ind[k]} k >= 1 && k < n ==> slot(in_c, next_ind[k]).val == 1
+    assert forall k1: Int :: {next_ind[k1]} k1 >= 1 && k1 < n && next_ind[k1] != 0 ==>
+        forall k2: Int :: {slot(in_c, k2)} k2 > k1 && k2 < next_ind[k1] ==> slot(in_c, k2).val != 1
+    assert forall k1: Int :: {next_ind[k1]} k1 >= 1 && k1 < n && next_ind[k1] == 0 ==>
+        forall k2: Int :: {slot(in_c, k2)} k2 > k1 && k2 < n ==> slot(in_c, k2).val != 1
+}

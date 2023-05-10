@@ -1,0 +1,305 @@
+import "IArray.vpr"
+
+// Choice function for sets of integers
+// Aside: I believe Set[Int] is the set of *finite* subsets of integers.
+// So we do not need to rely on the Axiom of Choice to justify the existence of this function 
+function choose_int(s: Set[Int]) : Int
+  ensures s != Set() ==> result in s
+
+// Lemma proving some basic facts of set theory
+// This is needed because of Viper's incomplete axiomatization of the set cardinality operator.
+method card_subset(a: Set[Int], b: Set[Int])
+  requires a subset b
+  ensures |a| <= |b|
+  ensures |a| >= |b| ==> (a == b)
+{
+  if (a != Set()) {
+    var x : Int
+    x := choose_int(a)
+    card_subset(a setminus Set(x), b setminus Set(x))
+    assert (a setminus Set(x) union Set(x)) == a
+    assert (b setminus Set(x) union Set(x)) == b
+  }
+}
+
+define access_perm_arrays(A, p)
+    forall i:Int :: {A[i]}
+        0 <= i && i < |A| ==> access_perm(A[i], p)
+
+define access_read_arrays(A)
+    forall i:Int :: {A[i]}
+        0 <= i && i < |A| ==> access_perm(A[i], wildcard)
+
+define sorted_arrays(A)
+    forall i:Int :: {A[i]}
+        0 <= i && i < |A| ==> sorted(A[i]) 
+
+define distinct_A(A)
+    forall i:Int, j:Int, m:Int, n:Int ::
+      {slot(A[i],j).val, slot(A[m],n).val}
+        0 <= i && i < |A| && valid_index(A[i],j) &&
+        0 <= m && m < |A| && valid_index(A[m],n) &&
+        (i != m || j != n) ==>
+        slot(A[i],j).val != slot(A[m],n).val
+
+define valid_indices(A, curr, l, r)
+  forall k: Int :: {slot(curr, k).val} l <= k && k < r ==> -1 <= slot(curr, k).val && slot(curr, k).val < len(A[k]) 
+  
+
+// Function returning sum of lengths of arrays of A from index l to index r (inclusive l, exclusive r)
+// sums left to right
+function len_sum_upto(A:Seq[IArray], l:Int, r:Int) : Int
+    requires 0 <= l
+    requires r <= |A|
+    ensures result >= 0
+{
+    l >= r ? 0 : len(A[r-1]) + len_sum_upto(A, l, r-1)
+}
+
+
+// Function returning sum of lengths of all arrays in A
+define len_sum(A) 
+  len_sum_upto(A, 0, |A|)
+
+// Function returning sum of contents of an IArray from l to r (inclusive l, exclusive r)
+// sums left to right
+function values_sum(curr:IArray, l:Int, r:Int) : Int
+    requires access_perm_indexed(curr, l, r, wildcard)
+    requires 0 <= l 
+    requires r <= len(curr)
+{
+    l >= r ? 0 : slot(curr,r-1).val + values_sum(curr, l, r-1) 
+}
+
+
+// Function giving contents of a segment of a sequence of array segments 
+// l and r are the bounds of the sequence segment
+// curr defines the right bounds of the inner array segments, the left bounds of the inner segments are all 0
+function array_segs_seg_contents(A: Seq[IArray], l: Int, r: Int, curr: IArray) : Set[Int] 
+    requires access_read_arrays(A)
+    requires access_perm_indexed(curr, l, r, wildcard)
+    requires len(curr) >= |A|
+    requires 0 <= l
+    requires r <= |A|
+    requires valid_indices(A, curr, l, r)
+    ensures r <= l ==> result == Set()
+{
+  l >= r ? Set() : contents_of_seg(A[r-1], 0, slot(curr, r-1).val + 1) union array_segs_seg_contents(A, l, r-1, curr)
+}
+
+define array_segs_contents(A, curr)
+  array_segs_seg_contents(A, 0, |A|, curr)
+
+// Lemma stating that contents_of_seg(array, 0, i) is monotonic in i  
+method contents_of_seg_monotonic(array: IArray, i: Int, j: Int, p: Perm)
+    requires none < p && p < write
+    requires i <= j && j < len(array) && -1 <= i
+    requires access_perm(array, p)
+    ensures access_perm(array, p)
+    ensures contents_of_seg(array, 0, i+1) subset contents_of_seg(array, 0, j+1)
+{
+    if (i != j) {
+        contents_of_seg_monotonic(array, i+1, j, p/2)
+    }
+}
+
+// Lemma that correlates the size of the contents of a segment [0, r) of segments in A with the sum of the values in curr.  
+method lemma_array_segs_contents_size(A: Seq[IArray], r: Int, curr: IArray, p: Perm)
+  requires none < p && p < write
+  requires access_perm_arrays(A, p)
+  requires access_perm_indexed(curr, 0, r, p)
+  requires len(curr) >= |A|
+  requires 0 <= r && r <= |A|
+  requires valid_indices(A, curr, 0, r)
+  requires distinct_A(A)
+  ensures access_perm_arrays(A, p)
+  ensures access_perm_indexed(curr, 0, r, p)
+  ensures valid_indices(A, curr, 0, r)
+  ensures |array_segs_seg_contents(A, 0, r, curr)| <= values_sum(curr, 0, r) + r
+  ensures values_sum(curr, 0, r) + r <= len_sum_upto(A, 0, r)
+  ensures values_sum(curr, 0, r) + r == len_sum_upto(A, 0, r) ==> 
+    forall k: Int :: {slot(curr, k).val} 0 <= k && k < r ==> slot(curr, k).val + 1 == len(A[k])
+{
+    if (r > 0) {
+        lemma_array_segs_contents_size(A, r-1, curr, p/2)
+        lemma_contents_of_seg_length(A[r-1], 0, slot(curr,r-1).val, len(A[r-1]), p/2)
+        if (values_sum(curr, 0, r) + r == len_sum_upto(A, 0, r)) {
+            assert values_sum(curr, 0, r-1) + r-1 == len_sum_upto(A, 0, r-1)
+            assert values_sum(curr, 0, r) == values_sum(curr, 0, r-1) + slot(curr, r-1).val
+            assert len_sum_upto(A, 0, r) == len_sum_upto(A, 0, r-1) + len(A[r-1])
+            assert values_sum(curr, 0, r-1) + slot(curr, r-1).val + 1 + r-1 == len_sum_upto(A, 0, r-1) + len(A[r-1])
+            assert slot(curr, r-1).val + 1 == len(A[r-1])
+        }
+    }
+}
+
+// Lemma that splits the contents of a segment [0, r) of a sequence of array segments 
+// around an index n in [0, r)
+method lemma_array_segs_contents_decompose(A: Seq[IArray], n: Int, r: Int, curr: IArray, p: Perm)
+  requires none < p && p < write
+  requires access_perm_arrays(A, p)
+  requires len(curr) >= |A|
+  requires |A| >= r
+  requires access_perm_indexed(curr, 0, r, p)
+  requires 0 <= n && n < r
+  requires valid_indices(A, curr, 0, r)
+  ensures access_perm_arrays(A, p)
+  ensures access_perm_indexed(curr, 0, r, p)
+  ensures valid_indices(A, curr, 0, r)
+  ensures array_segs_seg_contents(A, 0, r, curr) == array_segs_seg_contents(A, 0, n, curr) union contents_of_seg(A[n], 0, slot(curr, n).val+1) union array_segs_seg_contents(A, n+1, r, curr)
+{
+    if (n + 1 < r) {
+        lemma_array_segs_contents_decompose(A, n, r-1, curr, p/2)
+    }
+}
+
+// Function that computes the index i such that array[i] == p and 0 <= i < r if p in contents_of_seg(array, 0, r)
+function find_index(array: IArray, r: Int, p: Int) : Int
+    requires access_perm(array, wildcard)
+    requires r >= 0 && r <= len(array)
+    requires p in contents_of_seg(array, 0, r)
+    ensures slot(array, result).val == p 
+    ensures 0 <= result && result < r
+{
+    slot(array,r-1).val == p ? r-1 : find_index(array, r-1, p)
+}
+
+// Proof of T_b <= T_s
+method merge(L: Int, A: Seq[IArray], MAX_L: Int, MAX_N: Int)
+    requires access_perm_arrays(A, write)
+    requires L == |A|
+    requires len_sum(A) <= MAX_L * MAX_N
+    requires L <= MAX_L
+    requires sorted_arrays(A)
+    requires distinct_A(A)
+{
+    var B_E: IArray
+    inhale access(B_E)
+    assume len(B_E) == MAX_L * MAX_N
+
+// l0'   
+   // set up ghost variable needed for refinement proof
+   
+   var run_min_i: IArray
+   var k_i: IArray
+   var j_i: IArray
+
+// l1'
+    var B_len: Int
+    assume B_len == len_sum(A)
+    
+    // havoc variables
+    k_i := new_array_no_init(B_len)
+    j_i := new_array_no_init(B_len)
+
+    var i: Int
+    i := 0
+// l2'
+    while (i < MAX_L * MAX_N)
+      invariant 0 <= i && i <= len(B_E)
+      invariant access(B_E) 
+      invariant access_perm(k_i, 1/2)
+      invariant access_perm(j_i, 1/2)
+      invariant access_perm_arrays(A, 1/2)
+      invariant sorted_up_to(B_E, (i < B_len ? i : B_len)) 
+      invariant forall j: Int :: {slot(k_i, j).val}
+        0 <= j && j < (i < B_len ? i : B_len) ==> 0 <= slot(k_i, j).val
+      invariant forall j: Int :: {slot(k_i, j).val}
+        0 <= j && j < (i < B_len ? i : B_len) ==> slot(k_i, j).val < L
+      invariant forall j: Int :: {slot(j_i, j).val}
+        0 <= j && j < (i < B_len ? i : B_len) ==> 0 <= slot(j_i, j).val
+      invariant forall j: Int :: {slot(j_i, j).val, slot(k_i, j).val}
+        0 <= j && j < (i < B_len ? i : B_len) ==> slot(j_i, j).val < len(A[slot(k_i, j).val])
+      invariant forall j: Int :: {slot(B_E,j).val, slot(k_i, j).val, slot(j_i, j).val}
+        0 <= j && j < (i < B_len ? i : B_len) ==> slot(B_E, j).val == slot(A[slot(k_i, j).val], slot(j_i, j).val).val
+    {
+      if (i < B_len) {
+        assume i == 0 || slot(B_E,i-1).val < slot(B_E,i).val
+        var ki: Int := slot(k_i, i).val
+        assume 0 <= ki && ki < L
+        
+        var ji: Int := slot(j_i, i).val
+        assume 0 <= ji && ji < len(A[ki])
+        assume slot(B_E, i).val == slot(A[ki], ji).val
+      }        
+      i := i+1
+    }
+    
+    // T_S
+    var B_S: IArray
+    inhale access(B_S)
+    assume len(B_S) == MAX_L * MAX_N
+
+    var curr: IArray
+    curr := new_array(MAX_L, -1)
+
+    assert B_len == len_sum(A)
+    
+    i := 0
+    while (i < MAX_L * MAX_N)
+      invariant 0 <= i && i <= len(B_S)
+      invariant access(B_S)
+      invariant access_perm(B_E, 1/2) 
+      invariant access_perm(k_i, 1/2)
+      invariant access_perm(j_i, 1/2)
+      invariant access_perm_arrays(A, 1/2)
+      invariant access(curr)
+      invariant sorted_up_to(B_S, (i < B_len ? i : B_len))
+      invariant i == 0 ==> forall k: Int :: {slot(curr, k).val} 0 <= k && k < L ==> -1 == slot(curr, k).val 
+      invariant valid_indices(A, curr, 0, L)
+      invariant forall k: Int :: {slot(curr, k).val} 0 <= k && k < L && slot(curr, k).val >= 0 ==> 
+        i == 0 || i >= B_len || slot(A[k], slot(curr, k).val).val <= slot(B_S, i-1).val
+      invariant i == 0 || i > B_len || slot(B_S,i-1).val == slot(B_E, i-1).val
+      invariant contents_of_seg(B_S, 0, (i < B_len ? i : B_len)) subset array_segs_seg_contents(A, 0, L, curr)
+    {
+      if (i < B_len) {
+        slot(B_S, i).val := slot(B_E, i).val
+        assert i == 0 || slot(B_S,i-1).val < slot(B_S,i).val
+        var ki: Int := slot(k_i, i).val
+        assert 0 <= ki && ki < L
+        
+        var ji: Int := slot(j_i, i).val
+        assert 0 <= ji && ji < len(A[ki])
+        assert slot(B_S, i).val == slot(A[ki], ji).val
+      
+        // update of ghost variable
+        lemma_array_segs_contents_decompose(A, ki, L, curr, 1/4)
+        contents_of_seg_monotonic(A[ki], slot(curr, ki).val, ji, 1/4)
+        slot(curr, ki).val := ji
+        lemma_array_segs_contents_decompose(A, ki, L, curr, 1/4)
+
+      }
+      i := i+1
+    }
+    // Prove contents(B) == contents(A, curr)
+    lemma_array_segs_contents_size(A, L, curr, 1/4)
+    lemma_contents_of_seg_length(B_S, 0, B_len, B_len, 1/4)
+    card_subset(contents_of_seg(B_S, 0, B_len), array_segs_seg_contents(A, 0, L, curr))
+    assert contents_of_seg(B_S, 0, B_len) == array_segs_seg_contents(A, 0, L, curr)
+
+    var k1: Int := 0
+    while (k1 < MAX_L) 
+      invariant 0 <= k1 && k1 <= MAX_L
+      invariant access_perm(B_S, 1/2) 
+      invariant access_perm_arrays(A, 1/2)
+      invariant access_perm(curr, 1/2)        
+    {
+      if (k1 < L) {
+        var j: Int := 0
+        while (j < MAX_N) 
+          invariant 0 <= j && j <= MAX_N
+          invariant access_perm(B_S, 1/4) 
+          invariant access_perm_arrays(A, 1/4)
+          invariant access_perm(curr, 1/4)        
+        {
+          if (j < len(A[k1])) {
+            lemma_array_segs_contents_decompose(A, k1, L, curr, 1/8)
+            var i_jk: Int := find_index(B_S, B_len, slot(A[k1], j).val)
+            assert slot(B_S, i_jk).val == slot(A[k1], j).val
+          }
+          j := j + 1
+        }
+      }
+      k1 := k1 + 1
+    }
+}

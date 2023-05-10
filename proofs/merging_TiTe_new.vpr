@@ -1,0 +1,231 @@
+import "IArray.vpr"
+
+define array_equal_upto(A1, A2, i)
+  forall j: Int :: {slot(A1, j).val, slot(A2, j).val}
+    0 <= j && j < i ==> slot(A1, j).val == slot(A2, j).val
+
+define access_read_arrays(A)
+    forall i:Int :: 
+        0 <= i && i < |A| ==> access_perm(A[i], wildcard)
+
+define sorted_arrays(A)
+    forall i:Int :: 
+        0 <= i && i < |A| ==> sorted(A[i]) // important: just sorted, not sorted_arrays -- otherwise, permission amount exceeds 1
+
+define distinct_A(A)
+    forall i:Int, j:Int, m:Int, n:Int ::
+        0 <= i && i < |A| && valid_index(A[i],j) &&
+        0 <= m && m < |A| && valid_index(A[m],n) &&
+        (i != m || j != n) ==>
+        slot(A[i],j).val != slot(A[m],n).val
+
+function len_sum_upto(A: Seq[IArray], l: Int, r: Int) : Int
+// returns sum of lengths of arrays of A from index l to index r (inclusive l, exclusive r)
+// sums left to right
+    requires 0 <= l
+    requires r <= |A|
+    ensures result >= 0
+{
+    l >= r ? 0 : len(A[r-1]) + len_sum_upto(A, l, r-1)
+}
+
+define len_sum(A) 
+// returns sum of lengths of all arrays in A
+  len_sum_upto(A, 0, |A|)
+
+function values_sum(curr: IArray, l: Int, r: Int) : Int
+// return sum of contents of an IArray from l to r (inclusive l, exclusive r)
+// sums left to right
+    requires access_perm_indexed(curr, l, r, wildcard)
+    requires 0 <= l 
+    requires r <= len(curr)
+{
+    l >= r ? 0 : slot(curr,r-1).val + values_sum(curr, l, r-1) 
+}
+
+method lemma_curr_sum_monotonic_upto(curr: IArray, A: Seq[IArray], l: Int, k: Int, p: Perm)
+// lemma stating that if curr[j] >= len(A[j]) for every j < k, then sum of vals of curr >= sum of lengths of A's up to k
+    requires p > none
+    requires access_perm(curr, p)
+    requires 0 <= l 
+    requires k <= len(curr) && k <= |A|
+    requires forall j:Int :: {slot(curr,j).val, len(A[j])}
+       valid_index(curr,j) && j < k ==> slot(curr,j).val >= len(A[j])
+    ensures access_perm(curr, p)
+    ensures values_sum(curr,l,k) >= len_sum_upto(A,l,k)
+{
+    if(k > l){
+        lemma_curr_sum_monotonic_upto(curr,A,l,k-1,p/2)
+        assert values_sum(curr,l,k) == slot(curr,k-1).val + values_sum(curr,l,k-1)
+        assert len_sum_upto(A,l,k) == len(A[k-1]) + len_sum_upto(A,l,k-1)
+        assert slot(curr,k-1).val >= len(A[k-1])
+    }
+}
+
+
+method lemma_sum_decomposition(curr: IArray, l: Int, r: Int, kstar: Int, p: Perm)
+// lemma stating that sum can be decomposed into {left component up until elt} + elt + {right component from elt}
+    requires p > none
+    requires access_perm(curr, p)
+    requires 0 <= l 
+    requires r <= len(curr)
+    requires l <= kstar && kstar < r
+    ensures access_perm(curr, p)
+    ensures values_sum(curr, l, r) == values_sum(curr, l, kstar) + slot(curr,kstar).val + values_sum(curr, kstar+1, r)
+{
+    if(kstar != r-1){
+        lemma_sum_decomposition(curr,l,r-1,kstar, p/2)
+        assert values_sum(curr,l,r) == slot(curr,r-1).val + values_sum(curr,l,r-1)
+    }
+}
+
+
+method merge(L: Int, A: Seq[IArray], N: IArray, MAX_N: Int, MAX_L: Int)
+    requires access_read_arrays(A) && access_read(N)
+    requires L == |A| && len(N) == MAX_L
+    requires len_sum(A) <= MAX_L * MAX_N
+    requires L <= MAX_L
+    requires forall i: Int :: 0 <= i && i < L ==> len(A[i]) == slot(N, i).val
+    requires sorted_arrays(A)
+    requires distinct_A(A)
+{
+    var i: Int := 0
+    var k: Int := 0
+    var B_len: Int := 0
+    
+    /* T_I */
+    var B_I: IArray
+    inhale access(B_I)
+    assume len(B_I) == MAX_L * MAX_N
+
+    var curr: IArray
+    inhale access(curr)
+    assume len(curr) == MAX_L
+
+    k := 0
+    while (k < MAX_L)
+        invariant access(curr)
+        invariant 0 <= k && k <= MAX_L
+        invariant forall kk: Int :: 0 <= kk && kk < k ==> slot(curr, kk).val == 0
+        invariant B_len == len_sum_upto(A,0, k < L ? k : L)
+        invariant values_sum(curr,0, k < MAX_L ? k : MAX_L) == 0
+    {   
+      slot(curr, k).val := 0
+      if (k < L) {
+        // lemma_sum_decomposition(curr,0,k+1,k, 1/3)
+        B_len := B_len + len(A[k])
+      }
+      k := k+1
+    }
+ 
+    // havoc ghost variables
+    var k_i: IArray
+    inhale access(k_i)
+    assume len(k_i) == MAX_L * MAX_N
+    var j_i: IArray
+    inhale access(j_i)
+    assume len(j_i) == MAX_L * MAX_N
+
+   i := 0
+   while (i < MAX_L * MAX_N)
+      invariant 0 <= i && i <= len(B_I)
+      invariant access(curr) && access(B_I) && access_read_arrays(A) && access(k_i) && access(j_i)
+      invariant forall j:Int :: {slot(curr,j).val}
+        0 <= j && j < L ==> slot(curr,j).val >= 0
+      invariant values_sum(curr, 0, L) == (i < B_len ? i : B_len)
+      invariant i == 0 || forall j:Int :: {slot(A[j], slot(curr,j).val).val}
+        0 <= j && j < L && slot(curr, j).val < len(A[j]) ==> 
+          slot(B_I, (i < B_len ? i : B_len)-1).val < slot(A[j], slot(curr,j).val).val
+      invariant forall j1: Int, j2: Int :: {slot(B_I, j1).val, slot(B_I, j2).val} 
+        0 <= j1 && j1 < i && j1 < j2 && j2 < (i < B_len ? i : B_len) ==> slot(B_I, j1).val < slot(B_I, j2).val
+      invariant forall j: Int :: {slot(k_i, j).val}
+        0 <= j && j < (i < B_len ? i : B_len) ==> 0 <= slot(k_i, j).val && slot(k_i, j).val < L
+      invariant forall j: Int :: {slot(j_i, j).val}
+        0 <= j && j < (i < B_len ? i : B_len) ==> 0 <= slot(j_i, j).val
+      invariant forall j: Int :: {slot(j_i, j).val, A[slot(k_i, j).val]}
+        0 <= j && j < (i < B_len ? i : B_len) ==> slot(j_i, j).val < len(A[slot(k_i, j).val])
+      invariant forall j: Int :: {slot(B_I,j).val, slot(A[slot(k_i, j).val], slot(j_i, j).val).val}
+        0 <= j && j < (i < B_len ? i : B_len) ==> slot(B_I, j).val == slot(A[slot(k_i, j).val], slot(j_i, j).val).val
+    {
+      if (i < B_len) {
+        var found: Bool := false
+        var kstar: Int
+        var run_min: Int
+        k := 0
+        while (k < MAX_L)
+          invariant 0 <= k && k <= MAX_L
+          invariant access_read(curr) && access_read_arrays(A)
+          invariant !found ==> forall j:Int :: {slot(curr,j).val}
+            valid_index(curr,j) && j < (k < L ? k : L)  ==> slot(curr,j).val >= len(A[j])
+          invariant !found ==> values_sum(curr, 0, k) >= len_sum_upto(A, 0, k < L ? k : L)
+          invariant found ==> 0 <= kstar && kstar < L
+          invariant found ==> slot(curr, kstar).val < len(A[kstar])
+          invariant found ==> run_min == slot(A[kstar], slot(curr,kstar).val).val
+          invariant found ==> forall j:Int :: {slot(A[j], slot(curr,j).val).val}
+            0 <= j && j < k && j != kstar && slot(curr,j).val < len(A[j]) ==> 
+              run_min < slot(A[j], slot(curr, j).val).val
+        {   
+          if (k < MAX_L) {
+            if (slot(curr,k).val < slot(N, k).val && (!found || slot(A[k], slot(curr,k).val).val < run_min)){
+              run_min := slot(A[k], slot(curr, k).val).val
+              kstar := k
+              found := true
+            }
+          }
+          k := k+1
+          if (!found && k < MAX_L) {
+            lemma_curr_sum_monotonic_upto(curr, A, 0, k, 1/6)
+          }
+        }
+        slot(B_I, i).val := run_min
+        slot(k_i, i).val := kstar
+        slot(j_i, i).val := slot(curr, kstar).val
+        lemma_sum_decomposition(curr,0,len(curr),kstar, 1/6)
+        slot(curr, kstar).val := slot(curr, kstar).val+1
+        lemma_sum_decomposition(curr,0,len(curr),kstar, 1/6)
+      }
+      i := i+1
+    }
+    /* T_E */
+    var B_E: IArray
+    inhale access(B_E)
+    assume len(B_E) == MAX_L * MAX_N
+    
+    B_len := 0
+    k := 0
+    while (k < MAX_L)
+        invariant access(curr)
+        invariant 0 <= k && k <= MAX_L
+        invariant forall kk: Int :: 0 <= kk && kk < k ==> slot(curr, kk).val == 0
+        invariant B_len == len_sum_upto(A,0, k < L ? k : L)
+        invariant values_sum(curr,0, k < MAX_L ? k : MAX_L) == 0
+    {   
+      slot(curr, k).val := 0
+      if (k < L) {
+        // lemma_sum_decomposition(curr,0,k+1,k, 1/3)
+        B_len := B_len + len(A[k])
+      }
+      k := k+1
+    }
+    assert B_len == len_sum(A)
+    
+    i := 0
+    while (i < MAX_L * MAX_N)
+      invariant 0 <= i && i <= len(B_I)
+      invariant access_perm(k_i, 1/2) && access_perm(j_i, 1/2) && access_perm(B_I, 1/2)
+      invariant access(curr) && access(B_E) && access_read_arrays(A)
+      invariant i == 0 || i >= B_len || slot(B_E, i-1).val < slot(B_I, i).val
+    {
+      if (i < B_len) {
+        slot(B_E, i).val := slot(B_I, i).val
+        assert i == 0 || slot(B_E, i-1).val < slot(B_E, i).val
+        var ki: Int := slot(k_i, i).val
+        assert 0 <= ki && ki < L
+        var ji: Int := slot(j_i, i).val
+        assert 0 <= ji && ji < len(A[ki])
+        assert slot(B_E,i).val == slot(A[ki], ji).val
+      }
+      i := i+1
+    }
+
+}

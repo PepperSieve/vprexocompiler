@@ -1,0 +1,186 @@
+import "IArray.vpr"
+
+define access_read_arrays(A)
+    forall i:Int :: 
+        0 <= i && i < |A| ==> access_perm(A[i], wildcard)
+
+define sorted_arrays(A)
+    forall i:Int :: 
+        0 <= i && i < |A| ==> sorted(A[i]) // important: just sorted, not sorted_arrays -- otherwise, permission amount exceeds 1
+
+define distinct_A(A)
+    forall i:Int, j:Int, m:Int, n:Int ::
+        0 <= i && i < |A| && valid_index(A[i],j) &&
+        0 <= m && m < |A| && valid_index(A[m],n) &&
+        (i != m || j != n) ==>
+        slot(A[i],j).val != slot(A[m],n).val
+
+function len_sum_upto(A: Seq[IArray], l: Int, r: Int) : Int
+// returns sum of lengths of arrays of A from index l to index r (inclusive l, exclusive r)
+// sums left to right
+    requires 0 <= l
+    requires r <= |A|
+    ensures result >= 0
+{
+    l >= r ? 0 : len(A[r-1]) + len_sum_upto(A, l, r-1)
+}
+
+define len_sum(A) 
+// returns sum of lengths of all arrays in A
+  len_sum_upto(A, 0, |A|)
+
+function values_sum(curr: IArray, l: Int, r: Int) : Int
+// return sum of contents of an IArray from l to r (inclusive l, exclusive r)
+// sums left to right
+    requires access_perm_indexed(curr, l, r, wildcard)
+    requires 0 <= l 
+    requires r <= len(curr)
+{
+    l >= r ? 0 : slot(curr,r-1).val + values_sum(curr, l, r-1) 
+}
+
+method lemma_curr_sum_monotonic_upto(curr: IArray, A: Seq[IArray], l: Int, k: Int, p: Perm)
+// lemma stating that if curr[j] >= len(A[j]) for every j < k, then sum of vals of curr >= sum of lengths of A's up to k
+    requires p > none
+    requires access_perm(curr, p)
+    requires 0 <= l 
+    requires k <= len(curr) && k <= |A|
+    requires forall j:Int :: {slot(curr,j).val, len(A[j])}
+       valid_index(curr,j) && j < k ==> slot(curr,j).val >= len(A[j])
+    ensures access_perm(curr, p)
+    ensures values_sum(curr,l,k) >= len_sum_upto(A,l,k)
+{
+    if(k > l){
+        lemma_curr_sum_monotonic_upto(curr,A,l,k-1,p/2)
+        assert values_sum(curr,l,k) == slot(curr,k-1).val + values_sum(curr,l,k-1)
+        assert len_sum_upto(A,l,k) == len(A[k-1]) + len_sum_upto(A,l,k-1)
+        assert slot(curr,k-1).val >= len(A[k-1])
+    }
+}
+
+
+method lemma_sum_decomposition(curr: IArray, l: Int, r: Int, kstar: Int)
+// lemma stating that sum can be decomposed into {left component up until elt} + elt + {right component from elt}
+    requires access_read(curr)
+    requires 0 <= l 
+    requires r <= len(curr)
+    requires l <= kstar && kstar < r
+    ensures access_read(curr)
+    ensures values_sum(curr, l, r) == values_sum(curr, l, kstar) + slot(curr,kstar).val + values_sum(curr, kstar+1, r)
+{
+    if(kstar != r-1){
+        lemma_sum_decomposition(curr,l,r-1,kstar)
+        assert values_sum(curr,l,r) == slot(curr,r-1).val + values_sum(curr,l,r-1)
+    }
+}
+
+
+
+method merge(L: Int, A: Seq[IArray], B: IArray)
+    requires access(B)
+    requires access_read_arrays(A)
+    requires L == |A|
+    requires sorted_arrays(A)
+    requires distinct_A(A)
+    requires len(B) >= len_sum(A)
+{
+// l0   
+    var curr: IArray
+    curr := new_array(L, 0)
+    
+    var i:Int := 0
+    while (i < len(curr))
+    // proper array accesses
+        invariant access(curr)
+        invariant 0 <= i && i <= len(curr)
+        // this is for slot(A[k], slot(curr,k).val).val later
+        invariant forall j:Int :: {slot(curr,j).val}
+            j < i && valid_index(curr, j) ==> slot(curr,j).val == 0
+        // for sum(curr) == i later
+        invariant values_sum(curr,0,i) == 0
+    {
+        lemma_sum_decomposition(curr,0,i+1,i)
+        slot(curr, i).val := 0
+        lemma_sum_decomposition(curr,0,i+1,i)
+        i := i+1
+    }
+    var run_min:Int
+    var kstar:Int
+    var ki:Int
+    var ji:Int
+    
+// l1
+    var k:Int := 0
+    var B_len:Int := 0
+    while (k < L)
+        invariant 0 <= k && k <= L
+    // assert B_len == sum of lengths of A's
+        invariant B_len == len_sum_upto(A,0, k)
+    {   
+        B_len := B_len + len(A[k])
+        k := k+1
+    }
+    assert B_len == len_sum(A)
+    i := 0
+// l2
+    while (i < B_len)
+        invariant 0 <= i && i <= B_len
+    // proper array accesses
+        invariant access(curr) && access(B) && access_read_arrays(A)
+        // for slot(A[k], slot(curr,k).val).val in inner loop
+        // at this point, slot(A[k], slot(curr,k).val).val just needs slot(curr,j).val >= 0 because the conditional checks slot(curr,j).val < len(A[k])
+        invariant forall j:Int :: {slot(curr,j).val}
+            valid_index(curr, j) ==> slot(curr,j).val >= 0
+    // to prove ji < len(A[ki])
+    // sum(curr vals) == i
+        invariant values_sum(curr, 0, L) == i
+    // inner loop conditional must be satisfied at least once for every iteration of i
+    // sortedness of B
+        invariant i == 0 || forall j:Int :: {slot(A[j], slot(curr,j).val).val}
+            valid_index(curr, j) && slot(curr, j).val < len(A[j]) ==> 
+            slot(B, i-1).val < slot(A[j], slot(curr,j).val).val
+    {
+        var found: Bool := false
+        k := 0
+        while (k < L)
+            invariant 0 <= k && k <= L
+        // proper array accesses
+            invariant access_read(curr) && access_read_arrays(A)
+        // to prove ji < len(A[ki])
+        // inner loop conditional must be satisfied at least once for every iteration of i
+            // part 2 (assuming part 1): slot(A[k], slot(curr,k).val).val < run_min
+            // part 1: slot(curr,k).val < len(A[k])
+            invariant !found ==> forall j:Int :: {slot(curr,j).val}
+                valid_index(curr,j) && j < k  ==> slot(curr,j).val >= len(A[j])
+            invariant !found ==> values_sum(curr, 0, k) >= len_sum_upto(A, 0, k)
+            invariant found ==> 0 <= kstar && kstar < L
+            invariant found ==> slot(curr, kstar).val < len(A[kstar])
+            invariant found ==> run_min == slot(A[kstar], slot(curr,kstar).val).val
+        // sortedness of B
+            invariant found ==> forall j:Int :: {slot(A[j], slot(curr,j).val).val}
+                0 <= j && j < k && j != kstar && slot(curr,j).val < len(A[j]) ==> 
+                  run_min < slot(A[j], slot(curr, j).val).val
+        {   
+            if(slot(curr,k).val < len(A[k]) && (!found || slot(A[k], slot(curr,k).val).val < run_min)){
+                run_min := slot(A[k], slot(curr, k).val).val
+                kstar := k
+                found := true
+            }
+            k := k+1
+            if(!found) {
+                lemma_curr_sum_monotonic_upto(curr, A, 0, k, 1/6)
+            }
+        }
+        slot(B, i).val := run_min
+        assert i == 0 || slot(B,i-1).val < slot(B,i).val
+        ki := kstar
+        assert 0 <= ki && ki < L
+        ji := slot(curr, kstar).val
+        assert 0 <= ji && ji < len(A[ki])
+        assert slot(B,i).val == slot(A[ki], ji).val
+        lemma_sum_decomposition(curr,0,len(curr),kstar)
+        slot(curr, kstar).val := slot(curr, kstar).val+1
+        lemma_sum_decomposition(curr,0,len(curr),kstar)
+        i := i+1
+    }
+}

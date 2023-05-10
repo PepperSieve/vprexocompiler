@@ -1,0 +1,149 @@
+define child_index_t(Tr, cur)
+  child_index(Tr, cur, |Tr|)
+
+// We create an abstract data type to list the children.
+// The correctness of the axioms is checked in msc_array_constr_prop.vpr
+domain Child_Index {
+
+  function child_index(T_remn: Seq[Int], cur: Int, tail: Int): Seq[Int]
+
+  // --
+  // From msc_array_constr_prop
+  // --
+  // Post Conditions of child_index
+  axiom child_index_def {
+    forall Tr: Seq[Int], cur: Int, tail: Int :: {child_index(Tr, cur, tail)}
+      (0 <= cur && cur < tail && tail <= |Tr| &&
+      (forall i: Int :: {Tr[i]} cur <= i && i < tail ==> 0 <= Tr[i] && i + Tr[i] < tail))
+      ==> // Preliminaries
+        (1 <= |child_index(Tr, cur, tail)| && |child_index(Tr, cur, tail)| <= tail - cur
+        &&
+        (forall k: Int :: {child_index(Tr, cur, tail)[k]}
+          0 <= k && k < |child_index(Tr, cur, tail)| ==>
+            cur <= child_index(Tr, cur, tail)[k] && child_index(Tr, cur, tail)[k] < tail)
+        && // Head
+        child_index(Tr, cur, tail)[0] == cur
+        && // Tail
+        child_index(Tr, cur, tail)[|child_index(Tr, cur, tail)| - 1] + 1 + Tr[child_index(Tr, cur, tail)[|child_index(Tr, cur, tail)| - 1]] == tail
+        &&
+        (forall k: Int :: {child_index(Tr, cur, tail)[k]}
+          0 <= k && k < |child_index(Tr, cur, tail)| - 1 ==>
+            child_index(Tr, cur, tail)[k] + 1 + Tr[child_index(Tr, cur, tail)[k]] != tail)
+        &&
+        (forall i: Int :: {child_index(Tr, cur, tail)[i]}
+          0 <= i && i < |child_index(Tr, cur, tail)| && child_index(Tr, cur, tail)[i] + 1 + Tr[child_index(Tr, cur, tail)[i]] != tail ==>
+            i != |child_index(Tr, cur, tail)| - 1)
+        &&
+        (forall i: Int :: {child_index(Tr, cur, tail)[i]}
+          0 <= i && i < |child_index(Tr, cur, tail)| && child_index(Tr, cur, tail)[i] + 1 + Tr[child_index(Tr, cur, tail)[i]] == tail ==>
+            i == |child_index(Tr, cur, tail)| - 1)
+        && // Inductive Proof
+        (forall k1: Int, k2: Int :: {child_index(Tr, cur, tail)[k1], child_index(Tr, cur, tail)[k2]}
+          0 <= k1 && k1 + 1 == k2 && k2 < |child_index(Tr, cur, tail)| ==>
+            child_index(Tr, cur, tail)[k1] + 1 + Tr[child_index(Tr, cur, tail)[k1]] == child_index(Tr, cur, tail)[k2]))
+  }
+
+  // axiom_T_remn_eq_implies_child_index_eq_1
+  axiom child_index_axiom_1 {
+    forall Tr: Seq[Int], Tr1: Seq[Int], head1: Int, tail1: Int :: {child_index(Tr, head1, tail1), child_index(Tr1, head1, tail1)}
+      (|Tr1| > 0 && 0 <= head1 && head1 < tail1 && tail1 <= |Tr1| &&
+      (forall i: Int :: {Tr1[i]} head1 <= i && i < tail1 ==> 0 <= Tr1[i] && i + Tr1[i] < tail1) &&
+      |Tr| > |Tr1| && Tr[..|Tr1|] == Tr1) ==>
+        |child_index(Tr, head1, tail1)| == |child_index(Tr1, head1, tail1)| &&
+        forall i: Int :: {child_index(Tr, head1, tail1)[i]}
+          0 <= i && i < |child_index(Tr1, head1, tail1)| ==>
+            child_index(Tr, head1, tail1)[i] == child_index(Tr1, head1, tail1)[i]
+  }
+
+  // axiom_T_remn_eq_implies_child_index_eq_2
+  axiom child_index_axiom_2 {
+    forall Tr: Seq[Int], Tr2: Seq[Int], head: Int, tail: Int, head2: Int, tail2: Int :: {child_index(Tr, head, tail), child_index(Tr2, head2, tail2)}
+      (|Tr2| > 0 && 0 <= head2 && head2 < tail2 && tail2 <= |Tr2| &&
+      (forall i: Int :: {Tr2[i]} head2 <= i && i < tail2 ==> 0 <= Tr2[i] && i + Tr2[i] < tail2) &&
+      |Tr| > |Tr2| && Tr[|Tr| - |Tr2|..] == Tr2 &&
+      head == head2 + |Tr| - |Tr2| && tail == tail2 + |Tr| - |Tr2|) ==>
+        |child_index(Tr, head, tail)| == |child_index(Tr2, head2, tail2)| &&
+        forall i: Int :: {child_index(Tr, head, tail)[i]}
+          0 <= i && i < |child_index(Tr2, head2, tail2)| ==>
+            child_index(Tr, head, tail)[i] == child_index(Tr2, head2, tail2)[i] + |Tr| - |Tr2|
+  }
+
+  // Post Conditions of lem_T_remn_eq_implies_child_index_t_eq_2
+  axiom child_index_t_lemma_tail {
+    forall Tr: Seq[Int], Tr2: Seq[Int], cur: Int, cur2: Int :: {child_index_t(Tr, cur), child_index_t(Tr2, cur2)}
+      (|Tr| > |Tr2| && |Tr2| > 0 && Tr[|Tr| - |Tr2|..] == Tr2 &&
+      (forall i: Int :: {Tr[i]} 0 <= i && i < |Tr| ==> 0 <= Tr[i] && i + 1 + Tr[i] <= |Tr|) &&
+      cur2 + |Tr| - |Tr2| == cur) ==>
+        |child_index_t(Tr, cur)| == |child_index_t(Tr2, cur2)| &&
+        forall i: Int :: {child_index_t(Tr, cur)[i]}
+          0 <= i && i < |child_index_t(Tr2, cur2)| ==>
+            child_index_t(Tr, cur)[i] == child_index_t(Tr2, cur2)[i] + |Tr| - |Tr2|
+  }
+
+  // Post Conditions of lem_T_remn_eq_implies_child_index_eq_5
+  axiom child_index_t_prop_1 {
+    forall Tr: Seq[Int], Tr1: Seq[Int], Tr2: Seq[Int] :: {child_index_t(Tr, 0), child_index_t(Tr1, 0), child_index_t(Tr2, 0)}
+      (|Tr1| > 0 && |Tr2| > 0 &&
+      (forall i: Int :: {Tr1[i]} 0 <= i && i < |Tr1| ==> 0 <= Tr1[i] && i + Tr1[i] < |Tr1|) &&
+      (forall i: Int :: {Tr2[i]} 0 <= i && i < |Tr2| ==> 0 <= Tr2[i] && i + Tr2[i] < |Tr2|) &&
+      Tr == Tr1 ++ Tr2) ==>
+        |child_index_t(Tr, 0)| == |child_index_t(Tr1, 0)| + |child_index_t(Tr2, 0)|
+  }
+  axiom child_index_t_prop_2 {
+    forall Tr: Seq[Int], Tr1: Seq[Int], Tr2: Seq[Int] :: {child_index_t(Tr, 0), child_index_t(Tr1, 0), child_index_t(Tr2, 0)}
+      (|Tr1| > 0 && |Tr2| > 0 &&
+      (forall i: Int :: {Tr1[i]} 0 <= i && i < |Tr1| ==> 0 <= Tr1[i] && i + Tr1[i] < |Tr1|) &&
+      (forall i: Int :: {Tr2[i]} 0 <= i && i < |Tr2| ==> 0 <= Tr2[i] && i + Tr2[i] < |Tr2|) &&
+      Tr == Tr1 ++ Tr2) ==>
+        forall i: Int :: {child_index_t(Tr, 0)[i]}
+          0 <= i && i < |child_index_t(Tr1, 0)| ==> child_index_t(Tr, 0)[i] == child_index_t(Tr1, 0)[i]
+  }  
+  axiom child_index_t_prop_3 {
+    forall Tr: Seq[Int], Tr1: Seq[Int], Tr2: Seq[Int] :: {child_index_t(Tr, 0), child_index_t(Tr1, 0), child_index_t(Tr2, 0)}
+      (|Tr1| > 0 && |Tr2| > 0 &&
+      (forall i: Int :: {Tr1[i]} 0 <= i && i < |Tr1| ==> 0 <= Tr1[i] && i + Tr1[i] < |Tr1|) &&
+      (forall i: Int :: {Tr2[i]} 0 <= i && i < |Tr2| ==> 0 <= Tr2[i] && i + Tr2[i] < |Tr2|) &&
+      Tr == Tr1 ++ Tr2) ==>
+        forall i1: Int, i2: Int :: {child_index_t(Tr, 0)[i1], child_index_t(Tr2, 0)[i2]}
+          0 <= i2 && i2 < |child_index_t(Tr2, 0)| && i1 == i2 + |child_index_t(Tr1, 0)| ==>
+            child_index_t(Tr, 0)[i1] == child_index_t(Tr2, 0)[i2] + |Tr1|
+  }
+}
+
+define child_form_path_t(g, T_comp, T_remn)
+  forall i1: Int, i2: Int :: {child_index_t(T_remn, 0)[i1], child_index_t(T_remn, 0)[i2]}
+    0 <= i1 && i1 + 1 == i2 && i2 < |child_index_t(T_remn, 0)| ==>
+      comp_start(T_comp[child_index_t(T_remn, 0)[i2]]) in adj(g, comp_end(T_comp[child_index_t(T_remn, 0)[i1]]))
+define child_form_path(g, T_comp, T_remn, cur, tail1, head, tail2)
+  forall i1: Int, i2: Int :: // {child_index(T_remn, cur, tail1)[i1], child_index(T_remn, cur, tail1)[i2]}
+    head <= i1 && i1 + 1 == i2 && i2 < tail2 ==>
+      comp_start(T_comp[child_index(T_remn, cur, tail1)[i2]]) in adj(g, comp_end(T_comp[child_index(T_remn, cur, tail1)[i1]]))
+define child_form_path_complete(g, T_comp, T_remn)
+  forall i: Int, i2: Int, i3: Int :: // {T_remn[i], child_index(T_remn, i2, i3)}
+    (0 <= i && i < |T_remn| && type(T_comp[i]) == typeof_pcomp() && 
+    i2 == i + 1 && i3 == i + 1 + T_remn[i]) ==>
+      i2 < i3 && i3 <= |T_remn| &&
+      (forall j: Int :: {T_remn[j]}
+        i2 <= j && j < i3 ==>
+        0 <= T_remn[j] && j + T_remn[j] < i3) &&
+      (forall j: Int :: {child_index(T_remn, i2, i3)[j]}
+        0 <= j && j < |child_index(T_remn, i2, i3)| ==>
+          i2 <= child_index(T_remn, i2, i3)[j] && child_index(T_remn, i2, i3)[j] < i3) &&
+      child_form_path(g, T_comp, T_remn, i2, i3, 0, |child_index(T_remn, i2, i3)|)
+define child_form_path_post(g, T_remn, T_recv, T_outg, cur, tail1, head, tail2)
+  forall i1: Int, i2: Int :: // {child_index(T_remn, cur, tail1)[i1], child_index(T_remn, cur, tail1)[i2]}
+    head <= i1 && i1 + 1 == i2 && i2 < tail2 ==>
+      T_recv[child_index(T_remn, cur, tail1)[i2]] in adj(g, T_outg[child_index(T_remn, cur, tail1)[i1]])
+
+define child_form_cycle_t(g, T_comp, T_remn)
+  comp_start(T_comp[child_index_t(T_remn, 0)[0]]) in adj(g, comp_end(T_comp[child_index_t(T_remn, 0)[|child_index_t(T_remn, 0)| - 1]]))
+define child_form_cycle(g, T_comp, T_remn, cur, tail)
+  comp_start(T_comp[child_index(T_remn, cur, tail)[0]]) in adj(g, comp_end(T_comp[child_index(T_remn, cur, tail)[|child_index(T_remn, cur, tail)| - 1]]))
+define child_form_cycle_complete(g, T_comp, T_remn)
+  forall i: Int, i2: Int, i3: Int :: // {T_remn[i], child_index(T_remn, i2, i3)}
+    (0 <= i && i < |T_remn| && type(T_comp[i]) == typeof_pcomp() && 
+    i2 == i + 1 && i3 == i + 1 + T_remn[i]) ==>
+      i2 < i3 && i3 <= |T_remn| &&
+      child_form_cycle(g, T_comp, T_remn, i2, i3)
+define child_form_cycle_post(g, T_remn, T_recv, T_outg, cur, tail)
+  T_recv[child_index(T_remn, cur, tail)[0]] in adj(g, T_outg[child_index(T_remn, cur, tail)[|child_index(T_remn, cur, tail)| - 1]])

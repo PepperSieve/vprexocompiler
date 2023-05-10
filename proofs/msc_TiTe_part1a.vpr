@@ -1,0 +1,395 @@
+// Convert an MSC tree into T array
+// Infers all post-conditions on T except child_form_path and child_form_cycle
+
+import "TMaps.vpr"
+import "msc_comp.vpr"
+import "msc_child_index.vpr"
+
+function comp_nodes_seq(c: Comp) : Seq[Node]
+  ensures forall n: Node :: n in result == n in comp_nodes(c)
+{
+  type(c) == typeof_pcomp() ?
+    comp_nodes_seq(pcomp_cycl(c)) :
+  type(c) == typeof_ccomp() ?
+    comp_nodes_seq(ccomp_left(c)) ++ comp_nodes_seq(ccomp_right(c))
+  : Seq(ncomp_node(c))
+}
+
+function set_nodes_map(msc_map: TMap[Node, Int], nodes: Seq[Node], msc_num: Int): TMap[Node, Int]
+  ensures forall n: Node :: n in nodes ==> select(result, n) == msc_num
+  ensures forall n: Node :: !(n in nodes) ==> select(result, n) == select(msc_map, n)
+{
+  |nodes| > 0 ? store(set_nodes_map(msc_map, nodes[1..], msc_num), nodes[0], msc_num)
+              : msc_map
+}
+
+function set_mscs_map(msc_map: TMap[Node, Int], g: Graph, mscs: Seq[Comp], vs1: Set[Node]): TMap[Node, Int]
+  requires wf_graph(g)
+  requires msc_comp_seq(g, mscs, vs1)
+  ensures forall i: Int, n: Node ::
+    0 <= i && i < |mscs| && n in comp_nodes(mscs[i]) ==> n in vs1
+  // The following postcondition implicitly handles EnsureDisjoint()
+  ensures forall i: Int, n: Node ::
+    0 <= i && i < |mscs| - 1 && n in comp_nodes(mscs[i]) ==> n in vs1 setminus comp_nodes(mscs[|mscs|-1])
+  ensures forall i: Int, n: Node ::
+    0 <= i && i < |mscs| && n in comp_nodes(mscs[i]) ==> select(result, n) == i
+  
+  ensures |mscs| == 0 ==> unfolding msc_comp_seq(g, mscs, vs1) in vs1 == Set()
+  ensures forall n: Node :: n in vs1 ==> select(result, n) <= |mscs|-1
+  ensures forall i: Int, n: Node ::
+    0 <= i && i < |mscs| && n in comp_adj(g, mscs[i]) ==> n in vs1
+  ensures forall i: Int, n: Node ::
+    0 <= i && i < |mscs| - 1 && n in comp_adj(g, mscs[i]) ==> n in vs1 setminus comp_nodes(mscs[|mscs|-1])
+  ensures |mscs| > 0 ==> forall n: Node :: n in comp_adj(g, mscs[|mscs|-1]) ==> select(result, n) <= |mscs|-1
+  ensures forall i: Int, n: Node ::
+    0 <= i && i < |mscs| && n in comp_adj(g, mscs[i]) ==> select(result, n) <= i
+{
+  |mscs| > 0 ? unfolding msc_comp_seq(g, mscs, vs1) in 
+                set_nodes_map(set_mscs_map(msc_map, g, mscs[..|mscs|-1], vs1 setminus comp_nodes(mscs[|mscs|-1])), comp_nodes_seq(mscs[|mscs|-1]), |mscs|-1)
+             : msc_map
+}
+
+// Copied the 2 functions from msc_comp_array_constr because bug in Viper prevents me from executing that file
+function c_to_T_comp(g: Graph, c: Comp, b: Bool, d: Node): Seq[Comp]
+  requires wf_graph(g) && is_sc_comp(g, c, b)
+  requires !(d in comp_nodes(c))
+  ensures |result| >= 1
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==> type(result[i]) == typeof_pcomp() || type(result[i]) == typeof_ncomp()
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==> !(d in comp_nodes(result[i]))
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && type(result[i]) == typeof_ncomp() ==>
+      d != ncomp_node(result[i])
+  ensures type(result[|result| - 1]) == typeof_ncomp()
+{
+  type(c) == typeof_pcomp() ?
+    Seq(c) ++ c_to_T_comp(g, pcomp_cycl(c), true, d)
+  : type(c) == typeof_ccomp() ?
+    c_to_T_comp(g, ccomp_left(c), false, d) ++ c_to_T_comp(g, ccomp_right(c), false, d)
+  : Seq(c)
+}
+
+// Store a dummy node to T_node to indicate a pcomp
+// This is to correspond to the case of a negative in T
+function c_to_T_node(g: Graph, c: Comp, b: Bool, d: Node): Seq[Node]
+  requires wf_graph(g) && is_sc_comp(g, c, b)
+  requires !(d in comp_nodes(c))
+  ensures |result| >= 1
+  // Correspondence with comp_nodes & comp_adj
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && result[i] != d ==>
+      result[i] in comp_nodes(c)
+  ensures forall i: Int, n: Node ::
+    0 <= i && i < |result| && result[i] != d && n in adj(g, result[i]) ==>
+      n in comp_adj(g, c)
+  // Correspondence with T_comp
+  ensures |c_to_T_comp(g, c, b, d)| == |result|
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_ncomp() ==>
+      result[i] == ncomp_node(c_to_T_comp(g, c, b, d)[i])
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && result[i] == d ==>
+      type(c_to_T_comp(g, c, b, d)[i]) == typeof_pcomp()
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && result[i] != d ==>
+      type(c_to_T_comp(g, c, b, d)[i]) == typeof_ncomp()
+  // Recv and outg in T
+  ensures forall n: Node :: n in comp_nodes(c) ==> n in result
+  ensures type(c) == typeof_pcomp() ==> 
+    forall n: Node :: n in comp_nodes(c) ==> n in result[1..]
+  ensures type(c) == typeof_pcomp() ==> 
+    pcomp_start(c) in result[1..] && pcomp_end(c) in result[1..]
+{
+  type(c) == typeof_pcomp() ?
+    Seq(d) ++ c_to_T_node(g, pcomp_cycl(c), true, d)
+  : type(c) == typeof_ccomp() ?
+    c_to_T_node(g, ccomp_left(c), false, d) ++ c_to_T_node(g, ccomp_right(c), false, d)
+  : Seq(ncomp_node(c))
+}
+
+function c_to_T_remn(g: Graph, c: Comp, b: Bool, d: Node): Seq[Int]
+  requires wf_graph(g) && is_sc_comp(g, c, b)
+  requires !(d in comp_nodes(c))
+  ensures |result| >= 1
+  ensures |c_to_T_comp(g, c, b, d)| == |result|
+  ensures type(c) != typeof_ccomp() ==> result[0] == |result| - 1
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==> 0 <= result[i] && i + result[i] < |result|
+  ensures forall i: Int, j: Int :: {result[i], result[j]}
+    0 <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_pcomp() && i < j && j <= i + result[i] ==>
+      0 <= result[j] && j + result[j] <= i + result[i]
+  ensures type(c) == typeof_pcomp() ==> result[0] > 0 && 1 + result[0] == |result|
+  ensures type(c) == typeof_ncomp() ==> result[0] == 0
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_pcomp() ==> result[i] > 0
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_ncomp() ==> result[i] == 0
+  // Recv and outg in T
+  ensures type(c) == typeof_pcomp() ==> 
+    pcomp_start(c) in c_to_T_node(g, c, b, d)[1..1+result[0]] &&
+    pcomp_end(c) in c_to_T_node(g, c, b, d)[1..1+result[0]]
+  ensures forall i: Int, i2: Int, i3: Int :: {result[i], c_to_T_node(g, c, b, d)[i2..i3]}
+    0 <= i && i < |result| && type(c_to_T_comp(g, c, b, d)[i]) == typeof_pcomp() && i2 == i + 1 && i3 == i + 1 + result[i] ==>
+      pcomp_start(c_to_T_comp(g, c, b, d)[i]) in c_to_T_node(g, c, b, d)[i2..i3] &&
+      pcomp_end(c_to_T_comp(g, c, b, d)[i]) in c_to_T_node(g, c, b, d)[i2..i3]
+  // Invariants for Child Index
+  ensures type(c) == typeof_pcomp() ==>
+    |child_index_t(result, 0)| == 1 &&
+    comp_end(c) == comp_end(c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[|child_index_t(result, 0)| - 1]])  
+  ensures type(c) == typeof_ncomp() ==>
+    |child_index_t(result, 0)| == 1 &&
+    comp_end(c) == comp_end(c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[|child_index_t(result, 0)| - 1]])
+  ensures type(c) == typeof_ccomp() ==>
+    |child_index_t(result, 0)| == |child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)| + |child_index_t(c_to_T_remn(g, ccomp_right(c), false, d), 0)|
+  ensures type(c) == typeof_ccomp() ==>
+    forall i: Int :: {child_index_t(result, 0)[i]}
+      0 <= i && i < |child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)| ==>
+        i < |c_to_T_remn(g, ccomp_left(c), false, d)| &&
+        child_index_t(result, 0)[i] == child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)[i] &&
+        c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[i]] == c_to_T_comp(g, ccomp_left(c), false, d)[child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)[i]]
+  ensures type(c) == typeof_ccomp() ==>
+    forall i1: Int, i2: Int :: {child_index_t(result, 0)[i1], child_index_t(c_to_T_remn(g, ccomp_right(c), false, d), 0)[i2]}
+      0 <= i2 && i2 + |child_index_t(c_to_T_remn(g, ccomp_left(c), false, d), 0)| == i1 && i1 < |child_index_t(result, 0)| ==>
+        c_to_T_comp(g, c, b, d)[child_index_t(result, 0)[i1]] == c_to_T_comp(g, ccomp_right(c), false, d)[child_index_t(c_to_T_remn(g, ccomp_right(c), false, d), 0)[i2]]
+  ensures type(c) == typeof_pcomp() ==>
+    forall i: Int :: {child_index_t(result, 1)[i]}
+      0 <= i && i < |child_index_t(result, 1)| ==>
+        c_to_T_comp(g, c, b, d)[child_index_t(result, 1)[i]] == c_to_T_comp(g, pcomp_cycl(c), true, d)[child_index_t(c_to_T_remn(g, pcomp_cycl(c), true, d), 0)[i]]
+  ensures type(c) == typeof_ccomp() ==>
+    forall head: Int, tail: Int, head2: Int, tail2: Int :: {child_index(result, head, tail), child_index(c_to_T_remn(g, ccomp_right(c), false, d), head2, tail2)}
+      (0 <= head2 && head2 < tail2 && tail2 <= |c_to_T_remn(g, ccomp_right(c), false, d)| &&
+      (forall j: Int :: {c_to_T_remn(g, ccomp_right(c), false, d)[j]}
+        head2 <= j && j < tail2 ==>
+          0 <= c_to_T_remn(g, ccomp_right(c), false, d)[j] &&
+          j + c_to_T_remn(g, ccomp_right(c), false, d)[j] < tail2) &&
+          head == head2 + |c_to_T_remn(g, ccomp_left(c), false, d)| &&
+          tail == tail2 + |c_to_T_remn(g, ccomp_left(c), false, d)|) ==>
+        |child_index(result, head, tail)| == |child_index(c_to_T_remn(g, ccomp_right(c), false, d), head2, tail2)| &&
+        (forall i: Int :: {child_index(result, head, tail)[i]}
+          0 <= i && i < |child_index(c_to_T_remn(g, ccomp_right(c), false, d), head2, tail2)| ==>
+            c_to_T_comp(g, c, b, d)[child_index(result, head, tail)[i]] == c_to_T_comp(g, ccomp_right(c), false, d)[child_index(c_to_T_remn(g, ccomp_right(c), false, d), head2, tail2)[i]])
+  ensures type(c) == typeof_pcomp() ==>
+    forall head: Int, tail: Int, head2: Int, tail2: Int :: {child_index(result, head, tail), child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), head2, tail2)}
+      (0 <= head2 && head2 < tail2 && tail2 <= |c_to_T_remn(g, pcomp_cycl(c), true, d)| &&
+      (forall j: Int :: {c_to_T_remn(g, pcomp_cycl(c), true, d)[j]}
+        head2 <= j && j < tail2 ==>
+          0 <= c_to_T_remn(g, pcomp_cycl(c), true, d)[j] &&
+          j + c_to_T_remn(g, pcomp_cycl(c), true, d)[j] < tail2) &&
+          head == head2 + 1 &&
+          tail == tail2 + 1) ==>
+        |child_index(result, head, tail)| == |child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), head2, tail2)| &&
+        (forall i: Int :: {child_index(result, head, tail)[i]}
+          0 <= i && i < |child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), head2, tail2)| ==>
+            c_to_T_comp(g, c, b, d)[child_index(result, head, tail)[i]] == c_to_T_comp(g, pcomp_cycl(c), true, d)[child_index(c_to_T_remn(g, pcomp_cycl(c), true, d), head2, tail2)[i]])        
+{
+  type(c) == typeof_pcomp() ?
+    Seq(|c_to_T_remn(g, pcomp_cycl(c), true, d)|) ++ c_to_T_remn(g, pcomp_cycl(c), true, d)
+  : type(c) == typeof_ccomp() ?
+    c_to_T_remn(g, ccomp_left(c), false, d) ++ c_to_T_remn(g, ccomp_right(c), false, d)
+  : Seq(0)
+}
+
+function c_to_T_recv(g: Graph, c: Comp, b: Bool, d: Node): Seq[Node]
+  requires wf_graph(g) && is_sc_comp(g, c, b)
+  requires !(d in comp_nodes(c))
+  ensures |result| >= 1
+  // Correspondence with T_comp
+  ensures |c_to_T_comp(g, c, b, d)| == |result|
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==>
+      result[i] == comp_start(c_to_T_comp(g, c, b, d)[i])
+{
+  type(c) == typeof_pcomp() ?
+    Seq(pcomp_start(c)) ++ c_to_T_recv(g, pcomp_cycl(c), true, d)
+  : type(c) == typeof_ccomp() ?
+    c_to_T_recv(g, ccomp_left(c), false, d) ++ c_to_T_recv(g, ccomp_right(c), false, d)
+  : Seq(ncomp_node(c))
+}
+
+function c_to_T_outg(g: Graph, c: Comp, b: Bool, d: Node): Seq[Node]
+  requires wf_graph(g) && is_sc_comp(g, c, b)
+  requires !(d in comp_nodes(c))
+  ensures |result| >= 1
+  // Correspondence with T_comp
+  ensures |c_to_T_comp(g, c, b, d)| == |result|
+  ensures forall i: Int :: {result[i]}
+    0 <= i && i < |result| ==>
+      result[i] == comp_end(c_to_T_comp(g, c, b, d)[i])
+{
+  type(c) == typeof_pcomp() ?
+    Seq(pcomp_end(c)) ++ c_to_T_outg(g, pcomp_cycl(c), true, d)
+  : type(c) == typeof_ccomp() ?
+    c_to_T_outg(g, ccomp_left(c), false, d) ++ c_to_T_outg(g, ccomp_right(c), false, d)
+  : Seq(ncomp_node(c))
+}
+
+method msc_to_T(g: Graph, mscs: Seq[Comp], vs1: Set[Node], d: Node)
+  requires wf_graph(g)
+  requires msc_comp_seq(g, mscs, vs1)
+  // Don't want to deal with an empty array
+  requires |mscs| > 0
+  requires forall c: Comp :: c in mscs ==> !(d in comp_nodes(c))
+  // Can infer this from msc_comp_seq, but we list it explicitly for convenience
+  requires forall c: Comp :: c in mscs ==> is_sc_comp(g, c, true)
+  // The root of a MSC can NEVER BE A CCOMP
+  requires forall c: Comp :: c in mscs ==> !(type(c) == typeof_ccomp())
+  ensures wf_graph(g)
+{
+  var msc_map: TMap[Node, Int]
+  msc_map := set_mscs_map(msc_map, g, mscs, vs1)
+  assert forall k: Int, n: Node ::
+    0 <= k && k < |mscs| && n in comp_nodes(mscs[k]) ==> select(msc_map, n) == k
+  assert forall k: Int, n: Node ::
+    0 <= k && k < |mscs| && n in comp_adj(g, mscs[k]) ==> select(msc_map, n) <= k
+
+  var T_comp: Seq[Comp] := Seq()
+  var T_node: Seq[Node] := Seq()
+  var T_remn: Seq[Int] := Seq()
+  var T_recv: Seq[Node] := Seq()
+  var T_outg: Seq[Node] := Seq()
+
+  var T_remn_old: Seq[Int] := Seq()
+  var T_node_old: Seq[Node] := Seq()
+  var i: Int := 0
+  while (i < |mscs|)
+    invariant i >= 0 && i <= |mscs|
+    invariant i < |mscs| ==> forall k: Int :: {c_to_T_node(g, mscs[i], true, d)[k]}
+      0 <= k && k < |c_to_T_node(g, mscs[i], true, d)| && c_to_T_node(g, mscs[i], true, d)[k] != d ==>
+        c_to_T_node(g, mscs[i], true, d)[k] in comp_nodes(mscs[i]) &&
+        select(msc_map, c_to_T_node(g, mscs[i], true, d)[k]) == i
+    invariant i < |mscs| ==> forall k: Int, n: Node ::
+      0 <= k && k < |c_to_T_node(g, mscs[i], true, d)| && c_to_T_node(g, mscs[i], true, d)[k] != d && n in adj(g, c_to_T_node(g, mscs[i], true, d)[k]) ==>
+        n in comp_adj(g, mscs[i]) &&
+        select(msc_map, n) <= select(msc_map, c_to_T_node(g, mscs[i], true, d)[k])
+
+    // --
+    // The following postcondition are used in msc_TiTb:
+    invariant |T_node| == |T_remn| && |T_node| == |T_recv| && |T_node| == |T_outg|
+    // T_Remn bound
+    invariant forall k: Int :: {T_remn[k]}
+      0 <= k && k < |T_remn| ==> 0 <= T_remn[k] && k + T_remn[k] < |T_remn|
+    invariant forall k: Int :: {T_remn[k]}
+      0 <= k && k < |T_remn| && T_node[k] == d ==> T_remn[k] > 0
+    invariant forall k1: Int, k2: Int :: {T_remn[k1], T_remn[k2]}
+      0 <= k1 && k1 < |T_remn| && T_node[k1] == d && k1 < k2 && k2 <= k1 + T_remn[k1] ==>
+        0 <= T_remn[k2] && k2 + T_remn[k2] <= k1 + T_remn[k1]
+    invariant forall k1: Int :: {T_remn[k1]}
+      0 <= k1 && k1 < |T_remn| && T_node[k1] != d ==> T_remn[k1] == 0
+    // Recv & Outg in Node
+    invariant forall k: Int :: {T_recv[k]} {T_outg[k]}
+      0 <= k && k < |T_node| && T_node[k] != d ==>  
+        T_recv[k] == T_node[k] &&
+        T_outg[k] == T_node[k]
+    invariant forall k: Int :: {T_recv[k]} {T_outg[k]}
+      0 <= k && k < |T_node| && T_node[k] == d ==>
+        T_recv[k] in T_node[k+1..k+1+T_remn[k]] &&
+        T_outg[k] in T_node[k+1..k+1+T_remn[k]]
+
+    // --
+    // The following postcondition handles EnsureOutGoingToOlder()
+    // Invariants on the relationship between MSCs
+    invariant forall k: Int :: {mscs[k]}
+      0 <= k && k < |mscs| ==> child_index_t(c_to_T_remn(g, mscs[k], true, d), 0) == Seq(0)
+    invariant i == 0 ==> T_remn == Seq()
+    invariant i == 1 ==> T_remn == c_to_T_remn(g, mscs[0], true, d) && child_index_t(T_remn, 0) == Seq(0)
+    invariant i > 1 ==> |T_remn| > 0 && |T_remn_old| > 0
+    invariant i > 1 ==> |child_index_t(T_remn, 0)| == |child_index_t(T_remn_old, 0)| + 1
+    invariant i > 0 ==> |child_index_t(T_remn, 0)| == i
+    invariant i > 1 ==>
+      forall k: Int :: {child_index_t(T_remn, 0)[k]}
+        0 <= k && k < |child_index_t(T_remn_old, 0)| ==> child_index_t(T_remn, 0)[k] == child_index_t(T_remn_old, 0)[k]
+    invariant i > 1 ==>
+      child_index_t(T_remn, 0)[|child_index_t(T_remn_old, 0)|] == child_index_t(c_to_T_remn(g, mscs[i-1], true, d), 0)[0] + |T_remn_old| &&
+      child_index_t(T_remn, 0)[|child_index_t(T_remn_old, 0)|] == |T_remn_old| &&
+      child_index_t(T_remn, 0)[|child_index_t(T_remn, 0)| - 1] == |T_remn_old| &&
+      child_index_t(T_remn, 0)[i - 1] == |T_remn_old|
+    invariant |T_node_old| == |T_remn_old|
+    invariant i > 0 ==> forall k: Int :: {T_node[k]}
+      child_index_t(T_remn, 0)[i - 1] <= k && k < |T_node| && T_node[k] != d ==>
+        select(msc_map, T_node[k]) == i - 1
+    invariant i > 1 ==> forall k: Int :: {T_node[k]}
+      child_index_t(T_remn, 0)[i - 2] <= k && k < child_index_t(T_remn, 0)[i - 1] && T_node[k] != d ==>
+        select(msc_map, T_node[k]) == i - 2
+    invariant i > 1 ==> forall k1: Int, k2: Int :: {child_index_t(T_remn, 0)[k1], T_node[k2]}
+      0 <= k1 && k1 < i - 1 && child_index_t(T_remn, 0)[k1] <= k2 && k2 < child_index_t(T_remn, 0)[k1 + 1] && T_node[k2] != d ==>
+        select(msc_map, T_node[k2]) == k1
+    // Outgoing to Older
+    invariant forall k: Int, n: Node ::
+      0 <= k && k < |T_node| && T_node[k] != d && n in adj(g, T_node[k]) ==>
+        select(msc_map, n) <= select(msc_map, T_node[k])
+  {
+    T_node_old := T_node
+    T_remn_old := T_remn
+    T_comp := T_comp ++ c_to_T_comp(g, mscs[i], true, d)
+    T_node := T_node_old ++ c_to_T_node(g, mscs[i], true, d)
+    T_remn := T_remn ++ c_to_T_remn(g, mscs[i], true, d)
+    T_recv := T_recv ++ c_to_T_recv(g, mscs[i], true, d)
+    T_outg := T_outg ++ c_to_T_outg(g, mscs[i], true, d)
+    
+    assert T_node == T_node_old ++ c_to_T_node(g, mscs[i], true, d)
+    assert forall k: Int :: {T_node[k]}
+      |T_node_old| <= k && k < |T_node| && T_node[k] != d ==>
+        select(msc_map, T_node[k]) == i
+    assert i > 0 ==> forall k: Int :: {T_node[k]}
+      child_index_t(T_remn, 0)[i - 1] <= k && k < |T_node_old| && T_node[k] != d ==>
+        select(msc_map, T_node[k]) == i - 1
+    assert T_node[..|T_node_old|] == T_node_old 
+    assert i > 0 ==> forall k1: Int, k2: Int :: {child_index_t(T_remn, 0)[k1], T_node[k2]}
+      0 <= k1 && k1 < i - 1 && child_index_t(T_remn, 0)[k1] <= k2 && k2 < child_index_t(T_remn, 0)[k1 + 1] ==>
+        0 <= k2 && k2 < |T_node_old| &&
+        T_node[k2] == T_node_old[k2] &&
+        select(msc_map, T_node[k2]) == select(msc_map, T_node_old[k2])
+    i := i + 1
+
+    assert forall k: Int :: {T_node[k]}
+      |T_node_old| <= k && k < |T_node| && T_node[k] != d ==>
+        select(msc_map, T_node[k]) == i - 1
+    assert i > 1 ==> forall k: Int :: {T_node[k]}
+      child_index_t(T_remn, 0)[i - 2] <= k && k < |T_node_old| && T_node[k] != d ==>
+        select(msc_map, T_node[k]) == i - 2
+  }
+  
+  assert i > 0
+  assert wf_graph(g)
+  // --
+  // The following postcondition are used in msc_TiTb:
+  assert |T_node| == |T_remn| && |T_node| == |T_recv| && |T_node| == |T_outg|
+  // T_Remn bound
+  assert forall k: Int :: {T_remn[k]}
+    0 <= k && k < |T_remn| ==> 0 <= T_remn[k] && k + T_remn[k] < |T_remn|
+  assert forall k: Int :: {T_remn[k]}
+    0 <= k && k < |T_remn| && T_node[k] == d ==> T_remn[k] > 0
+  assert forall k1: Int, k2: Int :: {T_remn[k1], T_remn[k2]}
+    0 <= k1 && k1 < |T_remn| && T_node[k1] == d && k1 < k2 && k2 <= k1 + T_remn[k1] ==>
+      0 <= T_remn[k2] && k2 + T_remn[k2] <= k1 + T_remn[k1]
+  assert forall k1: Int :: {T_remn[k1]}
+    0 <= k1 && k1 < |T_remn| && T_node[k1] != d ==> T_remn[k1] == 0
+  // Recv & Outg in Node
+  assert forall k: Int :: {T_recv[k]} {T_outg[k]}
+    0 <= k && k < |T_node| && T_node[k] != d ==>  
+      T_recv[k] == T_node[k] &&
+      T_outg[k] == T_node[k]
+  assert forall k: Int :: {T_recv[k]} {T_outg[k]}
+    0 <= k && k < |T_node| && T_node[k] == d ==>
+      T_recv[k] in T_node[k+1..k+1+T_remn[k]] &&
+      T_outg[k] in T_node[k+1..k+1+T_remn[k]]
+
+  // --
+  // The following postcondition handles EnsureOutGoingToOlder()
+  // Invariants on the relationship between MSCs
+  assert |child_index_t(T_remn, 0)| > 0
+  assert forall k: Int :: {child_index_t(T_remn, 0)[k]}
+    0 <= k && k < |child_index_t(T_remn, 0)| ==>
+      0 <= child_index_t(T_remn, 0)[k] && child_index_t(T_remn, 0)[k] < |T_remn|
+  assert forall k: Int :: {T_node[k]}
+    child_index_t(T_remn, 0)[|child_index_t(T_remn, 0)| - 1] <= k && k < |T_node| && T_node[k] != d ==>
+      select(msc_map, T_node[k]) == |child_index_t(T_remn, 0)| - 1
+  assert forall k1: Int, k2: Int :: {child_index_t(T_remn, 0)[k1], T_node[k2]}
+    0 <= k1 && k1 < |child_index_t(T_remn, 0)| - 1 && child_index_t(T_remn, 0)[k1] <= k2 && k2 < child_index_t(T_remn, 0)[k1 + 1] && T_node[k2] != d ==>
+      select(msc_map, T_node[k2]) == k1
+  // Outgoing to Older
+  assert forall k: Int, n: Node ::
+    0 <= k && k < |T_node| && T_node[k] != d && n in adj(g, T_node[k]) ==>
+      select(msc_map, n) <= select(msc_map, T_node[k])
+}
