@@ -1,4 +1,5 @@
-# (Work in Progress) Documentation for `vpex` files:
+# Documentation for `vpex` files:
+A `vpex` file must provide everything required for the tool to generate an implementation, a specification, and an efficient checker for a computation. It also contains necessary assertions and loop invariants to conduct refinement proofs between these different versions of the computation, as well as code that generates random inputs for the computation for testing.
 
 ## Basic Structure
 A `vpex` file can be divided into 11 sections, each must be present (can be empty) and must be listed as the exact order as below:
@@ -57,7 +58,7 @@ Syntax of this section largely follows Syntax & Tokens section, with two special
 Begins with a single line: `TE`. Content of this section will appear in generated `te` C file, end of Ti &rarr; Te Viper file, and front of Te &rarr; Ts Viper file.
 
 Syntax of this section largely follows Syntax & Tokens section, with two special remarks:
-* Ghost variables are **not** allowed. (Zach can you check this?)
+* Ghost variables are **not** allowed.
 * Assertions are allowed (and likely required).
 
 ### Ts code:
