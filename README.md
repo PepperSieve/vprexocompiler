@@ -31,7 +31,6 @@ cd $VPREXOCOMPILER && ./unifier.sh <benchmark>
 Benchmark Breakdown:
 - Y - File can be generated automatically
 - A - (For viper) file can be generated automatically without annotations
-- C - (For C) can generate constraints, but not verification (lacking exo & inp_gen)
 - N - File cannot be generated automatically
 - \ - Not applicable (e.g. Te file and TeTs Proof does not exist when Te = Ts)
 
@@ -46,10 +45,8 @@ Benchmarks        | Ti Code | Te Code | Ts Code | TiTe Proof | TeTs Proof
 `rr_sequence`     | Y | Y | Y | A | A
 `sum_of_powers`   | Y | Y | Y | A | A
 `td_convex_hull`  | Y | Y | Y | A | A
-`msc`             | Y | C | C | A | A
+`msc`             | Y | Y | Y | A | A
 `mst`             | N | N | N | N | N
 
-* A bug in pequin prevents one assertion in `dutch_flag_te` from verification. Refer to line 113 and 129 of `$VPREXOCOMPILER/src/dutch_flag.vpex` for more detail.
-
-# Handwritte Proofs
+# Handwritten Proofs
 You can also access handwritten viper proofs in `proofs/`. Please refer to https://www.pm.inf.ethz.ch/research/viper.html for more details on how to verify viper proofs. You can also find information on what backend to use and expected verification time in `proofs/00_sample_runtime_result.txt`.
