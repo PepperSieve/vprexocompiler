@@ -2,8 +2,13 @@ import "IArray.vpr"
 
 // Family of j-indexed monotonically increasing functions over Int
 function f(j: Int, s: Int): Int 
+  decreases *
   ensures s < result // f increasing for each j
   ensures forall t: Int :: {f(j, t)} s < t ==> result < f(j, t) // f monotonic for each j
+
+define injective(A)
+  forall j1: Int, j2: Int :: {A[j1], A[j2]}
+    0 <= j1 && j1 < j2 && j2 < |A| ==> A[j1] != A[j2]
 
 define access_arrays(A)
     forall i:Int :: {A[i]}
@@ -37,10 +42,11 @@ method rr_sequence_find(s_0: Int, n: Int, m: Int, seq: IArray)
   while (j < m)
     invariant 0 <= j && j <= m
     invariant |fseq| == j
+    invariant injective(fseq)
     invariant forall j1: Int :: {fseq[j1]} 0 <= j1 && j1 < j ==> access(fseq[j1]) && len(fseq[j1]) == n
   {
     var fseq_j: IArray 
-    fseq_j := new_array(n, n) 
+    fseq_j := new_array_distinct_from(n, n, fseq) 
     fseq := fseq ++ Seq(fseq_j)
     j := j + 1
   }

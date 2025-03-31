@@ -1,5 +1,9 @@
 import "IArray.vpr"
 
+define injective(A)
+  forall j1: Int, j2: Int :: {A[j1], A[j2]}
+    0 <= j1 && j1 < j2 && j2 < |A| ==> A[j1] != A[j2]
+
 define access_read_arrays(A)
     forall i:Int :: 
         0 <= i && i < |A| ==> access_perm(A[i], wildcard)
@@ -78,6 +82,7 @@ method lemma_sum_decomposition(curr: IArray, l: Int, r: Int, kstar: Int)
 
 method merge(L: Int, A: Seq[IArray], B: IArray)
     requires access(B)
+    requires injective(A)
     requires access_read_arrays(A)
     requires L == |A|
     requires sorted_arrays(A)

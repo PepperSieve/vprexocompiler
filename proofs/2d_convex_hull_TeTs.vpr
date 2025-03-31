@@ -112,8 +112,6 @@ method td_convex_hull_sp(n: Int, x: IArray, y: IArray, in_c: IArray, next_x: IAr
         // condition on angle
         invariant correct_angle(1, n, in_c, x, y, last_ind[0..1], next_ind[0..1])
         invariant correct_angle(i - 1, n, in_c, x, y, last_ind[0..i-1], next_ind[0..i-1]) ==> correct_angle(i, n, in_c, x, y, last_ind, next_ind)
-        invariant forall k: Int :: k >= i && k <= i ==> correct_angle(k, n, in_c, x, y, last_ind[0..k], next_ind[0..k])
-        invariant correct_angle(i, n, in_c, x, y, last_ind[0..i], next_ind[0..i])
         invariant correct_angle(i, n, in_c, x, y, last_ind, next_ind)
 
     {
@@ -134,13 +132,13 @@ method td_convex_hull_sp(n: Int, x: IArray, y: IArray, in_c: IArray, next_x: IAr
             lx := xi
             ly := yi
             lind := i
-            assert correct_angle(i - 1, n, in_c, x, y, last_ind[0..i-1], next_ind[0..i-1]) ==> correct_angle(i, n, in_c, x, y, last_ind[0..i], next_ind[0..i])
+            assert correct_angle(i - 1, n, in_c, x, y, last_ind[0..i-1], next_ind[0..i-1]) ==> correct_angle(i, n, in_c, x, y, last_ind[0..i], next_ind)
         }
         // Inside else case: vertex i is NOT on the convex hull
         else {
             assume slot(in_c, i).val != 1
             assume inward_bend(lx, ly, xi, yi, nx, ny)
-            assert correct_angle(i - 1, n, in_c, x, y, last_ind[0..i-1], next_ind[0..i-1]) ==> correct_angle(i, n, in_c, x, y, last_ind[0..i], next_ind[0..i])
+            assert correct_angle(i - 1, n, in_c, x, y, last_ind[0..i-1], next_ind[0..i-1]) ==> correct_angle(i, n, in_c, x, y, last_ind[0..i], next_ind)
         }
         next_ind := next_ind ++ Seq(nind)
         i := i + 1

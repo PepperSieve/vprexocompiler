@@ -4,6 +4,7 @@
 // Relate all result[j] to result[0]
 // Relate all result[j] to result[i]
 function child_index(T_remn: Seq[Int], cur: Int, tail: Int): Seq[Int]
+  decreases *
   requires 0 <= cur && cur < tail && tail <= |T_remn|
   requires forall i: Int :: {T_remn[i]} 
     cur <= i && i < tail ==> 0 <= T_remn[i] && i + T_remn[i] < tail

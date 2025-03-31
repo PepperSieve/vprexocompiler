@@ -28,7 +28,7 @@ define access(array)
   forall j: Int :: {slot(array,j).val} 0 <= j && j < len(array) ==> acc(slot(array,j).val)
 
 define access_perm(array, p)
-  forall j: Int :: {slot(array,j).val} 0 <= j && j < len(array) ==> acc(slot(array,j).val, p)
+  forall z: Int :: {slot(array,z).val} 0 <= z && z < len(array) ==> acc(slot(array,z).val, p)
 
 define access_read(array)
   access_perm(array, 2/3)
@@ -102,6 +102,14 @@ method new_array(l: Int, d: Int)
   ensures access(a)
   ensures len(a) == l
   ensures forall k: Int :: {slot(a, k).val} 0 <= k && k < l ==> slot(a, k).val == d
+
+method new_array_distinct_from(l: Int, d: Int, seq: Seq[IArray])
+  returns (a: IArray)
+  requires l >= 0
+  ensures access(a)
+  ensures len(a) == l
+  ensures forall k: Int :: {slot(a, k).val} 0 <= k && k < l ==> slot(a, k).val == d
+  ensures forall i: Int :: {seq[i]} 0 <= i && i < |seq| ==> seq[i] != a
 
 method new_array_no_init(l: Int)
   returns (a: IArray)

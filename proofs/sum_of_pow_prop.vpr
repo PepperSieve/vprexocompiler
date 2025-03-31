@@ -4,11 +4,11 @@ function max_r(): Int
 
 function pow(x: Int, k: Int) : Int
     requires k >= 0 
-    ensures x >= 0 ==> pow(x, k) >= 0
-    ensures x > 0 ==> pow(x, k) > 0
-    ensures x == 0 ==> pow(x, k) == 0
-    ensures x < 0 && k % 2 == 0 ==> pow(x, k) > 0
-    ensures x < 0 && k % 2 == 1 ==> pow(x, k) < 0
+    ensures x >= 0 ==> result >= 0
+    ensures x > 0 ==> result > 0
+    ensures x == 0 && k != 0 ==> result == 0
+    ensures x < 0 && k % 2 == 0 ==> result > 0
+    ensures x < 0 && k % 2 == 1 ==> result < 0
 {
     k == 0 ? 1 : k == 1 ? x : x * pow(x, k-1) // two base cases for easier code below
 }

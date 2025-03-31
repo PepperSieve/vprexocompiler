@@ -2,8 +2,13 @@ import "IArray.vpr"
 
 // Family of j-indexed monotonically increasing functions over Int
 function f(j: Int, s: Int): Int 
+  decreases *
   ensures s < result // f increasing for each j
   ensures forall t: Int :: {f(j, t)} s < t ==> result < f(j, t) // f monotonic for each j
+
+define injective(A)
+  forall j1: Int, j2: Int :: {A[j1], A[j2]}
+    0 <= j1 && j1 < j2 && j2 < |A| ==> A[j1] != A[j2]
 
 define access_arrays(A)
     forall i:Int :: {A[i]}
@@ -47,6 +52,7 @@ method T_I(s_0: Int, n: Int, m: Int, seq: IArray)
     invariant forall j1: Int :: {slot(next, j1).val} 
       0 <= j1 && j1 < j ==> slot(next, j1).val == 0
     invariant |fseq| == j
+    invariant injective(fseq)
     invariant forall j1: Int :: {fseq[j1]} 0 <= j1 && j1 < j ==> access(fseq[j1]) && len(fseq[j1]) == n
     invariant forall j1: Int, k1: Int :: {slot(fseq[j1], k1).val}
       0 <= j1 && j1 < j && 0 <= k1 && k1 < n ==> slot(fseq[j1], k1).val == n
@@ -55,7 +61,7 @@ method T_I(s_0: Int, n: Int, m: Int, seq: IArray)
     slot(next, j).val := 0
     // Also initialize ghost variables
     var fseq_j: IArray 
-    fseq_j := new_array(n, n) 
+    fseq_j := new_array_distinct_from(n, n, fseq) 
     fseq := fseq ++ Seq(fseq_j)
     j := j + 1
   }
@@ -68,6 +74,7 @@ method T_I(s_0: Int, n: Int, m: Int, seq: IArray)
     invariant access(next)
     invariant access(prev_k)
     invariant access(prev_j)
+    invariant injective(fseq)
     invariant access_arrays(fseq)
     invariant forall j1: Int :: {slot(next, j1).val} 
       0 <= j1 && j1 < m ==> 0 <= slot(next, j1).val && slot(next, j1).val < k
@@ -194,6 +201,7 @@ method T_E(s_0: Int, n: Int, m: Int, seq: IArray, seq_last: Int, prev_k: IArray,
   requires len(prev_j) >= n
   requires access_perm(prev_k, 1/2)
   requires len(prev_k) >= n
+  requires injective(fseq)
   requires access_perm_arrays(fseq, 1/2)
   requires |fseq| == m
   requires forall j1: Int :: {fseq[j1]} 0 <= j1 && j1 < m ==> len(fseq[j1]) >= n

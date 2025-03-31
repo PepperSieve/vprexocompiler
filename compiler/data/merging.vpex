@@ -11,6 +11,10 @@ define array_equal_upto(A1, A2, i)
   forall j: Int :: {slot(A1, j).val, slot(A2, j).val}
     0 <= j && j < i ==> slot(A1, j).val == slot(A2, j).val
 
+define injective(A)
+  forall j1: Int, j2: Int :: {A[j1], A[j2]}
+    0 <= j1 && j1 < j2 && j2 < |A| ==> A[j1] != A[j2]
+
 define access_read_arrays(A)
     forall i:Int :: 
         0 <= i && i < |A| ==> access_perm(A[i], wildcard)
@@ -112,6 +116,10 @@ method card_subset(a: Set[Int], b: Set[Int])
   }
 }
 
+define injective(A)
+  forall j1: Int, j2: Int :: {A[j1], A[j2]}
+    0 <= j1 && j1 < j2 && j2 < |A| ==> A[j1] != A[j2]
+
 define access_perm_arrays(A, p)
     forall i:Int :: {A[i]}
         0 <= i && i < |A| ==> access_perm(A[i], p)
@@ -165,7 +173,8 @@ function values_sum(curr:IArray, l:Int, r:Int) : Int
 // Function giving contents of a segment of a sequence of array segments 
 // l and r are the bounds of the sequence segment
 // curr defines the right bounds of the inner array segments, the left bounds of the inner segments are all 0
-function array_segs_seg_contents(A: Seq[IArray], l: Int, r: Int, curr: IArray) : Set[Int] 
+function array_segs_seg_contents(A: Seq[IArray], l: Int, r: Int, curr: IArray) : Set[Int]
+    requires injective(A)
     requires access_read_arrays(A)
     requires access_perm_indexed(curr, l, r, wildcard)
     requires len(curr) == |A|
@@ -196,6 +205,7 @@ method contents_of_seg_monotonic(array: IArray, i: Int, j: Int, p: Perm)
 // Lemma that correlates the size of the contents of a segment [0, r) of segments in A with the sum of the values in curr.  
 method lemma_array_segs_contents_size(A: Seq[IArray], r: Int, curr: IArray, p: Perm)
   requires none < p && p < write
+  requires injective(A)
   requires access_perm_arrays(A, p)
   requires access_perm_indexed(curr, 0, r, p)
   requires len(curr) == |A|
@@ -227,6 +237,7 @@ method lemma_array_segs_contents_size(A: Seq[IArray], r: Int, curr: IArray, p: P
 // around an index n in [0, r)
 method lemma_array_segs_contents_decompose(A: Seq[IArray], n: Int, r: Int, curr: IArray, p: Perm)
   requires none < p && p < write
+  requires injective(A)
   requires access_perm_arrays(A, p)
   requires len(curr) == |A|
   requires len(curr) >= r
@@ -265,6 +276,7 @@ OUT
     arr B MAX_L*MAX_N
 
 REQ-TiTe
+requires injective(A)
 requires access_read_arrays(A)
 requires L == |A|
 requires len_sum(A) <= MAX_L * MAX_N
@@ -273,6 +285,7 @@ requires sorted_arrays(A)
 requires distinct_A(A)
 
 REQ-TeTs
+requires injective(A)
 requires access_perm_arrays(A, write)
 requires L == |A|
 requires len_sum(A) <= MAX_L * MAX_N
