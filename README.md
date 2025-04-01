@@ -34,7 +34,7 @@ cd $VPREXOCOMPILER && ./unifier.sh <benchmark>
 ```
 Benchmark Breakdown:
 - Y - File can be generated automatically
-- A - (For viper) file can be generated automatically without annotations
+- A - (For viper) file can be generated automatically, but does not contain annotations
 - N - File cannot be generated automatically
 - \ - Not applicable (e.g. Te file and TeTs Proof does not exist when Te = Ts)
 
